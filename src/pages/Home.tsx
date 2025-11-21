@@ -1,13 +1,13 @@
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white w-full">
       {/* Hero Section */}
-      <div className="max-w-4xl mx-auto px-4 py-24 text-center">
+      <div className="max-w-4xl mx-auto px-4 py-24 text-center w-full">
         <h1 className="text-6xl font-bold mb-6">Welcome to Your App</h1>
         <p className="text-xl text-gray-300 mb-8">Build something amazing with React, Tailwind, and modern web tech</p>
         
         {/* CTA Buttons */}
-        <div className="flex gap-4 justify-center">
+        <div className="flex gap-4 justify-center flex-wrap">
           <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition">
             Get Started
           </button>
@@ -18,7 +18,7 @@ export default function Home() {
       </div>
 
       {/* Features Section */}
-      <div className="max-w-4xl mx-auto px-4 py-16">
+      <div className="max-w-4xl mx-auto px-4 py-16 w-full">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
           <div className="bg-gray-700 p-6 rounded-lg hover:bg-gray-600 transition">
             <h3 className="text-xl font-bold mb-2">⚡ Fast</h3>
