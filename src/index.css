@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import "@radix-ui/themes/styles.css";
 
 * {
   margin: 0;
