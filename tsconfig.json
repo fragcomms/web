@@ -1,7 +1,17 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ]
+  "compilerOptions": {
+    "target": "ES2022",                  // Modern JS target
+    "module": "CommonJS",                // Node uses CommonJS modules
+    "strict": true,                      // Enable strict type checking
+    "esModuleInterop": true,             // <- important for default imports
+    "allowSyntheticDefaultImports": true,// Helpful for some modules
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist"
+  },
+  "include": ["backend/**/*.ts"],        // Include backend TS files
+  "exclude": ["node_modules", "dist"],
+  
 }
