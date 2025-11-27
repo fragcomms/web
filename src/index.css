@@ -1,4 +1,5 @@
 @import "@radix-ui/themes/styles.css";
+@import "tailwindcss";
 
 * {
   margin: 0;
@@ -9,6 +10,33 @@
 body {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
+}
+
+/* Global container for consistent centering */
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  width: 100%;
+}
+
+/* Main content area centering */
+.main-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 64px); /* Account for fixed navbar (64px = h-16) */
+  padding: 2rem;
+}
+
+/* Center card/form components */
+.centered-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 64px); /* Account for fixed navbar */
+  padding: 1rem;
 }
 
 a {
