@@ -23,8 +23,12 @@ export function LoginForm() {
         setUserData(data);
         setIsLoggedIn(true);
       }
+      else {
+        setIsLoggedIn(false)
+        setUserData(null)
+      }
     } catch (error) {
-      console.log('Not logged in');
+      console.log('Server unreachable');
     }
   };
 

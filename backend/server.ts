@@ -1,10 +1,12 @@
-import express, {Request, Response, NextFunction} from "express";
+import express, { Request, Response, NextFunction } from "express";
 import session from "express-session";
 import passport from "passport";
 import { Strategy as DiscordStrategy } from "passport-discord";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import cors from "cors";
+import { Pool as PGPool } from 'pg'
+import pgSession from 'connect-pg-simple'
 
 dotenv.config();
 
@@ -18,6 +20,20 @@ type DiscordProfile = {
   global_name?: string;
 };
 
+interface UserWithToken extends DiscordProfile {
+  token: string;
+}
+
+const pgStore = pgSession(session);
+
+const pool = new PGPool({
+  user: process.env.PG_USER,
+  host: process.env.PG_HOST,
+  database: process.env.PG_DB,
+  password: process.env.PG_PASS,
+  port: Number(process.env.PG_PORT),
+})
+
 const app = express();
 const PORT = 5000;
 
@@ -29,34 +45,40 @@ const CALLBACK_URL = process.env.CALLBACK_URL;
 
 //enrsure dotenv variables exist
 if (!CLIENT_ID || !CLIENT_SECRET || !SESSION_SECRET) {
-    throw new Error("Missing one or more of the following environment variable:\nCLIENT_ID\nCLIENT_SECRET\nSESSION_SECRET");
+  throw new Error("Missing one or more of the following environment variable:\nCLIENT_ID\nCLIENT_SECRET\nSESSION_SECRET");
 
 }
 //TODO: expand
 
 
-/// temp discord access token
-let discAccessToken: string | undefined;
+// temp discord access token
+// let discAccessToken: string | undefined;
 
 // CORS for frontend-backend connection
 app.use(
-    cors({
-        origin: "http://localhost:5173",
-        credentials: true,
-    })
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
 );
 
 // session middleware
 app.use(
-    session({
-        secret: SESSION_SECRET,
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-            httpOnly: true,
-            sameSite: "none",
-        }
+  session({
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000
+    },
+    store: new pgStore({
+      pool: pool,
+      tableName: 'session',
     })
+  })
 );
 
 app.use(passport.initialize());
@@ -64,24 +86,24 @@ app.use(passport.session());
 
 
 passport.use(
-    new DiscordStrategy(
-        {
-            clientID: CLIENT_ID,
-            clientSecret: CLIENT_SECRET,
-            callbackURL: CALLBACK_URL,
-            scope: ["identify", "email", "connections"],
+  new DiscordStrategy(
+    {
+      clientID: CLIENT_ID,
+      clientSecret: CLIENT_SECRET,
+      callbackURL: CALLBACK_URL,
+      scope: ["identify", "email", "connections"],
 
-        },
-        (token, _refreshToken, profile, done) => {
-            discAccessToken = token;
-            return done(null, profile);
-        }
-    )
+    },
+    (token, _refreshToken, profile, done) => {
+      const user = { ...profile, token }
+      return done(null, user);
+    }
+  )
 );
 
 type DiscordUser = DiscordProfile;
 
-// serialize user to/fro session
+// serialize user to/from session
 passport.serializeUser((user: any, done) => done(null, user));
 passport.deserializeUser((obj: any, done) => done(null, obj));
 
@@ -91,82 +113,91 @@ passport.deserializeUser((obj: any, done) => done(null, obj));
 
 //home
 app.get("/", (_req: Request, res: Response) => {
-    res.send('<a href="/auth/discord">Log in with Discord</a>');
+  res.send('<a href="/auth/discord">Log in with Discord</a>');
 });
 
 //start login
 app.get("/auth/discord", passport.authenticate("discord"));
 
-// disc OAth callback 
-app.get(
-    "/auth/discord/callback",
-    passport.authenticate("discord", {failureRedirect: "/"}),
-    (_req: Request, res: Response) => {
-        res.send(`
-            <html>
-                <body>
-                    <p>Login Successful. You may now safely close this window.</p>
-                    <script>
-                        window.opener.postMessage({ token: '${discAccessToken}', status: 'Login successful' }, "*");
-                        setTimeout(() => window.close(), 3000);
-                    </script>
-                </body>
-            </html>
+// disc OAuth callback 
+app.get("/auth/discord/callback", passport.authenticate("discord", { failureRedirect: "/" }), (req: Request, res: Response) => {
+  const user = req.user as UserWithToken;
+  res.send(`
+      <html>
+          <body>
+              <p>Login Successful. You may now safely close this window.</p>
+              <script>
+                  window.opener.postMessage({ token: '${user.token}', status: 'Login successful' }, "*");
+                  setTimeout(() => window.close(), 3000);
+              </script>
+          </body>
+      </html>
 
-        `);
-    }
+  `);
+}
 );
 
-// fetch user's Discord profile
-app.get("/profile", async (_req: Request, res: Response) => {
-    if(!discAccessToken) {
-        return res.status(400).send("Access token missing");
-    }
 
-    try {
-        const response = await fetch("https://discord.com/api/v10/users/@me", {
-            headers: {Authorization: `Bearer ${discAccessToken}` },
-    
-        });
-        const data = await response.json();
-        res.json(data);
-    } catch(err) {
-        console.error(err);
-        res.status(500).send("Internal Server Error");
-    }
+
+// fetch user's Discord profile
+app.get("/profile", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated() || !req.user) {
+    return res.status(401).send("Access token missing");
+  }
+
+  const user = req.user as UserWithToken;
+
+  try {
+    const response = await fetch("https://discord.com/api/v10/users/@me", {
+      headers: { Authorization: `Bearer ${user.token}` },
+
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
-app.get("/connections", async (_req: Request, res: Response) => {
-    if(!discAccessToken)  {
-        return res.status(400).send("Access token missing");
-    }
+app.get("/connections", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated() || !req.user) {
+    return res.status(401).send("Access token missing");
+  }
 
-    try {
-        const response = await fetch("https://discord.com/api/v10/users/@me/connections", {
-            headers: { 
-                Authorization: `Bearer ${discAccessToken}` 
-            },
+  const user = req.user as UserWithToken;
 
-        });
-        const data = await response.json();
-        res.json(data);
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Internal Server Error");
-    }
+  try {
+    const response = await fetch("https://discord.com/api/v10/users/@me/connections", {
+      headers: {
+        Authorization: `Bearer ${user.token}`
+      },
+
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
 //logout
 app.post("/logout", (req: Request, res: Response, next: NextFunction) => {
-    req.logout((err) => {
-        discAccessToken = undefined;
-        if(err) {
-            return next(err);
-        }
-        res.send({
-            status: "Logged out" 
-        });
-    });
+  const user = req.user as UserWithToken;
+  req.logout((err) => {
+    user.token = "";
+    if (err) {
+      return next(err);
+    }
+    req.session.destroy((err) => {
+      if (err) {
+        return next(err)
+      }
+      res.clearCookie('connect.sid')
+      res.send({ status: "Logged out" })
+    })
+  });
 });
 
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
