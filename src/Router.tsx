@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { Navbar } from './components/Navbar'
+import { Navbar } from './components/PublicNavbar'
 import { LoginForm } from './pages/login-form'
 import { ReplayLibrary } from './pages/replay-library'
 import Home from './pages/Home'
