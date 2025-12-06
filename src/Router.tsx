@@ -8,7 +8,7 @@ import About from './pages/About'
 export default function Router() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
         {/* Fixed Navbar */}
         <Navbar />
         
@@ -39,7 +39,7 @@ export default function Router() {
               <div className="main-content">
                 <div className="text-white text-center">
                   <h1 className="text-4xl font-bold mb-4">Pricing</h1>
-                  <p>Coming soon...</p>
+                  <p>lol not yet</p>
                 </div>
               </div>
             } />

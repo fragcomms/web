@@ -86,7 +86,7 @@ export function ReplayLibrary() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 pt-24 pb-12">
+    <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 pt-24 pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
@@ -159,7 +159,7 @@ function ReplayCard({ replay }: { replay: Replay }) {
     <Card className="bg-slate-800 border-slate-700 overflow-hidden hover:border-slate-600 transition-colors group cursor-pointer">
       <div className="flex">
         {/* Map Logo - Left Side */}
-        <div className="relative w-48 h-32 bg-slate-900 flex-shrink-0">
+        <div className="relative w-48 h-32 bg-slate-900 shrink-0">
           <ReplayThumbnail query={replay.thumbnail} />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center">
