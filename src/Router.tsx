@@ -33,7 +33,7 @@ export default function Router() {
 
             {/* Library accessible only via direct URL */}
             <Route path="/replays" element={
-              <div className="main-content">
+              <div className="w-full min-h-[calc(100vh-64px)] flex flex-col justify-start items-center pt-8 px-4">
                 <ReplayLibrary />
               </div>
             } />
