@@ -4,10 +4,12 @@
   "version": "0.0.0",
   "type": "commonjs",
   "scripts": {
-    "dev": "concurrently \"vite\" \"ts-node backend/server.ts\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "frontend": "vite",
+    "backend:node": "ts-node backend/server.ts",
+    "backend:python": "uvicorn backend.python.main:app --reload --port 8000",
+    "dev": "concurrently \"npm run backend:node\" \"npm run backend:python\" \"npm run frontend\""
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",

@@ -197,6 +197,46 @@ app.get("/connections", async (req: Request, res: Response) => {
   }
 });
 
+app.get("/api/replays", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated() || !req.user) {
+    return res.status(401).send("Not authenticated");
+  }
+
+  try {
+    const pythonResponse = await fetch("http://localhost:8000/api/replays")
+
+    if (!pythonResponse.ok) {
+      throw new Error(`Python API Error: ${pythonResponse.statusText}`);
+    }
+
+    const data = await pythonResponse.json()
+    res.json(data)
+  } catch (e) {
+    console.error("Python service error:", e)
+    res.status(500).send("Internal server error.")
+  }
+})
+
+app.get("/api/audio", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated() || !req.user) {
+    return res.status(401).send("Not authenticated");
+  }
+
+  try {
+    const pythonResponse = await fetch("http://localhost:8000/api/audio")
+
+    if (!pythonResponse.ok) {
+      throw new Error(`Python API Error: ${pythonResponse.statusText}`);
+    }
+
+    const data = await pythonResponse.json()
+    res.json(data)
+  } catch (e) {
+    console.error("Python service error:", e)
+    res.status(500).send("Internal server error.")
+  }
+})
+
 //logout
 app.post("/logout", (req: Request, res: Response, next: NextFunction) => {
   const user = req.user as UserWithToken;
