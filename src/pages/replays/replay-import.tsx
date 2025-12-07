@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { Button } from "../../components/ui/button";
+import { 
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+} from "../../components/ui/dropdown-menu";
+
 
 //Audio database table
-type AudioTable = {
+type AudioRow = {
   audio_id: string;
   file_ext: string;
   path: string;
@@ -10,47 +17,93 @@ type AudioTable = {
   creation_time: string;
 };
 
+//Model ??
+
+//Replays database table
+type ReplayTable = {
+    replay_id: string;
+    path: string;
+    audio: string; 
+    demo_fetch_time: string;
+};
+
+
 const bigButton =
   "w-72 px-8 py-4 text-xl font-medium rounded-xl " +
   "bg-blue-600 hover:bg-blue-500 text-white shadow-lg " +
   "hover:[animation:spin_0.5s_ease-in-out]";
 
 export default function ImportReplay(){
-    const[audioRows, setAudioRows] = useState<AudioTable[]>([]);
-    const[loading, setLoading] = useState(false);
+    const[audioOptions, setAudioRows] = useState<AudioRow[]>([]);
+    const[audioLoading, setAudioLoading] = useState(false);
     const[error, setError] = useState<string | null>(null);
     
-    async function handleSelectAudio(){
+    async function fetchAudio(){
         try{
-            setLoading(true);
+            setAudioLoading(true);
             setError(null);
 
             const res = await fetch("http://localhost:5000/api/audio");
             if(!res.ok){
-                throw new Error('Request failed: ${res.status} ${res.statusText}');
+                throw new Error(`Request failed: ${res.status} ${res.statusText}`);
             }
 
-            const data: AudioTable[] = await res.json();
+            const data: AudioRow[] = await res.json();
             setAudioRows(data);
             console.log("AudioRows:", data);
         }catch (err:any) {
-            console.error("Error fetching audio:", err);
             setError(err.message || "Unknown error");
         }finally{
-            setLoading(false);
+            setAudioLoading(false);
         }
+    }
+
+    function handleAudioSelect(row: AudioRow){
+        console.log("Selected audio:", row);
     }
     
     return(
         <div className = "min-h-screen bg-slate-900 flex items-center justify-center">
             <div className = "flex flex-col gap-4">
-                <Button
-                    className = {bigButton}
-                    onClick = {handleSelectAudio}
-                    disabled={loading}
+                <DropdownMenu
+                    onOpenChange={(open : boolean) => {
+                        if (open) fetchAudio();
+                    }}
                 >
-                    {loading ? "Loading Audio..." : "Select Audio"}
-                </Button>
+                    <DropdownMenuTrigger asChild>
+                        <Button className={bigButton}>
+                            {audioLoading ? "Loading Audio..." : "Select Audio"}
+                        </Button>
+                    </DropdownMenuTrigger>
+
+                    <DropdownMenuContent className="w-96 bg-slate-800 test-white border-slate-700 rounded-xl max-h-80 overflow-y-auto">
+
+                        {audioLoading && (
+                            <DropdownMenuItem disabled>Loading....</DropdownMenuItem>
+                        )}
+
+                        {!audioLoading && audioOptions.length === 0 && (
+                            <DropdownMenuItem disabled>No audio files found</DropdownMenuItem>
+                        )}
+
+                        {audioOptions.map((row) => (
+                            <DropdownMenuItem
+                                key={row.audio_id}
+                                className="px-4 py-2 hover:bg-slate-700 cursor-pointer"
+                                onClick={() => handleAudioSelect(row)}
+                            >
+                                <div className="flex flex-col">
+                                    <span className="font-medium truncate">{row.path}</span>
+                                    <span className="text-xs text-slate-300">
+                                        {row.file_ext} * {row.sampling_rate} Hz * {" "}
+                                        {new Date(row.creation_time).toLocaleString()}
+                                    </span>
+                                </div>
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
 
                 <Button
                     className = {bigButton}
@@ -66,26 +119,5 @@ export default function ImportReplay(){
                     Select Demo File
                 </Button>
             </div>
-
-            {/*Show Results */}
-            {error && <p className="text-red-400 mb-4">Error: {error}</p>}
-
-            {audioRows.length > 0 && (
-                <div className="w-full max-w-xl bg-slate-800 rounded-xl p-4">
-                    <h2 className="text-lg font-semibold mb-2">Audio rows</h2>
-                    <ul className="space-y-1 text-sm text-slate-200">
-                        {audioRows.map((row) => (
-                            <li key={row.audio_id} className="border-b border-slate-700 pb-1 last:border-0">
-                                <div>{row.path}</div>
-                                <div className="text-slate-400">
-                                    {row.file_ext} * {row.sampling_rate} Hz * {" "}
-                                    {new Date(row.creation_time).toLocaleString()}                                  
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-        </div>
     );
 }
