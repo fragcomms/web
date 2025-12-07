@@ -255,4 +255,35 @@ app.post("/logout", (req: Request, res: Response, next: NextFunction) => {
   });
 });
 
+app.post("/api/replays", express.json(), async (req: Request, res: Response) => {
+  if (!req.isAuthenticated() || !req.user) {
+    return res.status(401).send("Not authenticated");
+  }
+
+  try {
+    const pythonResponse = await fetch("http://localhost:8000/api/replays", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body), // Pass the data along
+    });
+
+    if (!pythonResponse.ok) {
+        const errorText = await pythonResponse.text();
+        // Parse the error JSON if possible, otherwise use text
+        try {
+            const errorJson = JSON.parse(errorText);
+            return res.status(pythonResponse.status).json(errorJson);
+        } catch {
+             throw new Error(`Python API Error: ${errorText}`);
+        }
+    }
+
+    const data = await pythonResponse.json();
+    res.json(data);
+  } catch (err: any) {
+    console.error("Error creating replay:", err);
+    res.status(500).send({ detail: err.message || "Internal Server Error" });
+  }
+});
+
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
