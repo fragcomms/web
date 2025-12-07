@@ -8,11 +8,8 @@ import path from 'path';
 const PYTHON_DIR = path.join(__dirname, 'python'); 
 const VENV_PATH = path.join(PYTHON_DIR, '.venv');
 const REQUIREMENTS_FILE = path.join(PYTHON_DIR, 'requirements.txt');
-
-// --- OS SPECIFIC HELPERS ---
-const isWindows = process.platform === 'win32';
-const pythonExecutable = path.join(VENV_PATH, isWindows ? 'Scripts' : 'bin', isWindows ? 'python.exe' : 'python');
-const pipExecutable = path.join(VENV_PATH, isWindows ? 'Scripts' : 'bin', isWindows ? 'pip.exe' : 'pip');
+const pythonExecutable = path.join(VENV_PATH, 'bin', 'python');
+const pipExecutable = path.join(VENV_PATH, 'bin', 'pip');
 
 async function main() {
   console.log(`Python Director: Working in ${PYTHON_DIR}`);
