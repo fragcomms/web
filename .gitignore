@@ -27,3 +27,4 @@ dist-ssr
 .env.*
 __pycache__
 .venv
+audio_cache
