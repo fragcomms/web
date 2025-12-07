@@ -39,7 +39,7 @@ export default function Router() {
             } />
 
             <Route 
-              path="/import-replay" 
+              path="/replays/import" 
               element={
                 <div className="main-content">
                   <ImportReplay />

@@ -94,7 +94,7 @@ export function ReplayLibrary() {
             <h1 className="text-white mb-2">Replay Library</h1>
             <p className="text-slate-400">Browse and watch your saved game replays</p>
           </div>
-          <Link to="/import-replay">
+          <Link to="/replays/import">
             <Button 
               className="bg-[#5865F2] hover:bg-[#4752C4] text-white"
               onClick={() => console.log("Add new replay clicked")}
