@@ -8,6 +8,7 @@ import ImportReplay from './pages/replays/replay-import'
 import Home from './pages/Home'
 import InviteBot from './pages/invite-bot'
 import { useAuth } from './context/AuthContext';
+import { ProtectedRoute } from './components/RouteProtector'
 
 export default function Router() {
   const { user, isLoading } = useAuth();
@@ -32,23 +33,31 @@ export default function Router() {
               </div>
             } />
 
-            {/* Library accessible only via direct URL */}
+            {/* protected */}
             <Route path="/replays" element={
-              <div className="w-full min-h-[calc(100vh-64px)] flex flex-col justify-start items-center pt-8 px-4">
-                <ReplayLibrary />
-              </div>
+              <ProtectedRoute>
+                <div className="w-full min-h-[calc(100vh-64px)] flex flex-col justify-start items-center pt-8 px-4">
+                  <ReplayLibrary />
+                </div>
+              </ProtectedRoute>
             } />
 
+            {/* protected */}
             <Route path="/replays/import" element={
-              <div className="main-content">
-                <ImportReplay />
-              </div>
+              <ProtectedRoute>
+                <div className="main-content">
+                  <ImportReplay />
+                </div>
+              </ProtectedRoute>
             } />
 
+            {/* protected */}
             <Route path="/replays/:id" element={
-              <div className="w-full min-h-[calc(100vh-64px)] pt-8 px-4 flex flex-col items-center">
-                <ReplayDetails />
-              </div>
+              <ProtectedRoute>
+                <div className="w-full min-h-[calc(100vh-64px)] pt-8 px-4 flex flex-col items-center">
+                  <ReplayDetails />
+                </div>
+              </ProtectedRoute>
             } />
 
             <Route path="/invite-bot" element={
