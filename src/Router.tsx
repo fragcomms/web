@@ -31,7 +31,7 @@ export default function Router() {
             } />
             
             {/* Library accessible only via direct URL */}
-            <Route path="/library" element={
+            <Route path="/replays" element={
               <div className="main-content">
                 <ReplayLibrary />
               </div>

@@ -7,7 +7,7 @@ import { useAuth } from "../context/AuthContext"
 export function LoginForm() {
   const { user, checkAuthStatus, logout } = useAuth()
 
-  const [isLoading, setIsLoading] = useState(false)
+  const [ isLoading, setIsLoading ] = useState(false)
 
   const handleDiscordLogin = async () => {
     setIsLoading(true)

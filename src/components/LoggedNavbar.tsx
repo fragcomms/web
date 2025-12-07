@@ -35,7 +35,7 @@ export function Navbar() {
                 to="/login" 
                 className="text-slate-300 hover:text-white transition-colors"
               >
-                Login
+                Profile
               </Link>
               <Link 
                 to="/replays" 
