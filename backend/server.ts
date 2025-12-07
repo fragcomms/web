@@ -39,7 +39,7 @@ const app = express();
 const PORT = 5000;
 
 // dotenv
-const CLIENT_ID = process.env.VITE_CLIENT_ID!;
+const CLIENT_ID = process.env.CLIENT_ID!;
 const CLIENT_SECRET = process.env.CLIENT_SECRET!;
 const SESSION_SECRET = process.env.SESSION_SECRET!;
 const CALLBACK_URL = process.env.CALLBACK_URL;
