@@ -7,6 +7,7 @@ import fetch from "node-fetch";
 import cors from "cors";
 import { Pool as PGPool } from 'pg'
 import pgSession from 'connect-pg-simple'
+import { error } from "console";
 
 dotenv.config();
 
@@ -94,20 +95,38 @@ passport.use(
       scope: ["identify", "email", "connections"],
 
     },
-    (token, _refreshToken, profile, done) => {
-      const user = { ...profile, token }
-      return done(null, user);
+    async (token, _refreshToken, profile, done) => {
+      try {
+        const checkUser = await pool.query(
+          'SELECT * FROM users WHERE discord_id = $1',
+          [profile.id]
+        )
+        let user;
+        
+        if (checkUser.rows.length > 0) {
+          user = checkUser.rows[0]
+        } else {
+          const insertUser = await pool.query(
+            'INSERT INTO public.users (discord_id, created_at, discord_username) VALUES ($1, $2, $3) ON CONFLICT (discord_id) DO NOTHING RETURNING *',
+            [profile.id, new Date(), profile.username]
+          )
+          user = insertUser.rows[0]
+        }
+
+        user.token = token
+
+        return done(null, user)
+      } catch (e) {
+        console.error("Database login err:", e)
+        return done(e, undefined)
+      }
     }
   )
 );
 
-type DiscordUser = DiscordProfile;
-
 // serialize user to/from session
 passport.serializeUser((user: any, done) => done(null, user));
 passport.deserializeUser((obj: any, done) => done(null, obj));
-
-
 
 //routes
 
@@ -125,10 +144,10 @@ app.get("/auth/discord/callback", passport.authenticate("discord", { failureRedi
   res.send(`
       <html>
           <body>
-              <p>Login Successful. You may now safely close this window.</p>
+              <p>Login Successful. The window will now close in 5 seconds.</p>
               <script>
                   window.opener.postMessage({ token: '${user.token}', status: 'Login successful' }, "*");
-                  setTimeout(() => window.close(), 3000);
+                  setTimeout(() => window.close(), 5000);
               </script>
           </body>
       </html>
