@@ -20,7 +20,7 @@ export default function Router() {
       <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
         {/* Fixed Navbar */}
         {user ? <LoggedNavbar /> : <PublicNavbar />}
-        
+
         {/* Page Content with top padding to account for fixed navbar */}
         <div className="pt-16"> {/* Add padding-top for fixed navbar height */}
           <Routes>
@@ -30,7 +30,7 @@ export default function Router() {
                 <Home />
               </div>
             } />
-            
+
             {/* Library accessible only via direct URL */}
             <Route path="/replays" element={
               <div className="main-content">
@@ -38,21 +38,18 @@ export default function Router() {
               </div>
             } />
 
-            <Route 
-              path="/replays/import" 
-              element={
-                <div className="main-content">
-                  <ImportReplay />
-                </div>
-              } 
-            />
-            
+            <Route path="/replays/import" element={
+              <div className="main-content">
+                <ImportReplay />
+              </div>
+            } />
+
             <Route path="/about" element={
               <div className="main-content">
                 <About />
               </div>
             } />
-            
+
             <Route path="/pricing" element={
               <div className="main-content">
                 <div className="text-white text-center">
@@ -61,7 +58,7 @@ export default function Router() {
                 </div>
               </div>
             } />
-            
+
             <Route path="/login" element={
               <div className="centered-card">
                 <LoginForm />
