@@ -8,21 +8,21 @@ export default function ImportReplay(){
                     className = "bg-blue-600 hover:bg-blue-500 text-white"
                     onClick = {() => console.log("Button 1 clicked")}
                     >
-                    Button One
+                    Select Audio
                 </Button>
 
                 <Button
                     className = "bg-green-600 hover:bg-green-500 text-white"
                     onClick = {() => console.log("Button 2 clicked")}
                     >
-                    Button Two
+                    Select AI Model
                 </Button>
 
                 <Button
                     className = "bg-red-600 hover:bg-red-500 text-white"
                     onClick = {() => console.log("Button 3 clicked")}
                     >
-                    Button Three
+                    Select Demo File
                 </Button>
             </div>
         </div>
