@@ -51,7 +51,9 @@ export default function ImportReplay(){
             setAudioLoading(true);
             setError(null);
 
-            const res = await fetch("http://localhost:5000/api/audio");
+            const res = await fetch("http://localhost:5000/api/audio", {
+                credentials: "include",
+            });
             if(!res.ok){
                 throw new Error(`Request failed: ${res.status} ${res.statusText}`);
             }
@@ -75,6 +77,7 @@ export default function ImportReplay(){
             <div className = "flex flex-col gap-4">
                 <DropdownMenu
                     onOpenChange={(open : boolean) => {
+                        console.log("Dropdown open:",open);
                         if (open) fetchAudio();
                     }}
                 >
