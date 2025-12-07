@@ -3,8 +3,11 @@ import { useAuth } from "../context/AuthContext";
 
 export default function Home() {
   const { user } = useAuth();
+  
 
   const target = user ? "/replays" : "/login";
+  const buttonText = user ? "Go to Replays" : "Log in with Discord";
+
   return (
     <>
       <h1 className="text-6xl font-bold mb-6 text-white text-center">FragComms</h1>
@@ -13,9 +16,10 @@ export default function Home() {
       <div className="flex gap-4 justify-center mb-16">
         
         <Link 
-        to= {target}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg">
-          Get Started
+          to= {target}
+          className="bg-blue-50 hover:bg-gray-900 text-white font-bold text-lg px-8 py-3 rounded-lg transition-colors duration-200"
+        >
+           {buttonText}
         </Link>
       </div>
       

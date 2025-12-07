@@ -8,9 +8,12 @@ export function Navbar() {
           <div className="flex items-center gap-8">
             <Link 
               to="/" 
-              className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-slate-600 text-white hover:border-slate-400 transition-colors"
-            >
-              L
+              className = "flex items-center justify-center w-10 h-10 rounded-full border-2 border-slate-600 text-white hover:border-slate-400 transition-colors overflow-hidden"            >
+              <img
+                src = "src/assets/logo.png"
+                alt = "Logo"
+                className = "w-full h-full object-cover"
+              />
             </Link>
             <div className="flex gap-6">
               <Link 
