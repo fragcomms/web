@@ -5,7 +5,7 @@ import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
 import { Search, Play, Calendar, Clock, Filter } from "lucide-react";
 import { Plus } from "lucide-react";
-
+import { Link } from "react-router-dom";
 interface Replay {
   id: string;
   title: string;
@@ -94,13 +94,15 @@ export function ReplayLibrary() {
             <h1 className="text-white mb-2">Replay Library</h1>
             <p className="text-slate-400">Browse and watch your saved game replays</p>
           </div>
-          <Button 
-            className="bg-[#5865F2] hover:bg-[#4752C4] text-white"
-            onClick={() => console.log("Add new replay clicked")}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add New Replay
-          </Button>
+          <Link to="/import-replay">
+            <Button 
+              className="bg-[#5865F2] hover:bg-[#4752C4] text-white"
+              onClick={() => console.log("Add new replay clicked")}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Replay
+            </Button>
+          </Link>
         </div>
 
         {/* Search and Filter */}

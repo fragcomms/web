@@ -3,6 +3,7 @@ import { Navbar as PublicNavbar } from './components/PublicNavbar'
 import { Navbar as LoggedNavbar } from './components/LoggedNavbar'
 import { LoginForm } from './pages/login-form'
 import { ReplayLibrary } from './pages/replay-library'
+import ImportReplay from './pages/replay-import'
 import Home from './pages/Home'
 import About from './pages/About'
 import { useAuth } from './context/AuthContext';
@@ -36,6 +37,15 @@ export default function Router() {
                 <ReplayLibrary />
               </div>
             } />
+
+            <Route 
+              path="/import-replay" 
+              element={
+                <div className="main-content">
+                  <ImportReplay />
+                </div>
+              } 
+            />
             
             <Route path="/about" element={
               <div className="main-content">
