@@ -17,7 +17,7 @@ export default function Home() {
         
         <Link 
           to= {target}
-          className="bg-blue-50 hover:bg-gray-900 text-white font-bold text-lg px-8 py-3 rounded-lg transition-colors duration-200"
+          className="bg-blue-50 hover:bg-blue-700 text-white font-bold text-lg px-8 py-3 rounded-lg transition-colors duration-200"
         >
            {buttonText}
         </Link>

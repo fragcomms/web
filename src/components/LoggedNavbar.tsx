@@ -26,7 +26,7 @@ export function Navbar() {
                 to="/invite-bot" 
                 className="text-slate-300 hover:text-white transition-colors"
               >
-                Invite Bot
+                Invite
               </Link>
               <Link 
                 to="/pricing" 

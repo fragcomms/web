@@ -319,4 +319,20 @@ app.get("/api/audio/stream/:id", async (req: Request, res: Response) => {
     }
 });
 
+//get inv link
+app.get("/api/getBotInviteLink", (_req, res) => {
+  const CLIENT_ID = process.env.CLIENT_ID;
+  if (!CLIENT_ID) return res.status(500).json({ error: "Missing CLIENT_ID" });
+
+  const scopes = ["bot", "applications.commands"];
+  const permissions = "8";
+  const inviteLink = `https://discord.com/oauth2/authorize?client_id=${CLIENT_ID}&scope=${scopes.join(
+    "%20"
+  )}&permissions=${permissions}`;
+
+  res.json({ url: inviteLink });
+});
+
+
+
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
