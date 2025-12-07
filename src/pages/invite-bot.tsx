@@ -4,7 +4,8 @@ import {ClipboardIcon, CheckIcon} from "lucide-react";
 import dotenv from "dotenv";
 
 dotenv.config();
-
+// change navbars
+//change Router.tsx
 
 
 export default function InviteBot() {
