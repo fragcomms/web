@@ -3,6 +3,7 @@ import { Navbar as PublicNavbar } from './components/PublicNavbar'
 import { Navbar as LoggedNavbar } from './components/LoggedNavbar'
 import { LoginForm } from './pages/login-form'
 import { ReplayLibrary } from './pages/replays/replay-library'
+import { ReplayDetails } from './pages/replays/replay-details';
 import ImportReplay from './pages/replays/replay-import'
 import Home from './pages/Home'
 import About from './pages/About'
@@ -41,6 +42,12 @@ export default function Router() {
             <Route path="/replays/import" element={
               <div className="main-content">
                 <ImportReplay />
+              </div>
+            } />
+
+            <Route path="/replays/:id" element={
+              <div className="w-full min-h-[calc(100vh-64px)] pt-8 px-4 flex flex-col items-center">
+                <ReplayDetails />
               </div>
             } />
 
