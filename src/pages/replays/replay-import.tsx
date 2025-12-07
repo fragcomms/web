@@ -6,6 +6,7 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
 } from "../../components/ui/dropdown-menu";
+import connectPgSimple from "connect-pg-simple";
 
 
 //Audio database table
@@ -18,6 +19,13 @@ type AudioRow = {
 };
 
 //Model ??
+const MODEL_OPTIONS = [
+    "Whisper",
+    "ChatGPT",
+    "A literal man transcribing it (please allow 14 business days for transcription",
+    "Copilot",
+    "Clippy"
+];
 
 //Replays database table
 type ReplayTable = {
@@ -43,7 +51,9 @@ export default function ImportReplay(){
             setAudioLoading(true);
             setError(null);
 
-            const res = await fetch("http://localhost:5000/api/audio");
+            const res = await fetch("http://localhost:5000/api/audio", {
+                credentials: "include",
+            });
             if(!res.ok){
                 throw new Error(`Request failed: ${res.status} ${res.statusText}`);
             }
@@ -67,6 +77,7 @@ export default function ImportReplay(){
             <div className = "flex flex-col gap-4">
                 <DropdownMenu
                     onOpenChange={(open : boolean) => {
+                        console.log("Dropdown open:",open);
                         if (open) fetchAudio();
                     }}
                 >
@@ -104,13 +115,27 @@ export default function ImportReplay(){
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
+            <div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button className={bigButton}>
+                            Select AI Model
+                        </Button>
+                    </DropdownMenuTrigger>
 
-                <Button
-                    className = {bigButton}
-                    onClick = {() => console.log("Button 2 clicked")}
-                    >
-                    Select AI Model
-                </Button>
+                    <DropdownMenuContent className="w-72 bg-slate-800 text-white border-slate-700 rounded-xl">
+                        {MODEL_OPTIONS.map((model) => (
+                            <DropdownMenuItem
+                                key={model}
+                                className="px-4 py-2 hover:bg-slate-700 cursor-pointer"
+                                onClick={() => console.log("Selected model:",model)}
+                            >
+                                {model}
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
 
                 <Button
                     className = {bigButton}
