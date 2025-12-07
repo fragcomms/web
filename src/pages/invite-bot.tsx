@@ -1,9 +1,8 @@
 import React from "react";
 import {useState} from "react";
 import {ClipboardIcon, CheckIcon} from "lucide-react";
-import dotenv from "dotenv";
 
-dotenv.config();
+
 // change navbars
 //change Router.tsx
 
@@ -11,7 +10,7 @@ dotenv.config();
 export default function InviteBot() {
 
   const [copied, setCopied] = useState(false);
-  const client_id = process.env.CLIENT_ID;
+  const client_id = import.meta.env.VITE_CLIENT_ID;
 
   const scopes = ["bot", "applications.commands"];
   const permissions = "8";

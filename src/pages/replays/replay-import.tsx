@@ -7,7 +7,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "../../components/ui/dropdown-menu";
-import connectPgSimple from "connect-pg-simple";
 
 
 //Audio database table
