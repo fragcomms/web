@@ -40,12 +40,6 @@ export function Navbar() {
               >
                 Login
               </Link>
-              <Link 
-                to="/about" 
-                className="text-slate-300 hover:text-white transition-colors"
-              >
-                About
-              </Link>
             </div>
           </div>
         </div>
