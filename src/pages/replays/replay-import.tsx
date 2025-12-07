@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { 
     DropdownMenu,
@@ -20,18 +20,14 @@ type AudioRow = {
 
 //Model ??
 const MODEL_OPTIONS = [
-    "Whisper",
-    "ChatGPT",
-    "A literal man transcribing it (please allow 14 business days for transcription",
-    "Copilot",
-    "Clippy"
+    "Whisper"
 ];
 
-//Demo database table NOT SET UP IN POSTGRES
-type DemoRow = {
-    demo_id: string;
-
-};
+//Placeholder demo file handling
+const DEMO_OPTIONS = [
+    "demo1",
+    "demo2"
+];
 
 
 const bigButton =
@@ -41,14 +37,28 @@ const bigButton =
 
 export default function ImportReplay(){
     const[audioOptions, setAudioRows] = useState<AudioRow[]>([]);
-    const[demoOptions, setDemoRows] = useState<DemoRow[]>([]);
+    //const[demoOptions, setDemoRows] = useState<DemoRow[]>([]);
 
     const[audioLoading, setAudioLoading] = useState(false);
-    const[demoLoading, setDemoLoading] = useState(false);
+    //const[demoLoading, setDemoLoading] = useState(false);
 
     const[error, setError] = useState<string | null>(null);
 
+    const[selectedAudio, setSelectedAudio] = useState<AudioRow | null>(null);
+    const[selectedModel, setSelectedModel] = useState<string | null>(null);
+    const[selectedDemo, setSelectedDemo] = useState<string | null>(null);
 
+    const canProceed = !!(selectedAudio && selectedModel && selectedDemo);
+    
+    const[activated, setActivated] = useState(false);
+
+    useEffect(() => {
+        if (canProceed) {
+            setActivated(true);
+            const timer = setTimeout(() => setActivated(false), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [canProceed]);
     
     async function fetchAudio(){
         
@@ -85,6 +95,7 @@ export default function ImportReplay(){
         }
     }
 
+    /*
     async function fetchDemo(){
         try{
             setDemoLoading(true);
@@ -106,18 +117,46 @@ export default function ImportReplay(){
             setDemoLoading(false);
         }
     }
-
+    */
     function handleAudioSelect(row: AudioRow){
         console.log("Selected audio:", row);
+        setSelectedAudio(row);
     }
 
-    function handleDemoSelect(row: DemoRow){
-        console.log("Selected demo:", row);
+    function handleModelSelect(model: string){
+        console.log("Selected model:", model);
+        setSelectedModel(model);
+    }
+
+    function handleDemoSelect(demo: string){
+        console.log("Selected demo:", demo);
+        setSelectedDemo(demo);
+    }
+
+    function handleStart(){
+        if (!canProceed) return;
+        console.log("Starting with:", {
+            audio: selectedAudio,
+            model: selectedModel,
+            demo: selectedDemo,
+        });
+    }
+
+    function SparkleBurst() {
+        return (
+            <div className="absolute inset-0 pointer-events-none animate-[sparkle-burst_0.8s_ease-out]">
+                <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-32 h-32 bg-teal-400/50 blur-xl rounded-full" />
+                </div>
+            </div>
+        );
     }
     
     return(
         <div className = "min-h-screen bg-slate-900 flex items-center justify-center">
             <div className = "flex flex-col gap-4">
+
+                {/* AUDIO */}
                 <DropdownMenu
                     onOpenChange={(open : boolean) => {
                         console.log("Dropdown open:",open);
@@ -126,7 +165,10 @@ export default function ImportReplay(){
                 >
                     <DropdownMenuTrigger asChild>
                         <Button className={bigButton}>
-                            {audioLoading ? "Loading Audio..." : "Select Audio"}
+                            {audioLoading ? "Loading Audio..." 
+                            : selectedAudio
+                            ? selectedAudio.audio_id
+                            : "Select Audio"}
                         </Button>
                     </DropdownMenuTrigger>
 
@@ -159,10 +201,11 @@ export default function ImportReplay(){
                 </DropdownMenu>
             </div>
             <div>
+                {/* MODEL */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button className={bigButton}>
-                            Select AI Model
+                            {selectedModel || "Select AI Model"}
                         </Button>
                     </DropdownMenuTrigger>
 
@@ -171,7 +214,7 @@ export default function ImportReplay(){
                             <DropdownMenuItem
                                 key={model}
                                 className="px-4 py-2 hover:bg-slate-700 cursor-pointer"
-                                onClick={() => console.log("Selected model:",model)}
+                                onClick={() => handleModelSelect(model)}
                             >
                                 {model}
                             </DropdownMenuItem>
@@ -179,48 +222,46 @@ export default function ImportReplay(){
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-
-                <DropdownMenu
-                    onOpenChange={(open : boolean) => {
-                        console.log("Dropdown open:",open);
-                        if (open) fetchDemo();
-                    }}
-                >
+            <div>
+                {/* DEMO */}     
+                <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button className={bigButton}>
-                            {demoLoading ? "Loading Demo..." : "Select Demo"}
+                            {selectedDemo || "Select Demo File"}
                         </Button>
                     </DropdownMenuTrigger>
 
-                    <DropdownMenuContent className="w-96 bg-slate-800 test-white border-slate-700 rounded-xl max-h-80 overflow-y-auto">
-
-                        {demoLoading && (
-                            <DropdownMenuItem disabled>Loading....</DropdownMenuItem>
-                        )}
-
-                        {!demoLoading && demoOptions.length === 0 && (
-                            <DropdownMenuItem disabled>No demo files found</DropdownMenuItem>
-                        )}
-
-                        {demoOptions.map((row) => (
+                    <DropdownMenuContent className="w-72 bg-slate-800 text-white border-slate-700 rounded-xl">
+                        {DEMO_OPTIONS.map((demo) => (
                             <DropdownMenuItem
-                                key={row.demo_id}
+                                key={demo}
                                 className="px-4 py-2 hover:bg-slate-700 cursor-pointer"
-                                onClick={() => handleDemoSelect(row)}
+                                onClick={() => handleDemoSelect(demo)}
                             >
-                                <div className="flex flex-col">
-                                    {/*
-                                    <span className="font-medium truncate">{row.path}</span>
-                                    <span className="text-xs text-slate-300">
-                                        {row.path} * {row.audio} 
-                                        {new Date(row.demo_fetch_time).toLocaleString()}
-                                    </span>
-                                    */}
-                                </div>
+                                {demo}
                             </DropdownMenuItem>
                         ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
+            <div className="relative">
+                {activated && <SparkleBurst />}
+                <Button
+                    disabled={!canProceed}
+                    className ={
+                        bigButton +
+                        " transition-all duration-500 " +
+                        (activated
+                            ? "animate-[button-activated_0/9s_ease-out] bg-green-500 shadow-2xl"
+                            : canProceed
+                            ? "bg-green-600 hover:bg-green-500"
+                            : "bg-gray-600 cursor-not-allowed opacity-50")
+                    }
+                    onClick={handleStart}
+                >
+                    Process Replay
+                </Button>
+            </div>
+        </div>
     );
 }
