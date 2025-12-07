@@ -9,6 +9,7 @@ interface Replay {
   replay_id: number;
   map_name: string; // TODO
   match_date: string; // TODO
+  demo_fetch_time: string;
   winner: boolean; // TODO
   duration: string; // TODO
   platform: string; // TODO
@@ -72,7 +73,6 @@ export function ReplayLibrary() {
       ) : (
         <div className="flex flex-col gap-3">
           {replays.map((replay) => (
-            // 2. UPDATE KEY AND PROP: Use 'replay_id' here too
             <ReplayCard key={replay.replay_id} replay={replay} />
           ))}
         </div>
@@ -88,7 +88,6 @@ function ReplayCard({ replay }: { replay: Replay }) {
   const outcomeColor = isWin ? "text-green-400" : "text-red-400";
 
   return (
-    // 3. UPDATE LINK: Use 'replay_id' to generate the correct URL
     <Link to={`/replays/${replay.replay_id}`} className="block group">
       
       <Card className={`bg-slate-800/50 border-slate-700 transition-all duration-200 
@@ -117,7 +116,7 @@ function ReplayCard({ replay }: { replay: Replay }) {
 
           <div className="flex flex-col md:items-end justify-center">
             <span className="text-xs text-slate-500 mb-2">
-              {replay.match_date ? new Date(replay.match_date).toLocaleDateString() : "Recent"}
+              {replay.demo_fetch_time ? new Date(replay.demo_fetch_time).toLocaleDateString() : "Recent"}
             </span>
             <button 
               className="z-10 text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded transition-colors"
