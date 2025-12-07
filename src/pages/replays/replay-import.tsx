@@ -51,23 +51,36 @@ export default function ImportReplay(){
 
     
     async function fetchAudio(){
-        try{
-            setAudioLoading(true);
-            setError(null);
+        
+        if(audioLoading) {
+            console.log("fetchAudio called while already loading, skipping");
+            return;
+        }
 
+        console.log("fetchAudio: starting");
+        setAudioLoading(true);
+        setError(null);
+
+        try{
             const res = await fetch("http://localhost:5000/api/audio", {
                 credentials: "include",
             });
+
+            console.log("fetchAudio: response status", res.status);
+
             if(!res.ok){
                 throw new Error(`Request failed: ${res.status} ${res.statusText}`);
             }
 
             const data: AudioRow[] = await res.json();
-            setAudioRows(data);
             console.log("AudioRows:", data);
+
+            setAudioRows(data);
         }catch (err:any) {
+            console.error("fetchAudio: error", err);
             setError(err.message || "Unknown error");
         }finally{
+            console.log("fetchAudio: finished, setting loading = false");
             setAudioLoading(false);
         }
     }
