@@ -7,6 +7,7 @@ import { ReplayDetails } from './pages/replays/replay-details';
 import ImportReplay from './pages/replays/replay-import'
 import Home from './pages/Home'
 import About from './pages/About'
+import InviteBot from './pages/invite-bot'
 import { useAuth } from './context/AuthContext';
 
 export default function Router() {
@@ -53,7 +54,16 @@ export default function Router() {
 
             <Route path="/about" element={
               <div className="main-content">
-                <About />
+                <div className="text-white text-center">
+                  <h1 className="text-4xl font-bold mb-4">About Us</h1>
+                  <p>mission statement(?) coming soon</p>
+                </div>
+              </div>
+            } />
+
+            <Route path="/invite-bot" element={
+              <div className="main-content">
+                <InviteBot />
               </div>
             } />
 

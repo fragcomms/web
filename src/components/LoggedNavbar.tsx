@@ -23,10 +23,10 @@ export function Navbar() {
                 Home
               </Link>
               <Link 
-                to="/about" 
+                to="/invite-bot" 
                 className="text-slate-300 hover:text-white transition-colors"
               >
-                About
+                Invite
               </Link>
               <Link 
                 to="/pricing" 
