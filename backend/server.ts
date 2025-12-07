@@ -286,4 +286,37 @@ app.post("/api/replays", express.json(), async (req: Request, res: Response) => 
   }
 });
 
+app.get("/api/replays/:id", async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Not authenticated");
+    
+    try {
+        const pyRes = await fetch(`http://localhost:8000/api/replays/${req.params.id}`);
+        if (!pyRes.ok) throw new Error("Failed to fetch from Python");
+        const data = await pyRes.json();
+        res.json(data);
+    } catch (e) {
+        res.status(500).send("Error fetching details");
+    }
+});
+
+app.get("/api/audio/stream/:id", async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Not authenticated");
+
+    try {
+        // We use node-fetch to get the stream from Python
+        const pyRes = await fetch(`http://localhost:8000/api/audio/${req.params.id}/stream`);
+        
+        if (!pyRes.ok || !pyRes.body) {
+            return res.status(404).send("Audio not found");
+        }
+
+        // Pipe the python stream directly to the browser
+        pyRes.body.pipe(res); 
+        
+    } catch (e) {
+        console.error("Stream error:", e);
+        res.status(500).send("Error streaming file");
+    }
+});
+
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
