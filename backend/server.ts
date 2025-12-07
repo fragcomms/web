@@ -97,24 +97,20 @@ passport.use(
     },
     async (token, _refreshToken, profile, done) => {
       try {
-        const checkUser = await pool.query(
-          'SELECT * FROM users WHERE discord_id = $1',
-          [profile.id]
+        const timestamp = new Date() // consistent timestamping if it is a new user
+        const result = await pool.query(
+          `INSERT INTO public.users (discord_id, created_at, last_accessed, discord_username) 
+          VALUES ($1, $2, $3, $4) 
+          ON CONFLICT (discord_id) 
+          DO UPDATE SET 
+            discord_username = EXCLUDED.discord_username,
+            last_accessed = $3 
+          RETURNING *`, //last accessed is $3 because consistency
+          [profile.id, timestamp, timestamp, profile.username]
         )
-        let user;
-        
-        if (checkUser.rows.length > 0) {
-          user = checkUser.rows[0]
-        } else {
-          const insertUser = await pool.query(
-            'INSERT INTO public.users (discord_id, created_at, discord_username) VALUES ($1, $2, $3) ON CONFLICT (discord_id) DO NOTHING RETURNING *',
-            [profile.id, new Date(), profile.username]
-          )
-          user = insertUser.rows[0]
-        }
-
+        const user = result.rows[0]
         user.token = token
-
+        
         return done(null, user)
       } catch (e) {
         console.error("Database login err:", e)
