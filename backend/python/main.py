@@ -18,6 +18,7 @@ class ReplayRequest(BaseModel):
     audio_id: int
     demo_name: str
     model: str
+    discord_id: int
 
 class DatabaseManager:
     """Handles PostgreSQL connection pool lifecycle and query execution."""
@@ -84,40 +85,58 @@ class APIServer:
     def _setup_routes(self):
         self.app.get("/api/audio")(self.get_audio_files)
         self.app.get("/api/replays")(self.get_replays)
-        self.app.post("/api/replays")(self.create_replay)
         self.app.get("/api/replays/{replay_id}")(self.get_replay_details)
         self.app.get("/api/audio/{audio_id}/stream")(self.stream_audio)
+        self.app.post("/api/replays")(self.create_replay)
+        
 
     # --- Route Handlers ---
 
-    async def get_audio_files(self):
+    async def get_audio_files(self, discord_id: int):
         try:
-            query = "SELECT audio_id, file_ext, creation_time, sampling_rate FROM audios ORDER BY creation_time DESC"
-            return await self.db.fetch_all(query)
+            query = """SELECT a.audio_id, a.file_ext, a.creation_time, a.sampling_rate 
+                       FROM audios a 
+                       JOIN media_access ma ON a.audio_id = ma.audio_id 
+                       LEFT JOIN replays r ON a.audio_id = r.audio
+                       WHERE ma.discord_id = $1 AND r.replay_id IS NULL
+                       ORDER BY a.creation_time DESC"""
+            # this query is getting the audio id, file extension, date it was created, and sampling rate
+            # of audios that the user has access to and has NOT been used by a replay
+            return await self.db.fetch_all(query, discord_id)
         except Exception as e:
             print(f"Error fetching audio: {e}")
             raise HTTPException(status_code=500, detail="Database error")
 
-    async def get_replays(self):
+    async def get_replays(self, discord_id: int):
         try:
-            query = "SELECT replay_id, audio, demo_fetch_time FROM replays ORDER BY demo_fetch_time DESC"
-            return await self.db.fetch_all(query)
+            query = """SELECT r.replay_id, r.demo_fetch_time
+                       FROM replays r
+                       JOIN audios a ON r.audio = a.audio_id
+                       JOIN media_access ma ON a.audio_id = ma.audio_id
+                       WHERE ma.discord_id = $1
+                       ORDER BY r.demo_fetch_time DESC"""
+            # this query is getting the replay id and date it was created
+            # of replays that the user HAS access to
+            # TODO: change table during winter break, need to break up demo/replay difference
+            return await self.db.fetch_all(query, discord_id)
         except Exception as e:
             print(f"Error fetching replays: {e}")
             raise HTTPException(status_code=500, detail="Database error")
     
-    async def get_replay_details(self, replay_id: int):
+    async def get_replay_details(self, replay_id: int, discord_id: int):
         print(f"Fetching details for Replay ID: {replay_id}") # DEBUG 1
         try:
             # 'audio' column in replays links to 'audio_id' in audios
-            query = """
-                SELECT r.replay_id, r.demo_fetch_time, r.path as demo_path, 
-                       a.audio_id, a.path as audio_path, a.file_ext
-                FROM replays r
-                JOIN audios a ON r.audio = a.audio_id
-                WHERE r.replay_id = $1
-            """
-            row = await self.db.pool.fetchrow(query, replay_id)
+            query = """SELECT r.replay_id, r.demo_fetch_time, r.path as demo_path, 
+                              a.audio_id, a.path as audio_path, a.file_ext
+                       FROM replays r
+                       JOIN audios a ON r.audio = a.audio_id
+                       JOIN media_access ma ON a.audio_id = ma.audio_id
+                       WHERE r.replay_id = $1 AND ma.discord_id = $2"""
+            # this query fetches detailed info about a specific replay if the user HAS access
+            # including machine paths to demo and audio files
+            # TODO: change table during winter break, need to break up demo/replay difference
+            row = await self.db.pool.fetchrow(query, replay_id, discord_id)
             
             if not row:
                 print(f"Replay ID {replay_id} not found or has no linked Audio!") # DEBUG 2
@@ -132,21 +151,29 @@ class APIServer:
     async def create_replay(self, request: ReplayRequest):
         print(f"Creating replay for Audio ID: {request.audio_id}")
         try:
-            replay_path = f"/data/replays/{request.demo_name}.dem" # TODO: replace after refactoring
-
-            # We insert into 'replays' and link it to the 'audios' table via 'audio' FK
-            query = """
-                INSERT INTO replays (path, audio, demo_fetch_time)
-                VALUES ($1, $2, NOW())
-                RETURNING replay_id
-            """ # replays table is still a WIP, cant seem to decide what structure works best
-            
             async with self.db.pool.acquire() as connection:
-                # Execute the query
-                row = await connection.fetchrow(query, replay_path, request.audio_id)
+                owner_check_query = """SELECT 1 FROM media_access
+                                      WHERE audio_id = $1 AND discord_id = $2"""
+                is_owner = await connection.fetchval(owner_check_query, request.audio_id, request.discord_id)
                 
-            return {"status": "success", "replay_id": row['replay_id']}
+                if not is_owner:
+                    print(f"Access Denied: User {request.discord_id} tried to use Audio {request.audio_id}")
+                    raise HTTPException(status_code=403, detail="You do not own this audio file.")
+                                      
+                replay_path = f"/data/replays/{request.demo_name}.dem" # TODO: replace after refactoring
 
+                # We insert into 'replays' and link it to the 'audios' table via 'audio' FK
+                query = """
+                    INSERT INTO replays (path, audio, demo_fetch_time)
+                    VALUES ($1, $2, NOW())
+                    RETURNING replay_id
+                """ # replays table is still a WIP, cant seem to decide what structure works best
+                
+                
+                row = await connection.fetchrow(query, replay_path, request.audio_id)
+                return {"status": "success", "replay_id": row['replay_id']}
+        except HTTPException as he:
+            raise he
         except asyncpg.UniqueViolationError:
             # duplicate handling
             raise HTTPException(status_code=400, detail="A replay already exists for this audio file.")
@@ -154,11 +181,14 @@ class APIServer:
             print(f"Error creating replay: {e}")
             raise HTTPException(status_code=500, detail="Database insertion failed")
           
-    async def stream_audio(self, audio_id: int):
+    async def stream_audio(self, audio_id: int, discord_id: int):
         print(f"Requesting Audio ID: {audio_id}")
         try:
-            query = "SELECT path FROM audios WHERE audio_id = $1"
-            row = await self.db.pool.fetchrow(query, audio_id)
+            query = """SELECT a.path
+                       FROM audios a
+                       JOIN media_access ma ON a.audio_id = ma.audio_id
+                       WHERE a.audio_id = $1 and ma.discord_id = $2"""
+            row = await self.db.pool.fetchrow(query, audio_id, discord_id)
             
             if not row:
                 raise HTTPException(status_code=404, detail="Audio record not found")

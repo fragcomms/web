@@ -13,7 +13,7 @@ dotenv.config();
 
 //DiscordProfile 
 type DiscordProfile = {
-  id: string;
+  discord_id: string;
   username: string;
   discriminator: string;
   avatar: string | null;
@@ -202,8 +202,10 @@ app.get("/api/replays", async (req: Request, res: Response) => {
     return res.status(401).send("Not authenticated");
   }
 
+  const user = req.user as any
+
   try {
-    const pythonResponse = await fetch("http://localhost:8000/api/replays")
+    const pythonResponse = await fetch(`http://localhost:8000/api/replays?discord_id=${user.discord_id}`)
 
     if (!pythonResponse.ok) {
       throw new Error(`Python API Error: ${pythonResponse.statusText}`);
@@ -222,8 +224,10 @@ app.get("/api/audio", async (req: Request, res: Response) => {
     return res.status(401).send("Not authenticated");
   }
 
+  const user = req.user as DiscordProfile;
+
   try {
-    const pythonResponse = await fetch("http://localhost:8000/api/audio")
+    const pythonResponse = await fetch(`http://localhost:8000/api/audio?discord_id=${user.discord_id}`)
 
     if (!pythonResponse.ok) {
       throw new Error(`Python API Error: ${pythonResponse.statusText}`);
@@ -260,11 +264,16 @@ app.post("/api/replays", express.json(), async (req: Request, res: Response) => 
     return res.status(401).send("Not authenticated");
   }
 
+  const user = req.user as DiscordProfile
+
   try {
     const pythonResponse = await fetch("http://localhost:8000/api/replays", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(req.body), // Pass the data along
+      body: JSON.stringify({
+        ...req.body,
+        discord_id: user.discord_id
+      }), // Pass the data along
     });
 
     if (!pythonResponse.ok) {
@@ -287,10 +296,12 @@ app.post("/api/replays", express.json(), async (req: Request, res: Response) => 
 });
 
 app.get("/api/replays/:id", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) return res.status(401).send("Not authenticated");
+    if (!req.isAuthenticated() || !req.user) return res.status(401).send("Not authenticated");
     
+    const user = req.user as DiscordProfile;
+
     try {
-        const pyRes = await fetch(`http://localhost:8000/api/replays/${req.params.id}`);
+        const pyRes = await fetch(`http://localhost:8000/api/replays/${req.params.id}?discord_id=${user.discord_id}`);
         if (!pyRes.ok) throw new Error("Failed to fetch from Python");
         const data = await pyRes.json();
         res.json(data);
@@ -302,9 +313,15 @@ app.get("/api/replays/:id", async (req: Request, res: Response) => {
 app.get("/api/audio/stream/:id", async (req: Request, res: Response) => {
     if (!req.isAuthenticated()) return res.status(401).send("Not authenticated");
 
+    const user = req.user as DiscordProfile
+
     try {
         // We use node-fetch to get the stream from Python
-        const pyRes = await fetch(`http://localhost:8000/api/audio/${req.params.id}/stream`);
+        const pyRes = await fetch(`http://localhost:8000/api/audio/${req.params.id}/stream?discord_id=${user.discord_id}`);
+
+        if (pyRes.status === 403) {
+            return res.status(403).send("You do not have permission to listen to this audio.");
+        }
         
         if (!pyRes.ok || !pyRes.body) {
             return res.status(404).send("Audio not found");
