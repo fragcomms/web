@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "frontend": "vite",
+    "frontend": "vite --host",
     "backend:node": "ts-node backend/server.ts",
     "backend:python": "ts-node backend/run-python.ts",
     "dev": "concurrently \"npm run backend:node\" \"npm run backend:python\" \"npm run frontend\""
