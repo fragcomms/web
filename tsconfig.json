@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",                  // Modern JS target
-    "module": "CommonJS",                // Node uses CommonJS modules
+    "module": "nodenext",                // Node uses CommonJS modules
     "strict": true,                      // Enable strict type checking
     "esModuleInterop": true,             // <- important for default imports
     "allowSyntheticDefaultImports": true,// Helpful for some modules
-    "moduleResolution": "node",
+    "moduleResolution": "nodenext",
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,

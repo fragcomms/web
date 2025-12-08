@@ -1,6 +1,10 @@
 import { spawn, execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url'; // <--- NEW IMPORT
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // --- CONFIGURATION ---
 // We assume this script is located in 'backend/run_python.ts'
