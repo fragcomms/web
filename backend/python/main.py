@@ -87,6 +87,7 @@ class APIServer:
         self.app.get("/api/replays")(self.get_replays)
         self.app.get("/api/replays/{replay_id}")(self.get_replay_details)
         self.app.get("/api/audio/{audio_id}/stream")(self.stream_audio)
+        self.app.get("/api/audio/{audio_id}/transcription")(self.get_transcription)
         self.app.post("/api/replays")(self.create_replay)
         
 
@@ -205,7 +206,7 @@ class APIServer:
 
             if os.path.exists(local_file_path):
                 print(f"Cache Hit: Serving local copy from {local_file_path}")
-                return FileResponse(local_file_path, media_type="audio/mpeg")
+                return FileResponse(local_file_path, media_type="audio/mka")
 
             print(f"Cache Miss: Fetching from remote machine...")
             
@@ -230,6 +231,59 @@ class APIServer:
             raise he
         except Exception as e:
             print(f"Error streaming audio: {e}")
+            raise HTTPException(status_code=500, detail="Server error")
+          
+    async def get_transcription(self, audio_id: int, discord_id: int):
+        print(f"Requesting Transcription for Audio ID: {audio_id}")
+        try:
+            # 1. Ownership & Path Query
+            # We join transcripts -> audios -> media_access to ensure the user owns the audio
+            query = """SELECT t.path 
+                       FROM transcripts t
+                       JOIN audios a ON t.audio = a.audio_id
+                       JOIN media_access ma ON a.audio_id = ma.audio_id
+                       WHERE t.audio = $1 AND ma.discord_id = $2
+                       LIMIT 1"""
+            row = await self.db.pool.fetchrow(query, audio_id, discord_id)
+            
+            if not row:
+                raise HTTPException(status_code=404, detail="Transcription not found or access denied")
+            
+            original_path = row['path']
+            filename = os.path.basename(original_path)
+            
+            # 2. Local Cache Logic
+            local_cache_dir = Path(__file__).parent / "transcript_cache"
+            local_cache_dir.mkdir(exist_ok=True)
+            local_file_path = local_cache_dir / filename
+
+            if os.path.exists(local_file_path):
+                print(f"Cache Hit: Serving transcript from {local_file_path}")
+                return FileResponse(local_file_path)
+
+            # 3. SFTP Fetch Logic
+            print(f"Cache Miss: Fetching transcript from remote...")
+            try:
+                async with asyncssh.connect(
+                    os.getenv("REMOTE_AUDIO_HOST"), 
+                    username=os.getenv("REMOTE_AUDIO_USER"),
+                    password=os.getenv("REMOTE_AUDIO_PASS"),
+                    known_hosts=None
+                ) as conn:
+                    async with conn.start_sftp_client() as sftp:
+                        await sftp.get(original_path, local_file_path)
+
+            except Exception as e:
+                print(f"SFTP Failed: {e}")
+                # If the file doesn't exist remotely yet (processing), this handles it
+                raise HTTPException(status_code=404, detail="Transcript file not found on remote server")
+
+            return FileResponse(local_file_path)
+
+        except HTTPException as he:
+            raise he
+        except Exception as e:
+            print(f"Error fetching transcription: {e}")
             raise HTTPException(status_code=500, detail="Server error")
 
 # Uvicorn looks for 'app', so we instantiate the server and expose the internal FastAPI object

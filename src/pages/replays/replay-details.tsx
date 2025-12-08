@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "../../components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText, AlertCircle } from "lucide-react";
 
 // Update Interface to match your Python SQL query exactly
 interface ReplayDetailsType {
@@ -17,6 +17,10 @@ export function ReplayDetails() {
   const { id } = useParams();
   const [data, setData] = useState<ReplayDetailsType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [transcript, setTranscript] = useState<string | null>(null);
+  const [transcriptLoading, setTranscriptLoading] = useState(false);
+  const [transcriptError, setTranscriptError] = useState(false);
 
   useEffect(() => {
     async function fetchDetails() {
@@ -41,6 +45,34 @@ export function ReplayDetails() {
     }
     fetchDetails();
   }, [id]);
+
+  useEffect(() => {
+    if (!data?.audio_id) return;
+
+    async function fetchTranscript() {
+      setTranscriptLoading(true);
+      try {
+        const res = await fetch(`http://localhost:5000/api/audio/${data?.audio_id}/transcription`, {
+          credentials: 'include'
+        });
+
+        if (res.ok) {
+          const text = await res.text();
+          setTranscript(text);
+        } else {
+          // If 404, it just means no transcript exists yet
+          setTranscriptError(true); 
+        }
+      } catch (error) {
+        console.error("Failed to load transcript", error);
+        setTranscriptError(true);
+      } finally {
+        setTranscriptLoading(false);
+      }
+    }
+
+    fetchTranscript();
+  }, [data]);
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 text-white pt-8">
@@ -85,6 +117,34 @@ export function ReplayDetails() {
                 No audio file linked to this replay.
               </div>
             )}
+          </div>
+
+          <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden flex flex-col h-96">
+            <div className="bg-slate-800 px-6 py-4 border-b border-slate-700 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-400" />
+              <h3 className="font-semibold text-slate-200">Transcription</h3>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 bg-slate-900/50 font-mono text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
+              {transcriptLoading ? (
+                <div className="flex items-center justify-center h-full text-slate-500">
+                   Fetching transcript...
+                </div>
+              ) : transcript ? (
+                // Display the text
+                transcript
+              ) : transcriptError ? (
+                <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-2">
+                  <AlertCircle className="h-8 w-8 opacity-50" />
+                  <p>No transcription available for this match.</p>
+                </div>
+              ) : (
+                // Fallback (e.g., if fetch hasn't started)
+                <div className="flex items-center justify-center h-full text-slate-500">
+                  Waiting for audio details...
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Placeholders */}

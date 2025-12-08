@@ -18,7 +18,6 @@ const pipExecutable = path.join(VENV_PATH, 'bin', 'pip');
 async function main() {
   console.log(`Python Director: Working in ${PYTHON_DIR}`);
 
-  // 1. Create .venv if it doesn't exist
   if (!fs.existsSync(VENV_PATH)) {
     console.log('.venv not found. Creating it...');
     try {
@@ -30,7 +29,6 @@ async function main() {
     }
   }
 
-  // 2. Install Requirements
   if (fs.existsSync(REQUIREMENTS_FILE)) {
     console.log('Ensuring requirements are installed...');
     execSync(`"${pipExecutable}" install -r requirements.txt`, { 
@@ -41,7 +39,6 @@ async function main() {
     console.warn('No requirements.txt found! Skipping install.');
   }
 
-  // 3. Launch Uvicorn using the VENV Python
   console.log('Launching Uvicorn...');
   
   // We use 'python -m uvicorn' to ensure we use the uvicorn installed in the venv

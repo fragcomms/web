@@ -87,6 +87,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 
+//inserting user to database
 passport.use(
   new DiscordStrategy(
     {
@@ -312,12 +313,17 @@ app.get("/api/replays/:id", async (req: Request, res: Response) => {
 });
 
 app.get("/api/audio/stream/:id", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) return res.status(401).send("Not authenticated");
+    if (!req.isAuthenticated() || !req.user) return res.status(401).send("Not authenticated");
 
     const user = req.user as DiscordProfile
 
     try {
         // We use node-fetch to get the stream from Python
+        const headers: Record<string, string> = {};
+        if (req.headers.range) {
+            headers['Range'] = req.headers.range;
+        }
+
         const pyRes = await fetch(`http://localhost:8000/api/audio/${req.params.id}/stream?discord_id=${user.discord_id}`);
 
         if (pyRes.status === 403) {
@@ -327,6 +333,19 @@ app.get("/api/audio/stream/:id", async (req: Request, res: Response) => {
         if (!pyRes.ok || !pyRes.body) {
             return res.status(404).send("Audio not found");
         }
+        res.status(pyRes.status);
+
+        const forwardHeaders = [
+            'content-type', 
+            'content-length', 
+            'content-range', 
+            'accept-ranges'
+        ];
+
+        forwardHeaders.forEach(key => {
+            const val = pyRes.headers.get(key);
+            if (val) res.setHeader(key, val);
+        });
 
         // Pipe the python stream directly to the browser
         pyRes.body.pipe(res); 
@@ -349,6 +368,33 @@ app.get("/api/getBotInviteLink", (_req, res) => {
   )}&permissions=${permissions}`;
 
   res.json({ url: inviteLink });
+});
+
+app.get("/api/audio/:id/transcription", async (req: Request, res: Response) => {
+    if (!req.isAuthenticated() || !req.user) return res.status(401).send("Not authenticated");
+
+    const user = req.user as DiscordProfile;
+
+    try {
+        const pyRes = await fetch(
+            `http://localhost:8000/api/audio/${req.params.id}/transcription?discord_id=${user.discord_id}`
+        );
+
+        if (!pyRes.ok || !pyRes.body) {
+            return res.status(404).send("Audio not found");
+        }
+
+        if (pyRes.status === 403) {
+            return res.status(403).send("You do not have permission to listen to this audio.");
+        }
+
+        // Pipe the text/json file directly to the frontend
+        pyRes.body.pipe(res);
+
+    } catch (e) {
+        console.error("Transcript proxy error:", e);
+        res.status(500).send("Error fetching transcript");
+    }
 });
 
 
