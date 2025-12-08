@@ -47,7 +47,7 @@ export default function InviteBot() {
       <img
         src="src/assets/logo.png"
         alt="FragComms Bot"
-        className="w-32 h-32 mb-6 rounded-full shadow-lg"
+        className="w-32 h-32 mb-6 rounded-full shadow-lg object-cover"
       />
 
       <h1 className="text-4xl font-bold mb-4 text-center">Invite Bot to Server</h1>
@@ -65,7 +65,7 @@ export default function InviteBot() {
         rel="noopener noreferrer"
         className={`${
           inviteLink
-            ? "bg-blue-50 hover:bg-blue-700"
+            ? "bg-gray-800 hover:bg-gray-700"
             : "bg-gray-600 cursor-not-allowed"
         } text-white font-bold px-6 py-3 rounded-lg mb-4 transition-colors duration-200`}
       >
