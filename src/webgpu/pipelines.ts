@@ -1,4 +1,6 @@
 import playerShaderWGSL from "./shaders/player.wgsl?raw";
+console.log("WGSL source:\n---\n" + playerShaderWGSL + "\n---");
+
 
 export function createPlayerPipeline(device: GPUDevice, format: GPUTextureFormat) {
     const module = device.createShaderModule({ code: playerShaderWGSL });

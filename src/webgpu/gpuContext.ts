@@ -5,7 +5,15 @@ export type GPUContext = {
     context: GPUCanvasContext;
 };
 
+const WEBGPU_KEY = "__webgpuContext";
+
 export async function initWebGPU(canvas: HTMLCanvasElement): Promise<GPUContext> {
+    const anyCanvas = canvas as any;
+    
+    if (anyCanvas[WEBGPU_KEY]){
+        return anyCanvas[WEBGPU_KEY] as GPUContext;
+    }
+
     if(!('gpu' in navigator)) {
         throw new Error("WebGPU not supported in this browser.");
     }
@@ -24,5 +32,14 @@ export async function initWebGPU(canvas: HTMLCanvasElement): Promise<GPUContext>
         alphaMode: 'premultiplied',
     });
 
-    return { device, queue: device.queue, format, context};
+    const gpuContext: GPUContext = {
+        device,
+        queue: device.queue,
+        format,
+        context,
+    };
+
+    anyCanvas[WEBGPU_KEY] = gpuContext;
+
+    return gpuContext;
 }
