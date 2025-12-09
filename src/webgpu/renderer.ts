@@ -69,12 +69,12 @@ export class ReplayRenderer {
         });
 
         const quadVerts = new Float32Array([
-            -4, -4,
-             4, -4,
-            -4,  4,
-            -4,  4,
-             4, -4,
-             4,  4,
+            -32, -32,
+             32, -32,
+            -32,  32,
+            -32,  32,
+             32, -32,
+             32,  32,
         ]);
 
         const quadVertexBuffer = device.createBuffer({
