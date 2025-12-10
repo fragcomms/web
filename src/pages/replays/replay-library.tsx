@@ -59,15 +59,7 @@ export function ReplayLibrary() {
             Add New Replay
           </Button>
         </Link>
-        <Link to="/replays/gpu">
-          <Button className="bg-[#5865F2] hover:bg-[#4752C4] text-white transition-colors">
-            <Plus className="h-4 w-4 mr-2" />
-            WebGPU Test
-          </Button>
-        </Link>
       </div>
-
-      
 
       {replays.length === 0 ? (
         <div className="text-slate-400 text-center py-10 bg-slate-800/30 rounded-xl border border-slate-700/50">
