@@ -1,15 +1,15 @@
 import os
 import asyncpg
-import asyncssh # type: ignore # not sure why this says it cant find it even though its in here
+import asyncssh
+import asyncio
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
 
-# Robustly find .env file relative to this script
 current_file = Path(__file__).resolve()
 env_path = current_file.parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
@@ -67,10 +67,8 @@ class APIServer:
 
     @asynccontextmanager
     async def _lifespan(self, app: FastAPI):
-        # --- Startup ---
         await self.db.connect()
         yield
-        # --- Shutdown ---
         await self.db.close()
 
     def _setup_middleware(self):
@@ -98,7 +96,7 @@ class APIServer:
             query = """SELECT a.audio_id, a.file_ext, a.creation_time, a.sampling_rate 
                        FROM audios a 
                        JOIN media_access ma ON a.audio_id = ma.audio_id 
-                       LEFT JOIN replays r ON a.audio_id = r.audio
+                       LEFT JOIN replays r ON a.audio_id = r.audio_id
                        WHERE ma.discord_id = $1 AND r.replay_id IS NULL
                        ORDER BY a.creation_time DESC"""
             # this query is getting the audio id, file extension, date it was created, and sampling rate
@@ -110,12 +108,13 @@ class APIServer:
 
     async def get_replays(self, discord_id: int):
         try:
-            query = """SELECT r.replay_id, r.demo_fetch_time
+            query = """SELECT r.replay_id, r.name, d.fetch_time
                        FROM replays r
-                       JOIN audios a ON r.audio = a.audio_id
+                       JOIN audios a ON r.audio_id = a.audio_id
                        JOIN media_access ma ON a.audio_id = ma.audio_id
+                       JOIN demos d ON d.demo_id = r.demo_id
                        WHERE ma.discord_id = $1
-                       ORDER BY r.demo_fetch_time DESC"""
+                       ORDER BY d.fetch_time DESC"""
             # this query is getting the replay id and date it was created
             # of replays that the user HAS access to
             # TODO: change table during winter break, need to break up demo/replay difference
@@ -131,7 +130,7 @@ class APIServer:
             query = """SELECT r.replay_id, r.demo_fetch_time, r.path as demo_path, 
                               a.audio_id, a.path as audio_path, a.file_ext
                        FROM replays r
-                       JOIN audios a ON r.audio = a.audio_id
+                       JOIN audios a ON r.audio_id = a.audio_id
                        JOIN media_access ma ON a.audio_id = ma.audio_id
                        WHERE r.replay_id = $1 AND ma.discord_id = $2"""
             # this query fetches detailed info about a specific replay if the user HAS access
@@ -164,11 +163,12 @@ class APIServer:
                 replay_path = f"/data/replays/{request.demo_name}.dem" # TODO: replace after refactoring
 
                 # We insert into 'replays' and link it to the 'audios' table via 'audio' FK
+                # TODO: fix and make same as replays table
                 query = """
-                    INSERT INTO replays (path, audio, demo_fetch_time)
+                    INSERT INTO replays (demo_id, audio_id, name)
                     VALUES ($1, $2, NOW())
                     RETURNING replay_id
-                """ # replays table is still a WIP, cant seem to decide what structure works best
+                """ # replays table is less WIP now
                 
                 
                 row = await connection.fetchrow(query, replay_path, request.audio_id)
@@ -182,6 +182,7 @@ class APIServer:
             print(f"Error creating replay: {e}")
             raise HTTPException(status_code=500, detail="Database insertion failed")
           
+    # TODO: patch up for proper audio streaming, specifically for multi tracks
     async def stream_audio(self, audio_id: int, discord_id: int):
         print(f"Requesting Audio ID: {audio_id}")
         try:
@@ -233,16 +234,16 @@ class APIServer:
             print(f"Error streaming audio: {e}")
             raise HTTPException(status_code=500, detail="Server error")
           
+    # TODO: flesh out transcriptions more
     async def get_transcription(self, audio_id: int, discord_id: int):
         print(f"Requesting Transcription for Audio ID: {audio_id}")
         try:
-            # 1. Ownership & Path Query
             # We join transcripts -> audios -> media_access to ensure the user owns the audio
             query = """SELECT t.path 
                        FROM transcripts t
-                       JOIN audios a ON t.audio = a.audio_id
+                       JOIN audios a ON t.audio_id = a.audio_id
                        JOIN media_access ma ON a.audio_id = ma.audio_id
-                       WHERE t.audio = $1 AND ma.discord_id = $2
+                       WHERE t.audio_id = $1 AND ma.discord_id = $2
                        LIMIT 1"""
             row = await self.db.pool.fetchrow(query, audio_id, discord_id)
             
@@ -252,7 +253,6 @@ class APIServer:
             original_path = row['path']
             filename = os.path.basename(original_path)
             
-            # 2. Local Cache Logic
             local_cache_dir = Path(__file__).parent / "transcript_cache"
             local_cache_dir.mkdir(exist_ok=True)
             local_file_path = local_cache_dir / filename
@@ -261,7 +261,6 @@ class APIServer:
                 print(f"Cache Hit: Serving transcript from {local_file_path}")
                 return FileResponse(local_file_path)
 
-            # 3. SFTP Fetch Logic
             print(f"Cache Miss: Fetching transcript from remote...")
             try:
                 async with asyncssh.connect(
