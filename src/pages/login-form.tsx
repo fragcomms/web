@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card"
@@ -46,7 +47,7 @@ export function LoginForm() {
         <CardHeader className="space-y-1">
           <CardTitle className="text-white">Welcome back!</CardTitle>
           <CardDescription className="text-slate-400">
-            {user.username}#{user.discriminator}
+            {user.username}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

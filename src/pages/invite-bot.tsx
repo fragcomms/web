@@ -18,7 +18,7 @@ export default function InviteBot() {
         if (!data.url) throw new Error("Invite link missing in response");
 
         setInviteLink(data.url);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching invite link:", err);
         setError("Unable to load invite link");
       } finally {
