@@ -1,12 +1,13 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { Navbar as PublicNavbar } from './components/PublicNavbar'
-import { Navbar as LoggedNavbar } from './components/LoggedNavbar'
+import { Navbar as PublicNavbar } from './components/PublicNavBar'
+import { Navbar as LoggedNavbar } from './components/AuthNavBar'
 import { LoginForm } from './pages/login-form'
 import { ReplayLibrary } from './pages/replays/replay-library'
 import { ReplayDetails } from './pages/replays/replay-details';
 import ImportReplay from './pages/replays/replay-import'
 import Home from './pages/Home'
 import InviteBot from './pages/invite-bot'
+import About from './pages/About.tsx'
 import { useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/RouteProtector'
 
@@ -78,6 +79,12 @@ export default function Router() {
             <Route path="/login" element={
               <div className="centered-card">
                 <LoginForm />
+              </div>
+            } />
+
+            <Route path="/about" element={
+              <div className="centered-card">
+                <About />
               </div>
             } />
           </Routes>
