@@ -27,14 +27,14 @@ export function Navbar() {
             <Link to="/invite-bot" className={navLinkClass}>
               Invite
             </Link>
+            <Link to="/about" className={navLinkClass}>
+              About
+            </Link>
             <Link to="/pricing" className={navLinkClass}>
               Pricing
             </Link>
             <Link to="/login" className={navLinkClass}>
               Login
-            </Link>
-            <Link to="/about" className={navLinkClass}>
-              About
             </Link>
           </div>
         </div>

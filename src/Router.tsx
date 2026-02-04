@@ -67,6 +67,12 @@ export default function Router() {
               </div>
             } />
 
+            <Route path="/about" element={
+              <div className="centered-card">
+                <About />
+              </div>
+            } />
+
             <Route path="/pricing" element={
               <div className="main-content">
                 <div className="text-white text-center">
@@ -79,12 +85,6 @@ export default function Router() {
             <Route path="/login" element={
               <div className="centered-card">
                 <LoginForm />
-              </div>
-            } />
-
-            <Route path="/about" element={
-              <div className="centered-card">
-                <About />
               </div>
             } />
           </Routes>
