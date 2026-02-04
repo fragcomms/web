@@ -67,7 +67,7 @@ export default function About() {
               </div>
               <h4 className="text-white mb-1">ayayrom</h4>
               <p className="text-[#60a5fa] mb-2">Team Leader</p>
-              <p className="text-[#94a3b8]">Sleep-deprived leader and OSU/CS player</p>
+              <p className="text-[#94a3b8]">Sleep-deprived leader and CS player</p>
               <a
                 href="https://github.com/ayayrom"
                 className="mt-4 inline-flex items-center justify-center w-10 h-10 rounded-full border border-[#334155] text-[#94a3b8] hover:text-white hover:border-white transition"
@@ -206,10 +206,62 @@ export default function About() {
         <div className="max-w-5xl mx-auto">
           
           {/* Section Header */}
-          <h2 className="text-white mb-4 text-center">Project Related Resources</h2>
+          <h2 className= "text-white mb-4 text-center">Project Related Resources</h2>
           <p className="text-[#94a3b8] text-center mb-12 max-w-2xl mx-auto">
-            The following are links to resources we utilized 
+            The following are links to resources we utilized to build our project.
           </p>
+          {/* Resources List */}
+          <div className="space-y-4 max-w-3xl mx-auto">
+            
+            {/* Resource Item 1 */}
+            <div className="bg-[#1e293b] rounded-lg p-6 border border-[#334155] hover:border-[#60a5fa] transition">
+              <a 
+                href="https://github.com/LaihoE/demoparser" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-[#60a5fa] hover:text-white font-semibold text-lg mb-2 block"
+              >
+                LaihoE/demoparser
+              </a>
+              <p className="text-[#94a3b8]">
+                Python library for parsing Counter-Strike 2 demo files and extracting game data.
+              </p>
+            </div>
+
+            {/* Resource Item 2 */}
+            <div className="bg-[#1e293b] rounded-lg p-6 border border-[#334155] hover:border-[#60a5fa] transition">
+              <a 
+                href="https://github.com/openai/whisper" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-[#60a5fa] hover:text-white font-semibold text-lg mb-2 block"
+              >
+                WhisperX
+              </a>
+              <p className="text-[#94a3b8]">
+                Advanced speech recognition model for accurate audio transcription and voice analysis.
+              </p>
+            </div>
+
+            {/* Resource Item 3 */}
+            <div className="bg-[#1e293b] rounded-lg p-6 border border-[#334155] hover:border-[#60a5fa] transition">
+              <a 
+                href="https://discord.com/developers/docs/intro" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-[#60a5fa] hover:text-white font-semibold text-lg mb-2 block"
+              >
+                Discord API
+              </a>
+              <p className="text-[#94a3b8]">
+                Platform for building bots and integrations to sync voice communications.
+              </p>
+            </div>
+
+            {/* Add more resources as needed */}
+          </div>
+
+
         </div>
       </section>
     
