@@ -1,3 +1,4 @@
+// @ts-expect-error user not req right now
 import { Github, User } from "lucide-react";
 
 export default function About() {

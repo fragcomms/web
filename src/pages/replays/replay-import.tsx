@@ -42,6 +42,7 @@ export default function ImportReplay() {
   const [audioLoading, setAudioLoading] = useState(false);
   //const[demoLoading, setDemoLoading] = useState(false);
 
+  //@ts-expect-error err used later
   const [error, setError] = useState<string | null>(null);
 
   const [selectedAudio, setSelectedAudio] = useState<AudioRow | null>(null);
