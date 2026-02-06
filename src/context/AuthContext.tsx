@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuthStatus = async () => {
     try {
       // Replace after finish
-      const response = await fetch("http://localhost:5000/profile", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/profile`, {
         credentials: 'include'
       });
       if (response.ok) {
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch("http://localhost:5000/logout", { 
+      await fetch(`${import.meta.env.VITE_API_URL}/logout`, { 
         method: 'POST', 
         credentials: 'include' 
       });

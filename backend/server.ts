@@ -59,7 +59,10 @@ if (!CLIENT_ID || !CLIENT_SECRET || !SESSION_SECRET) {
 // CORS for frontend-backend connection
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: [
+      "http://localhost:5173",
+      "https://frags.ayayrom.cfd"
+    ],
     credentials: true,
   })
 );
@@ -112,7 +115,7 @@ passport.use(
         )
         const user = result.rows[0]
         user.token = token
-        
+
         return done(null, user)
       } catch (e) {
         console.error("Database login err:", e)
@@ -279,14 +282,14 @@ app.post("/api/replays", express.json(), async (req: Request, res: Response) => 
     });
 
     if (!pythonResponse.ok) {
-        const errorText = await pythonResponse.text();
-        // Parse the error JSON if possible, otherwise use text
-        try {
-            const errorJson = JSON.parse(errorText);
-            return res.status(pythonResponse.status).json(errorJson);
-        } catch {
-             throw new Error(`Python API Error: ${errorText}`);
-        }
+      const errorText = await pythonResponse.text();
+      // Parse the error JSON if possible, otherwise use text
+      try {
+        const errorJson = JSON.parse(errorText);
+        return res.status(pythonResponse.status).json(errorJson);
+      } catch {
+        throw new Error(`Python API Error: ${errorText}`);
+      }
     }
 
     const data = await pythonResponse.json();
@@ -298,62 +301,62 @@ app.post("/api/replays", express.json(), async (req: Request, res: Response) => 
 });
 
 app.get("/api/replays/:id", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated() || !req.user) return res.status(401).send("Not authenticated");
-    
-    const user = req.user as DiscordProfile;
+  if (!req.isAuthenticated() || !req.user) return res.status(401).send("Not authenticated");
 
-    try {
-        const pyRes = await fetch(`http://localhost:8000/api/replays/${req.params.id}?discord_id=${user.discord_id}`);
-        if (!pyRes.ok) throw new Error("Failed to fetch from Python");
-        const data = await pyRes.json();
-        res.json(data);
-    } catch (e) {
-        res.status(500).send("Error fetching details");
-    }
+  const user = req.user as DiscordProfile;
+
+  try {
+    const pyRes = await fetch(`http://localhost:8000/api/replays/${req.params.id}?discord_id=${user.discord_id}`);
+    if (!pyRes.ok) throw new Error("Failed to fetch from Python");
+    const data = await pyRes.json();
+    res.json(data);
+  } catch (e) {
+    res.status(500).send("Error fetching details");
+  }
 });
 
 app.get("/api/audio/stream/:id", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated() || !req.user) return res.status(401).send("Not authenticated");
+  if (!req.isAuthenticated() || !req.user) return res.status(401).send("Not authenticated");
 
-    const user = req.user as DiscordProfile
+  const user = req.user as DiscordProfile
 
-    try {
-        // We use node-fetch to get the stream from Python
-        const headers: Record<string, string> = {};
-        if (req.headers.range) {
-            headers['Range'] = req.headers.range;
-        }
-
-        const pyRes = await fetch(`http://localhost:8000/api/audio/${req.params.id}/stream?discord_id=${user.discord_id}`);
-
-        if (pyRes.status === 403) {
-            return res.status(403).send("You do not have permission to listen to this audio.");
-        }
-        
-        if (!pyRes.ok || !pyRes.body) {
-            return res.status(404).send("Audio not found");
-        }
-        res.status(pyRes.status);
-
-        const forwardHeaders = [
-            'content-type', 
-            'content-length', 
-            'content-range', 
-            'accept-ranges'
-        ];
-
-        forwardHeaders.forEach(key => {
-            const val = pyRes.headers.get(key);
-            if (val) res.setHeader(key, val);
-        });
-
-        // Pipe the python stream directly to the browser
-        pyRes.body.pipe(res); 
-        
-    } catch (e) {
-        console.error("Stream error:", e);
-        res.status(500).send("Error streaming file");
+  try {
+    // We use node-fetch to get the stream from Python
+    const headers: Record<string, string> = {};
+    if (req.headers.range) {
+      headers['Range'] = req.headers.range;
     }
+
+    const pyRes = await fetch(`http://localhost:8000/api/audio/${req.params.id}/stream?discord_id=${user.discord_id}`);
+
+    if (pyRes.status === 403) {
+      return res.status(403).send("You do not have permission to listen to this audio.");
+    }
+
+    if (!pyRes.ok || !pyRes.body) {
+      return res.status(404).send("Audio not found");
+    }
+    res.status(pyRes.status);
+
+    const forwardHeaders = [
+      'content-type',
+      'content-length',
+      'content-range',
+      'accept-ranges'
+    ];
+
+    forwardHeaders.forEach(key => {
+      const val = pyRes.headers.get(key);
+      if (val) res.setHeader(key, val);
+    });
+
+    // Pipe the python stream directly to the browser
+    pyRes.body.pipe(res);
+
+  } catch (e) {
+    console.error("Stream error:", e);
+    res.status(500).send("Error streaming file");
+  }
 });
 
 //get inv link
@@ -371,30 +374,30 @@ app.get("/api/getBotInviteLink", (_req, res) => {
 });
 
 app.get("/api/audio/:id/transcription", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated() || !req.user) return res.status(401).send("Not authenticated");
+  if (!req.isAuthenticated() || !req.user) return res.status(401).send("Not authenticated");
 
-    const user = req.user as DiscordProfile;
+  const user = req.user as DiscordProfile;
 
-    try {
-        const pyRes = await fetch(
-            `http://localhost:8000/api/audio/${req.params.id}/transcription?discord_id=${user.discord_id}`
-        );
+  try {
+    const pyRes = await fetch(
+      `http://localhost:8000/api/audio/${req.params.id}/transcription?discord_id=${user.discord_id}`
+    );
 
-        if (!pyRes.ok || !pyRes.body) {
-            return res.status(404).send("Audio not found");
-        }
-
-        if (pyRes.status === 403) {
-            return res.status(403).send("You do not have permission to listen to this audio.");
-        }
-
-        // Pipe the text/json file directly to the frontend
-        pyRes.body.pipe(res);
-
-    } catch (e) {
-        console.error("Transcript proxy error:", e);
-        res.status(500).send("Error fetching transcript");
+    if (!pyRes.ok || !pyRes.body) {
+      return res.status(404).send("Audio not found");
     }
+
+    if (pyRes.status === 403) {
+      return res.status(403).send("You do not have permission to listen to this audio.");
+    }
+
+    // Pipe the text/json file directly to the frontend
+    pyRes.body.pipe(res);
+
+  } catch (e) {
+    console.error("Transcript proxy error:", e);
+    res.status(500).send("Error fetching transcript");
+  }
 });
 
 

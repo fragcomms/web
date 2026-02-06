@@ -75,7 +75,7 @@ export default function ImportReplay() {
     setError(null);
 
     try {
-      const res = await fetch("http://localhost:5000/api/audio", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/audio`, {
         credentials: "include",
       });
 
@@ -141,7 +141,7 @@ export default function ImportReplay() {
     
     // 3. Send POST request
     try {
-      const res = await fetch("http://localhost:5000/api/replays", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/replays`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

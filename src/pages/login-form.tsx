@@ -15,7 +15,7 @@ export function LoginForm() {
 
     try {
       const popup = window.open(
-        "http://localhost:5000/auth/discord",
+        `${import.meta.env.VITE_API_URL}/auth/discord`,
         'discord-login',
         'width=600,height=700,scrollbars=yes,resizable=yes'
       );
@@ -34,11 +34,11 @@ export function LoginForm() {
   }
 
   const handleFetchUserData = () => {
-    window.open("http://localhost:5000/profile", '_blank', 'width=600,height=700');
+    window.open(`${import.meta.env.VITE_API_URL}/profile`, '_blank', 'width=600,height=700');
   }
 
   const handleFetchConnections = () => {
-    window.open("http://localhost:5000/connections", '_blank', 'width=600,height=700');
+    window.open(`${import.meta.env.VITE_API_URL}/connections`, '_blank', 'width=600,height=700');
   }
 
   if (user) {

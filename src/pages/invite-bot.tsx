@@ -12,7 +12,7 @@ export default function InviteBot() {
   useEffect(() => {
     const fetchInviteLink = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/getBotInviteLink");
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/getBotInviteLink`);
         if (!res.ok) throw new Error("Failed to fetch invite link");
 
         const data = await res.json(); // { url: "..." }

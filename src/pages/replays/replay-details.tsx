@@ -26,7 +26,7 @@ export function ReplayDetails() {
     async function fetchDetails() {
       try {
         // Fetch from Node Gateway
-        const res = await fetch(`http://localhost:5000/api/replays/${id}`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/${id}`, {
           credentials: 'include'
         });
         
@@ -52,7 +52,7 @@ export function ReplayDetails() {
     async function fetchTranscript() {
       setTranscriptLoading(true);
       try {
-        const res = await fetch(`http://localhost:5000/api/audio/${data?.audio_id}/transcription`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/audio/${data?.audio_id}/transcription`, {
           credentials: 'include'
         });
 
@@ -106,7 +106,7 @@ export function ReplayDetails() {
                   controls 
                   className="w-full max-w-md"
                   // Use the ID from data, not the URL param
-                  src={`http://localhost:5000/api/audio/stream/${data.audio_id}`} 
+                  src={`${import.meta.env.VITE_API_URL}/audio/stream/${data.audio_id}`} 
                 />
                 <p className="text-xs text-slate-500">
                   Linked Audio ID: {data.audio_id}
