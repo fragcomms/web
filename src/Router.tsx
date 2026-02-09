@@ -8,6 +8,7 @@ import ImportReplay from './pages/replays/replay-import'
 import Home from './pages/Home'
 import InviteBot from './pages/invite-bot'
 import About from './pages/About.tsx'
+import Settings from './pages/Settings'
 import { useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/RouteProtector'
 
@@ -57,6 +58,15 @@ export default function Router() {
               <ProtectedRoute>
                 <div className="w-full min-h-[calc(100vh-64px)] pt-8 px-4 flex flex-col items-center">
                   <ReplayDetails />
+                </div>
+              </ProtectedRoute>
+            } />
+
+            {/* protected */}
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <div className="main-content">
+                  <Settings />
                 </div>
               </ProtectedRoute>
             } />

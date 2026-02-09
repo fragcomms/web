@@ -1,55 +1,50 @@
 import { Link } from 'react-router-dom'
+import { NavLogo } from './NavBar/logo'
+import { useAuth } from '../context/AuthContext'
+
+const navLinkClassName = 'text-slate-300 transition-colors hover:text-white'
+const navItems = [
+  { to: '/replays', label: 'Replays' },
+  { to: '/settings', label: 'Settings' },
+]
+
+const logoutClassName =
+  'rounded-md bg-slate-700 px-4 py-2 text-sm text-white transition-colors hover:bg-slate-600'
 
 export function Navbar() {
+  const { logout } = useAuth()
+
+  const handleLogout = async () => {
+    await logout()
+  }
+
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-center h-16">
+    <nav className="fixed left-0 right-0 top-0 z-50 border-b border-slate-700 bg-slate-800/80 backdrop-blur-sm">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link 
-              to="/" 
-              className = "flex items-center justify-center w-10 h-10 rounded-full border-2 border-slate-600 text-white hover:border-slate-400 transition-colors overflow-hidden"            >
-              <img
-                src = "src/assets/logo.png"
-                alt = "Logo"
-                className = "w-full h-full object-cover"
-              />
-            </Link>
+            <NavLogo to="/login" />
             <div className="flex gap-6">
-              <Link 
-                to="/" 
-                className="text-slate-300 hover:text-white transition-colors"
-              >
-                Home
-              </Link>
-              <Link 
-                to="/invite-bot" 
-                className="text-slate-300 hover:text-white transition-colors"
-              >
-                Invite
-              </Link>
-              <Link 
-                to="/pricing" 
-                className="text-slate-300 hover:text-white transition-colors"
-              >
-                Pricing
-              </Link>
-              <Link 
-                to="/login" 
-                className="text-slate-300 hover:text-white transition-colors"
-              >
-                Profile
-              </Link>
-              <Link 
-                to="/replays" 
-                className="text-slate-300 hover:text-white transition-colors"
-              >
-                Replays
-              </Link>
+              {navItems.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={navLinkClassName}
+                >
+                  {item.label}
+                </Link>
+              ))}
             </div>
           </div>
+          <button
+            type="button"
+            className={logoutClassName}
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
         </div>
       </div>
     </nav>
-  );
+  )
 }
