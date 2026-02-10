@@ -7,9 +7,9 @@ type NavLogoProps = {
 	className?: string
 }
 
-const baseClassName = 'flex items-center gap-3 text-white'
+const baseClassName = 'flex items-center gap-4 text-white'
 const logoFrameClassName =
-	'flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-slate-600 transition-colors hover:border-slate-400'
+	'flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-slate-600 transition-colors hover:border-slate-400'
 const defaultLogoSrc = 'src/assets/logo.png'
 const defaultLogoAlt = 'Logo'
 
@@ -34,7 +34,7 @@ export function NavLogo({
 			</span>
 			{/* Brand title text styled independently from the logo frame. */}
 			<span
-				className="text-2xl tracking-wide"
+				className="text-3xl tracking-wide"
 				style={{
 					fontFamily:
 						'Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif',

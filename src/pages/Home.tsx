@@ -10,7 +10,15 @@ export default function Home() {
 
   return (
     <>
-      <h1 className="text-6xl font-bold mb-6 text-white text-center">FragComms</h1>
+      <h1
+        className="text-6xl mb-6 text-white text-center"
+        style={{
+          fontFamily:
+            'Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif',
+        }}
+      >
+        FragComms
+      </h1>
       <p className="text-xl text-gray-300 mb-8 text-center">Replays reimagined</p>
       
       <div className="flex gap-4 justify-center mb-16">

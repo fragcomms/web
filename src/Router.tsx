@@ -26,7 +26,7 @@ export default function Router() {
         {user ? <LoggedNavbar /> : <PublicNavbar />}
 
         {/* Page Content with top padding to account for fixed navbar */}
-        <div className="pt-16"> {/* Add padding-top for fixed navbar height */}
+        <div className="pt-20"> {/* Add padding-top for fixed navbar height */}
           <Routes>
             {/* Default Page - Home */}
             <Route path="/" element={
@@ -38,7 +38,7 @@ export default function Router() {
             {/* protected */}
             <Route path="/replays" element={
               <ProtectedRoute>
-                <div className="w-full min-h-[calc(100vh-64px)] flex flex-col justify-start items-center pt-8 px-4">
+                <div className="w-full min-h-[calc(100vh-80px)] flex flex-col justify-start items-center pt-8 px-4">
                   <ReplayLibrary />
                 </div>
               </ProtectedRoute>
@@ -56,7 +56,7 @@ export default function Router() {
             {/* protected */}
             <Route path="/replays/:id" element={
               <ProtectedRoute>
-                <div className="w-full min-h-[calc(100vh-64px)] pt-8 px-4 flex flex-col items-center">
+                <div className="w-full min-h-[calc(100vh-80px)] pt-8 px-4 flex flex-col items-center">
                   <ReplayDetails />
                 </div>
               </ProtectedRoute>
