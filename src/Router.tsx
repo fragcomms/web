@@ -5,6 +5,7 @@ import { LoginForm } from './pages/login-form'
 import { ReplayLibrary } from './pages/replays/replay-library'
 import { ReplayDetails } from './pages/replays/replay-details';
 import ImportReplay from './pages/replays/replay-import'
+import GPUTest from './pages/replays/replay-gpu'
 import Home from './pages/Home'
 import InviteBot from './pages/invite-bot'
 import About from './pages/About.tsx'
@@ -53,6 +54,15 @@ export default function Router() {
               </ProtectedRoute>
             } />
 
+            {/* protected */}
+            <Route path="/replays/gpu" element={
+              <ProtectedRoute>
+                <div className="main-content">
+                  <GPUTest />
+                </div>
+              </ProtectedRoute>
+            } />
+            
             {/* protected */}
             <Route path="/replays/:id" element={
               <ProtectedRoute>
