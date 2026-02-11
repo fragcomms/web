@@ -147,13 +147,20 @@ class APIServer:
         except Exception as e:
             print(f"Error fetching replay details: {e}")
             raise HTTPException(status_code=500, detail="Database error")
+        
+    # async def create_demos(self, sharecode: str):
+    #     print(f"Processing demo")
+    #     try:
+    #         async with self.db.pool.acquire() as connection:
+    #             json_path = f"/data/replays/demo/"
+        
           
     async def create_replay(self, request: ReplayRequest):
         print(f"Creating replay for Audio ID: {request.audio_id}")
         try:
             async with self.db.pool.acquire() as connection:
                 owner_check_query = """SELECT 1 FROM media_access
-                                      WHERE audio_id = $1 AND discord_id = $2"""
+                                        WHERE audio_id = $1 AND discord_id = $2"""
                 is_owner = await connection.fetchval(owner_check_query, request.audio_id, request.discord_id)
                 
                 if not is_owner:

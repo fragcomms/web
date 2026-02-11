@@ -8,7 +8,6 @@ import fetch from "node-fetch";
 import cors from "cors";
 import { Pool as PGPool } from 'pg'
 import pgSession from 'connect-pg-simple'
-import { error } from "console";
 
 dotenv.config();
 
@@ -44,6 +43,8 @@ const CLIENT_ID = process.env.CLIENT_ID!;
 const CLIENT_SECRET = process.env.CLIENT_SECRET!;
 const SESSION_SECRET = process.env.SESSION_SECRET!;
 const CALLBACK_URL = process.env.CALLBACK_URL;
+
+const apiRouter = express.Router()
 
 //enrsure dotenv variables exist
 if (!CLIENT_ID || !CLIENT_SECRET || !SESSION_SECRET) {
@@ -132,15 +133,15 @@ passport.deserializeUser((obj: any, done) => done(null, obj));
 //routes
 
 //home
-app.get("/", (_req: Request, res: Response) => {
-  res.send('<a href="/auth/discord">Log in with Discord</a>');
+apiRouter.get("/", (_req: Request, res: Response) => {
+  res.send('<a href="/api/auth/discord">Log in with Discord</a>');
 });
 
 //start login
-app.get("/auth/discord", passport.authenticate("discord"));
+apiRouter.get("/auth/discord", passport.authenticate("discord"));
 
 // disc OAuth callback 
-app.get("/auth/discord/callback", passport.authenticate("discord", { failureRedirect: "/" }), (req: Request, res: Response) => {
+apiRouter.get("/auth/discord/callback", passport.authenticate("discord", { failureRedirect: "/" }), (req: Request, res: Response) => {
   const user = req.user as UserWithToken;
   res.send(`
       <html>
@@ -160,7 +161,7 @@ app.get("/auth/discord/callback", passport.authenticate("discord", { failureRedi
 
 
 // fetch user's Discord profile
-app.get("/profile", async (req: Request, res: Response) => {
+apiRouter.get("/profile", async (req: Request, res: Response) => {
   if (!req.isAuthenticated() || !req.user) {
     return res.status(401).send("Access token missing");
   }
@@ -180,7 +181,7 @@ app.get("/profile", async (req: Request, res: Response) => {
   }
 });
 
-app.get("/connections", async (req: Request, res: Response) => {
+apiRouter.get("/connections", async (req: Request, res: Response) => {
   if (!req.isAuthenticated() || !req.user) {
     return res.status(401).send("Access token missing");
   }
@@ -202,7 +203,7 @@ app.get("/connections", async (req: Request, res: Response) => {
   }
 });
 
-app.get("/api/replays", async (req: Request, res: Response) => {
+apiRouter.get("/replays", async (req: Request, res: Response) => {
   if (!req.isAuthenticated() || !req.user) {
     return res.status(401).send("Not authenticated");
   }
@@ -224,7 +225,7 @@ app.get("/api/replays", async (req: Request, res: Response) => {
   }
 })
 
-app.get("/api/audio", async (req: Request, res: Response) => {
+apiRouter.get("/audio", async (req: Request, res: Response) => {
   if (!req.isAuthenticated() || !req.user) {
     return res.status(401).send("Not authenticated");
   }
@@ -247,7 +248,7 @@ app.get("/api/audio", async (req: Request, res: Response) => {
 })
 
 //logout
-app.post("/logout", (req: Request, res: Response, next: NextFunction) => {
+apiRouter.post("/logout", (req: Request, res: Response, next: NextFunction) => {
   const user = req.user as UserWithToken;
   req.logout((err) => {
     user.token = "";
@@ -264,7 +265,7 @@ app.post("/logout", (req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-app.post("/api/replays", express.json(), async (req: Request, res: Response) => {
+apiRouter.post("/replays", express.json(), async (req: Request, res: Response) => {
   if (!req.isAuthenticated() || !req.user) {
     return res.status(401).send("Not authenticated");
   }
@@ -300,7 +301,7 @@ app.post("/api/replays", express.json(), async (req: Request, res: Response) => 
   }
 });
 
-app.get("/api/replays/:id", async (req: Request, res: Response) => {
+apiRouter.get("/replays/:id", async (req: Request, res: Response) => {
   if (!req.isAuthenticated() || !req.user) return res.status(401).send("Not authenticated");
 
   const user = req.user as DiscordProfile;
@@ -311,11 +312,11 @@ app.get("/api/replays/:id", async (req: Request, res: Response) => {
     const data = await pyRes.json();
     res.json(data);
   } catch (e) {
-    res.status(500).send("Error fetching details");
+    res.status(500).send(`Error fetching details: ${e}`);
   }
 });
 
-app.get("/api/audio/stream/:id", async (req: Request, res: Response) => {
+apiRouter.get("/audio/stream/:id", async (req: Request, res: Response) => {
   if (!req.isAuthenticated() || !req.user) return res.status(401).send("Not authenticated");
 
   const user = req.user as DiscordProfile
@@ -360,7 +361,7 @@ app.get("/api/audio/stream/:id", async (req: Request, res: Response) => {
 });
 
 //get inv link
-app.get("/api/getBotInviteLink", (_req, res) => {
+apiRouter.get("/getBotInviteLink", (_req, res) => {
   const CLIENT_ID = process.env.CLIENT_ID;
   if (!CLIENT_ID) return res.status(500).json({ error: "Missing CLIENT_ID" });
 
@@ -373,7 +374,7 @@ app.get("/api/getBotInviteLink", (_req, res) => {
   res.json({ url: inviteLink });
 });
 
-app.get("/api/audio/:id/transcription", async (req: Request, res: Response) => {
+apiRouter.get("/audio/:id/transcription", async (req: Request, res: Response) => {
   if (!req.isAuthenticated() || !req.user) return res.status(401).send("Not authenticated");
 
   const user = req.user as DiscordProfile;
@@ -400,6 +401,6 @@ app.get("/api/audio/:id/transcription", async (req: Request, res: Response) => {
   }
 });
 
-
+app.use("/api", apiRouter)
 
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
