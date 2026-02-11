@@ -1,356 +1,120 @@
 import express from "express";
-import type { Request, Response, NextFunction } from "express";
 import session from "express-session";
 import passport from "passport";
-import { Strategy as DiscordStrategy } from "passport-discord";
-import dotenv from "dotenv";
-import fetch from "node-fetch";
 import cors from "cors";
-import { Pool as PGPool } from 'pg'
-import pgSession from 'connect-pg-simple'
-import { error } from "console";
+import pgSession from "connect-pg-simple";
+import { Strategy as DiscordStrategy } from "passport-discord";
+
+import pool from "./config/db.js";
+import { UserWithToken as User } from "./types/user.js";
+
+import loginRoutes from "./routes/auth.js";
+import profileRoutes from "./routes/profile.js";
+import replayRoutes from "./routes/replay.js";
+import audioRoutes from "./routes/audio.js";
+
+import dotenv from 'dotenv';
 
 dotenv.config();
 
-//DiscordProfile 
-type DiscordProfile = {
-  discord_id: string;
-  username: string;
-  discriminator: string;
-  avatar: string | null;
-  email?: string;
-  global_name?: string;
-};
-
-interface UserWithToken extends DiscordProfile {
-  token: string;
-}
-
-const pgStore = pgSession(session);
-
-const pool = new PGPool({
-  user: process.env.PG_USER,
-  host: process.env.PG_HOST,
-  database: process.env.PG_DB,
-  password: process.env.PG_PASS,
-  port: Number(process.env.PG_PORT),
-})
-
 const app = express();
 const PORT = 5000;
+const pgStore = pgSession(session);
 
-// dotenv
-const CLIENT_ID = process.env.CLIENT_ID!;
-const CLIENT_SECRET = process.env.CLIENT_SECRET!;
-const SESSION_SECRET = process.env.SESSION_SECRET!;
-const CALLBACK_URL = process.env.CALLBACK_URL;
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://frags.ayayrom.cfd"
+  ],
+  credentials: true,
+}))
+app.use(express.json());
 
-//enrsure dotenv variables exist
-if (!CLIENT_ID || !CLIENT_SECRET || !SESSION_SECRET) {
-  throw new Error("Missing one or more of the following environment variable:\nCLIENT_ID\nCLIENT_SECRET\nSESSION_SECRET");
-
-}
-//TODO: expand
-
-
-// temp discord access token
-// let discAccessToken: string | undefined;
-
-// CORS for frontend-backend connection
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
+app.use(session({
+  secret: process.env.SESSION_SECRET!,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: (process.env.NODE_ENV == "development") ? false : true,
+    sameSite: "lax",
+    maxAge: 24 * 60 * 60 * 1000
+  },
+  store: new pgStore({
+    pool: pool,
+    tableName: 'session',
   })
-);
+}));
 
-// session middleware
-app.use(
-  session({
-    secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000
-    },
-    store: new pgStore({
-      pool: pool,
-      tableName: 'session',
-    })
-  })
-);
-
+// doing passport now
 app.use(passport.initialize());
 app.use(passport.session());
 
-
-passport.use(
-  new DiscordStrategy(
-    {
-      clientID: CLIENT_ID,
-      clientSecret: CLIENT_SECRET,
-      callbackURL: CALLBACK_URL,
-      scope: ["identify", "email", "connections"],
-
-    },
-    async (token, _refreshToken, profile, done) => {
-      try {
-        const timestamp = new Date() // consistent timestamping if it is a new user
-        const result = await pool.query(
-          `INSERT INTO public.users (discord_id, created_at, last_accessed, discord_username) 
-          VALUES ($1, $2, $3, $4) 
-          ON CONFLICT (discord_id) 
-          DO UPDATE SET 
-            discord_username = EXCLUDED.discord_username,
-            last_accessed = $3 
-          RETURNING *`, //last accessed is $3 because consistency
-          [profile.id, timestamp, timestamp, profile.username]
-        )
-        const user = result.rows[0]
-        user.token = token
-        
-        return done(null, user)
-      } catch (e) {
-        console.error("Database login err:", e)
-        return done(e, undefined)
-      }
-    }
-  )
-);
-
-// serialize user to/from session
-passport.serializeUser((user: any, done) => done(null, user));
-passport.deserializeUser((obj: any, done) => done(null, obj));
-
-//routes
-
-//home
-app.get("/", (_req: Request, res: Response) => {
-  res.send('<a href="/auth/discord">Log in with Discord</a>');
-});
-
-//start login
-app.get("/auth/discord", passport.authenticate("discord"));
-
-// disc OAuth callback 
-app.get("/auth/discord/callback", passport.authenticate("discord", { failureRedirect: "/" }), (req: Request, res: Response) => {
-  const user = req.user as UserWithToken;
-  res.send(`
-      <html>
-          <body>
-              <p>Login Successful. The window will now close in 5 seconds.</p>
-              <script>
-                  window.opener.postMessage({ token: '${user.token}', status: 'Login successful' }, "*");
-                  setTimeout(() => window.close(), 5000);
-              </script>
-          </body>
-      </html>
-
-  `);
-}
-);
-
-
-
-// fetch user's Discord profile
-app.get("/profile", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated() || !req.user) {
-    return res.status(401).send("Access token missing");
-  }
-
-  const user = req.user as UserWithToken;
-
+passport.use(new DiscordStrategy({
+  clientID: process.env.CLIENT_ID!,
+  clientSecret: process.env.CLIENT_SECRET!,
+  callbackURL: process.env.CALLBACK_URL,
+  scope: ["identify", "email", "connections"],
+}, async (token, _refreshToken, profile, done) => {
   try {
-    const response = await fetch("https://discord.com/api/v10/users/@me", {
-      headers: { Authorization: `Bearer ${user.token}` },
+    const timestamp = new Date();
+    const query = `
+      INSERT INTO public.users (discord_id, created_at, last_accessed, discord_username, avatar)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (discord_id)
+      DO UPDATE SET 
+        discord_username = EXCLUDED.discord_username, 
+        last_accessed = $3,
+        avatar = EXCLUDED.avatar
+      RETURNING *`;
+    const result = await pool.query(query, [profile.id, timestamp, timestamp, profile.username, profile.avatar]);
 
-    });
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
-app.get("/connections", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated() || !req.user) {
-    return res.status(401).send("Access token missing");
-  }
-
-  const user = req.user as UserWithToken;
-
-  try {
-    const response = await fetch("https://discord.com/api/v10/users/@me/connections", {
-      headers: {
-        Authorization: `Bearer ${user.token}`
-      },
-
-    });
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
-app.get("/api/replays", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated() || !req.user) {
-    return res.status(401).send("Not authenticated");
-  }
-
-  const user = req.user as any
-
-  try {
-    const pythonResponse = await fetch(`http://localhost:8000/api/replays?discord_id=${user.discord_id}`)
-
-    if (!pythonResponse.ok) {
-      throw new Error(`Python API Error: ${pythonResponse.statusText}`);
-    }
-
-    const data = await pythonResponse.json()
-    res.json(data)
-  } catch (e) {
-    console.error("Python service error:", e)
-    res.status(500).send("Internal server error.")
-  }
-})
-
-app.get("/api/audio", async (req: Request, res: Response) => {
-  if (!req.isAuthenticated() || !req.user) {
-    return res.status(401).send("Not authenticated");
-  }
-
-  const user = req.user as DiscordProfile;
-
-  try {
-    const pythonResponse = await fetch(`http://localhost:8000/api/audio?discord_id=${user.discord_id}`)
-
-    if (!pythonResponse.ok) {
-      throw new Error(`Python API Error: ${pythonResponse.statusText}`);
-    }
-
-    const data = await pythonResponse.json()
-    res.json(data)
-  } catch (e) {
-    console.error("Python service error:", e)
-    res.status(500).send("Internal server error.")
-  }
-})
-
-//logout
-app.post("/logout", (req: Request, res: Response, next: NextFunction) => {
-  const user = req.user as UserWithToken;
-  req.logout((err) => {
-    user.token = "";
-    if (err) {
-      return next(err);
-    }
-    req.session.destroy((err) => {
-      if (err) {
-        return next(err)
-      }
-      res.clearCookie('connect.sid')
-      res.send({ status: "Logged out" })
-    })
-  });
-});
-
-app.post("/api/replays", express.json(), async (req: Request, res: Response) => {
-  if (!req.isAuthenticated() || !req.user) {
-    return res.status(401).send("Not authenticated");
-  }
-
-  const user = req.user as DiscordProfile
-
-  try {
-    const pythonResponse = await fetch("http://localhost:8000/api/replays", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...req.body,
-        discord_id: user.discord_id
-      }), // Pass the data along
-    });
-
-    if (!pythonResponse.ok) {
-        const errorText = await pythonResponse.text();
-        // Parse the error JSON if possible, otherwise use text
-        try {
-            const errorJson = JSON.parse(errorText);
-            return res.status(pythonResponse.status).json(errorJson);
-        } catch {
-             throw new Error(`Python API Error: ${errorText}`);
-        }
-    }
-
-    const data = await pythonResponse.json();
-    res.json(data);
-  } catch (err: any) {
-    console.error("Error creating replay:", err);
-    res.status(500).send({ detail: err.message || "Internal Server Error" });
-  }
-});
-
-app.get("/api/replays/:id", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated() || !req.user) return res.status(401).send("Not authenticated");
+    const user = result.rows[0];
+    user.token = token;
     
-    const user = req.user as DiscordProfile;
+    return done(null, user);
+  } catch (e) {
+    console.error("Discord passport error:", e)
+    return done(e, undefined);
+  }
+}))
 
-    try {
-        const pyRes = await fetch(`http://localhost:8000/api/replays/${req.params.id}?discord_id=${user.discord_id}`);
-        if (!pyRes.ok) throw new Error("Failed to fetch from Python");
-        const data = await pyRes.json();
-        res.json(data);
-    } catch (e) {
-        res.status(500).send("Error fetching details");
-    }
-});
+passport.serializeUser((user, done) => {
+  const u = user as User;
+  done(null, {
+    id: u.discord_id,
+    token: u.token
+  })
+})
 
-app.get("/api/audio/stream/:id", async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) return res.status(401).send("Not authenticated");
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+passport.deserializeUser(async (sessionData: any, done) => {
+  try {
+    const query = `
+      SELECT * FROM public.users 
+      WHERE discord_id = $1`;
+    const result = await pool.query(query, [sessionData.id])
+    if (result.rows.length === 0) return done(null, false);
+    const user = result.rows[0];
+    user.token = sessionData.token;
+    done(null, user);
+  } catch (e) {
+    console.error("Deserialization error:", e);
+    done(e, null);
+  }
+})
 
-    const user = req.user as DiscordProfile
+app.get("/api", (_req, res) => res.send("API is up"));
+app.use("/api/auth", loginRoutes);
+app.use("/api/replays", replayRoutes);
+app.use("/api/audio", audioRoutes);
+app.use("/api", profileRoutes);
 
-    try {
-        // We use node-fetch to get the stream from Python
-        const pyRes = await fetch(`http://localhost:8000/api/audio/${req.params.id}/stream?discord_id=${user.discord_id}`);
-
-        if (pyRes.status === 403) {
-            return res.status(403).send("You do not have permission to listen to this audio.");
-        }
-        
-        if (!pyRes.ok || !pyRes.body) {
-            return res.status(404).send("Audio not found");
-        }
-
-        // Pipe the python stream directly to the browser
-        pyRes.body.pipe(res); 
-        
-    } catch (e) {
-        console.error("Stream error:", e);
-        res.status(500).send("Error streaming file");
-    }
-});
-
-//get inv link
+// very niche
 app.get("/api/getBotInviteLink", (_req, res) => {
   const CLIENT_ID = process.env.CLIENT_ID;
-  if (!CLIENT_ID) return res.status(500).json({ error: "Missing CLIENT_ID" });
-
   const scopes = ["bot", "applications.commands"];
-  const permissions = "8";
-  const inviteLink = `https://discord.com/oauth2/authorize?client_id=${CLIENT_ID}&scope=${scopes.join(
-    "%20"
-  )}&permissions=${permissions}`;
-
-  res.json({ url: inviteLink });
-});
-
-
+  res.json({ url: `https://discord.com/oauth2/authorize?client_id=${CLIENT_ID}&scope=${scopes.join("%20")}&permissions=8` });
+})
 
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

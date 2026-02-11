@@ -22,7 +22,7 @@ export function ReplayLibrary() {
   useEffect(() => {
     async function fetchReplays() {
       try {
-        const res = await fetch("http://localhost:5000/api/replays", {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/replays`, {
           credentials: 'include'
         });
         

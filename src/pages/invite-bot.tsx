@@ -1,3 +1,4 @@
+//@ts-expect-error react not req rn
 import React, { useState, useEffect } from "react";
 import { ClipboardIcon, CheckIcon } from "lucide-react";
 
@@ -11,14 +12,14 @@ export default function InviteBot() {
   useEffect(() => {
     const fetchInviteLink = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/getBotInviteLink");
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/getBotInviteLink`);
         if (!res.ok) throw new Error("Failed to fetch invite link");
 
         const data = await res.json(); // { url: "..." }
         if (!data.url) throw new Error("Invite link missing in response");
 
         setInviteLink(data.url);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching invite link:", err);
         setError("Unable to load invite link");
       } finally {
@@ -45,7 +46,7 @@ export default function InviteBot() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-white px-4">
       <img
-        src="src/assets/logo.png"
+        src="/logo.png"
         alt="FragComms Bot"
         className="w-32 h-32 mb-6 rounded-full shadow-lg object-cover"
       />

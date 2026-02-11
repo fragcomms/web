@@ -1,12 +1,14 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { Navbar as PublicNavbar } from './components/PublicNavbar'
-import { Navbar as LoggedNavbar } from './components/LoggedNavbar'
+import { Navbar as PublicNavbar } from './components/PublicNavBar'
+import { Navbar as LoggedNavbar } from './components/AuthNavBar'
 import { LoginForm } from './pages/login-form'
 import { ReplayLibrary } from './pages/replays/replay-library'
 import { ReplayDetails } from './pages/replays/replay-details';
 import ImportReplay from './pages/replays/replay-import'
 import Home from './pages/Home'
 import InviteBot from './pages/invite-bot'
+import About from './pages/About.tsx'
+import Settings from './pages/Settings'
 import { useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/RouteProtector'
 
@@ -24,7 +26,7 @@ export default function Router() {
         {user ? <LoggedNavbar /> : <PublicNavbar />}
 
         {/* Page Content with top padding to account for fixed navbar */}
-        <div className="pt-16"> {/* Add padding-top for fixed navbar height */}
+        <div className="pt-20"> {/* Add padding-top for fixed navbar height */}
           <Routes>
             {/* Default Page - Home */}
             <Route path="/" element={
@@ -36,7 +38,7 @@ export default function Router() {
             {/* protected */}
             <Route path="/replays" element={
               <ProtectedRoute>
-                <div className="w-full min-h-[calc(100vh-64px)] flex flex-col justify-start items-center pt-8 px-4">
+                <div className="w-full min-h-[calc(100vh-80px)] flex flex-col justify-start items-center pt-8 px-4">
                   <ReplayLibrary />
                 </div>
               </ProtectedRoute>
@@ -54,8 +56,17 @@ export default function Router() {
             {/* protected */}
             <Route path="/replays/:id" element={
               <ProtectedRoute>
-                <div className="w-full min-h-[calc(100vh-64px)] pt-8 px-4 flex flex-col items-center">
+                <div className="w-full min-h-[calc(100vh-80px)] pt-8 px-4 flex flex-col items-center">
                   <ReplayDetails />
+                </div>
+              </ProtectedRoute>
+            } />
+
+            {/* protected */}
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <div className="main-content">
+                  <Settings />
                 </div>
               </ProtectedRoute>
             } />
@@ -63,6 +74,12 @@ export default function Router() {
             <Route path="/invite-bot" element={
               <div className="main-content">
                 <InviteBot />
+              </div>
+            } />
+
+            <Route path="/about" element={
+              <div className="centered-card">
+                <About />
               </div>
             } />
 

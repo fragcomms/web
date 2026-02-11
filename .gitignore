@@ -28,3 +28,4 @@ dist-ssr
 __pycache__
 .venv
 audio_cache
+transcript_cache

@@ -1,8 +1,10 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import type { DiscordProfile as User } from '../types/user';
 
 // Define the shape of the context
-type AuthContextType = {
-  user: any | null;
+interface AuthContextType {
+  user: User | null;
   isLoading: boolean;
   checkAuthStatus: () => Promise<void>;
   logout: () => Promise<void>;
@@ -11,7 +13,7 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Check auth on initial load (app startup)
@@ -22,7 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuthStatus = async () => {
     try {
       // Replace after finish
-      const response = await fetch("http://localhost:5000/profile", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/profile`, {
         credentials: 'include'
       });
       if (response.ok) {
@@ -31,7 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setUser(null);
       }
-    } catch (error) {
+    } catch (e) {
+      console.error(e);
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -40,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch("http://localhost:5000/logout", { 
+      await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, { 
         method: 'POST', 
         credentials: 'include' 
       });
