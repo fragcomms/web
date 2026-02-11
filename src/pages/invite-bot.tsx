@@ -46,7 +46,7 @@ export default function InviteBot() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-white px-4">
       <img
-        src="src/assets/logo.png"
+        src="/logo.png"
         alt="FragComms Bot"
         className="w-32 h-32 mb-6 rounded-full shadow-lg object-cover"
       />

@@ -5,6 +5,9 @@ import { useAuth } from '../context/AuthContext'
 const navLinkClassName =
   'text-lg text-slate-300 transition-colors hover:text-white'
 const navItems = [
+  { to: '/about', label: 'About' },
+  { to: '/pricing', label: 'Pricing' },
+  { to: '/invite-bot', label: 'Invite' },
   { to: '/replays', label: 'Replays' },
   { to: '/settings', label: 'Settings' },
 ]

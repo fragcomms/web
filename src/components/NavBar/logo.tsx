@@ -10,7 +10,7 @@ type NavLogoProps = {
 const baseClassName = 'flex items-center gap-4 text-white'
 const logoFrameClassName =
 	'flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 border-slate-600 transition-colors hover:border-slate-400'
-const defaultLogoSrc = 'src/assets/logo.png'
+const defaultLogoSrc = '/logo.png'
 const defaultLogoAlt = 'Logo'
 
 export function NavLogo({
