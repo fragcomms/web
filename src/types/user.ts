@@ -1,5 +1,5 @@
 export interface DiscordProfile {
-  discord_id: string;
+  id: string;
   username: string;
   discriminator: string;
   avatar: string | null;

@@ -18,7 +18,7 @@ router.get("/", ensureAuth, async (req, res) => {
       LEFT JOIN replays r ON a.audio_id = r.audio_id
       WHERE ma.discord_id = $1 AND r.replay_id IS NULL
       ORDER BY a.creation_time DESC`;
-    const result = await pool.query(query, [user.discord_id]);
+    const result = await pool.query(query, [user.id]);
     res.json(result.rows);
   } catch (e) {
     console.error(e);
@@ -38,7 +38,7 @@ router.get("/:id/stream", ensureAuth, async (req, res) => {
       FROM audios a
       JOIN media_access ma ON a.audio_id = ma.audio_id
       WHERE a.audio_id = $1 AND ma.discord_id = $2`;
-    const result = await pool.query(query, [req.params.id, user.discord_id]);
+    const result = await pool.query(query, [req.params.id, user.id]);
     if (result.rows.length === 0) return res.status(404).send("Audio not found");
     
     //fetching binary data from backend machine
@@ -85,7 +85,7 @@ router.get("/:id/transcription", ensureAuth, async (req, res) => {
       FROM transcripts t
       JOIN media_access ma ON ma.audio_id = t.audio_id
       WHERE t.audio_id = $1 AND ma.discord_id = $2`;
-    const result = await pool.query(query, [req.params.id, user.discord_id]);
+    const result = await pool.query(query, [req.params.id, user.id]);
     if (result.rows.length === 0) return res.status(404).send("Transcript not found");
     
     //fetching binary data from backend machine

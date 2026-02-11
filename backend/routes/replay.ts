@@ -18,7 +18,7 @@ router.get("/", ensureAuth, async (req, res) => {
       WHERE ma.discord_id = $1
       ORDER BY d.fetch_time DESC`;
     
-    const result = await pool.query(query, [user.discord_id]);
+    const result = await pool.query(query, [user.id]);
     res.json(result.rows);
   } catch (e) {
     console.error(e);
@@ -38,7 +38,7 @@ router.get("/:id", ensureAuth, async (req, res) => {
       JOIN media_access ma ON ma.audio_id = r.audio_id
       WHERE r.replay_id = $1 AND ma.discord_id = $2`;
 
-    const result = await pool.query(query, [req.params.id, user.discord_id]);
+    const result = await pool.query(query, [req.params.id, user.id]);
     if (result.rows.length === 0) return res.status(404).send("Replay not found");
     res.json(result.rows[0]); // 1 for now
   } catch (e) {
