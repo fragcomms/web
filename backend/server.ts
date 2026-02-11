@@ -82,7 +82,7 @@ passport.use(new DiscordStrategy({
 passport.serializeUser((user, done) => {
   const u = user as User;
   done(null, {
-    id: u.id,
+    id: u.discord_id,
     token: u.token
   })
 })
