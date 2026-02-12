@@ -23,7 +23,7 @@ export class ReplayRenderer {
 
     //frame interpolation stuff
     private startTick: number =0;
-    private ticksPerSecond: number = 128; //prolly incorrect
+    private ticksPerSecond: number = 64; //prolly incorrect
 
     constructor(
         device: GPUDevice,
@@ -52,7 +52,7 @@ export class ReplayRenderer {
         const { pipeline, bindGroupLayout } = createPlayerPipeline(device, format);
 
         //simple orthographic viewProj (map 0..mapSize to clip)
-        const half = 4096;
+        const half = 3000;
         const viewProj = new Float32Array([
             1 / half,0,     0, 0,
             0, -1 / half,     0, 0,
@@ -75,12 +75,12 @@ export class ReplayRenderer {
         });
 
         const quadVerts = new Float32Array([
-            -32, -32,
-             32, -32,
-            -32,  32,
-            -32,  32,
-             32, -32,
-             32,  32,
+        -32, -32,
+        32, -32,
+        -32,  32,
+        -32,  32,
+        32, -32,
+        32,  32,
         ]);
 
         const quadVertexBuffer = device.createBuffer({

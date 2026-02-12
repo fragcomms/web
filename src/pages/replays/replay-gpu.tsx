@@ -36,12 +36,13 @@ export default function ReplayPage() {
 
   return (
     <div className="w-full h-full flex items-center justify-center bg-slate-900">
-      <canvas
-        ref={canvasRef}
-        width={1280}
-        height={720}
+      <div
+        style={{ width: 1280, height: 720}}
         className="border border-slate-700 rounded-xl"
-      />
+      >
+        <canvas ref={canvasRef} className="block w-full h-full" />
+
+      </div>
     </div>
   );
 }
