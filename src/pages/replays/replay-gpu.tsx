@@ -2,41 +2,34 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { ReplayRenderer } from '../../webgpu/renderer';
-import type { Frame } from '../../webgpu/types';
+import type { ReplayJSON } from '../../webgpu/types';
 
 export default function ReplayPage() {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);  
 
   useEffect(() => {
     let renderer: ReplayRenderer | null = null;
+    let cancelled = false;
 
     (async () => {
       if (!canvasRef.current) return;
       renderer = await ReplayRenderer.create(canvasRef.current);
 
-      // TODO: replace with real frames from backend
-      const demoFrames: Frame[] = [
-        {
-          time: 0,
-          players: [
-            { id: 1, x: 100, y: 100, alive: true, team: 0 },
-            { id: 2, x: 200, y: 300, alive: true, team: 1 },
-          ],
-        },
-        {
-          time: 3,
-          players: [
-            { id: 1, x: 400, y: 300, alive: true, team: 0 },
-            { id: 2, x: 900, y: 1000, alive: false, team: 1 },
-          ],
-        },
-      ];
+      const res = await fetch('/replay.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`Failed to load replay: ${res.status} ${res.statusText}`);
 
-      renderer.setFrames(demoFrames);
+      const data = await res.json() as ReplayJSON;
+
+      if(cancelled) return;
+
+      renderer.setReplay(data);
       renderer.play();
-    })();
+    })().catch((err) => {
+      console.error(err);
+    });
 
     return () => {
+      cancelled = true;
       renderer?.pause();
     };
   }, []);

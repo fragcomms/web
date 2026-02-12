@@ -1,6 +1,6 @@
 import { initWebGPU } from "./gpuContext";
 import { createPlayerPipeline  } from "./pipelines";
-import type { Frame, PlayerState } from './types';
+import type { ReplayJSON, TickSnapshot, PlayerState, RenderFrame, RenderPlayer } from "./types";
 
 export class ReplayRenderer {
     private device: GPUDevice;
@@ -16,9 +16,14 @@ export class ReplayRenderer {
     private instanceBuffer: GPUBuffer;
     private maxInstances: number = 64; //arbitrary
 
-    private frames: Frame[] = [];
+    private ticks: TickSnapshot[] = [];
+    private tickNums: number[] = [];
     private startTime: number | null = null;
     private playing = false;
+
+    //frame interpolation stuff
+    private startTick: number =0;
+    private ticksPerSecond: number = 128; //prolly incorrect
 
     constructor(
         device: GPUDevice,
@@ -47,11 +52,12 @@ export class ReplayRenderer {
         const { pipeline, bindGroupLayout } = createPlayerPipeline(device, format);
 
         //simple orthographic viewProj (map 0..mapSize to clip)
+        const half = 4096;
         const viewProj = new Float32Array([
-            2 / 2048,0,     0, 0,
-            0, -2/2048,     0, 0,
+            1 / half,0,     0, 0,
+            0, -1 / half,     0, 0,
             0,       0,     1, 0,
-            -1,      1,     0, 1,
+            0,      0,     0, 1,
         ]);
 
         const uniformBuffer = device.createBuffer({
@@ -106,13 +112,16 @@ export class ReplayRenderer {
         );
     }
 
-    setFrames(frames: Frame[])  {
-        this.frames = frames;
+    setReplay(data: ReplayJSON)  {
+        this.ticks = data.ticks;
+        this.tickNums = data.ticks.map(t => t.tick);
     }
 
     play() {
+        if (this.ticks.length == 0) return;
         this.playing = true;
         this.startTime = performance.now();
+        this.startTick = this.ticks[0].tick;
         this.loop();
     }
 
@@ -127,17 +136,17 @@ export class ReplayRenderer {
     };
 
     private drawCurrentFrame(){
-        if (this.frames.length === 0) return;
+        if (this.ticks.length === 0) return;
         if (this.startTime == null) this.startTime = performance.now();
 
         const elapsedSec = (performance.now() - this.startTime) / 1000;
-        //naive: pick closest frame by time
-        let frame = this.frames[this.frames.length - 1];
-        for (const f of this.frames) {
-            if (f.time > elapsedSec) break;
-            frame = f;
-        }
+        const targetTick = this.startTick + elapsedSec * this.ticksPerSecond;
 
+        const bracket = this.bracketTick(targetTick);
+        if (!bracket) return;
+
+        const frame = this.makeRenderFrame(targetTick, bracket.prev, bracket.next);
+        
         this.updateInstances(frame.players);
 
         const encoder = this.device.createCommandEncoder();
@@ -156,36 +165,102 @@ export class ReplayRenderer {
         pass.setBindGroup(0, this.uniformBindGroup);
         pass.setVertexBuffer(0, this.quadVertexBuffer);
         pass.setVertexBuffer(1, this.instanceBuffer);
-        pass.draw(6, frame.players.length, 0, 0);
-        pass.end();
 
+        const instanceCount = Math.min(frame.players.length, this.maxInstances);
+        pass.draw(6, instanceCount, 0, 0);
+
+        pass.end();
         this.queue.submit([encoder.finish()]);
     }
 
-    private updateInstances(players: PlayerState[]) {
-        const instanceData = new Float32Array(players.length * (2 + 3));
-        const stride = 5; //2 pos + 3 color
+    private updateInstances(players: RenderPlayer[]) {
+        const count = Math.min(players.length, this.maxInstances);
+        const stride = 5; 
+        const instanceData = new Float32Array(count * stride);
+        
+        const ctR = 0.2, ctG = 0.6, ctB = 1.0;
+        const tR = 1.0, tG = 0.4, tB = 0.2;
 
-        for (let i = 0; i < players.length; i++) {
+        for (let i = 0; i < count; i++) {
             const p = players[i];
             const base = i * stride;
             instanceData[base + 0] = p.x;
             instanceData[base + 1] = p.y;
-
-            const color = p.team === 0
-                ? [0.2, 0.6, 1.0] //CT
-                : [1.0, 0.4, 0.2]; //T
-                instanceData[base + 2] = p.alive ? color[0] : 0.2;
-                instanceData[base + 3] = p.alive ? color[1] : 0.2;
-                instanceData[base + 4] = p.alive ? color[2] : 0.2;
+            
+            const isCT = p.team === 3;
+            const r = isCT ? ctR : tR;
+            const g = isCT ? ctG : tG;
+            const b = isCT ? ctB : tB;
+            
+            const dim = 0.2;
+            instanceData[base + 2] = p.alive ? r : dim;
+            instanceData[base + 3] = p.alive ? g : dim;
+            instanceData[base + 4] = p.alive ? b : dim;
         }
 
-        this.queue.writeBuffer(
-            this.instanceBuffer,
-            0,
-            instanceData.buffer,
-            instanceData.byteOffset,
-            instanceData.byteLength,
-        );
+        this.queue.writeBuffer(this.instanceBuffer, 0, instanceData);
     }
+
+    private bracketTick(targetTick: number): { prev: TickSnapshot; next: TickSnapshot } | null {
+        const n = this.tickNums.length;
+        if (n === 0) return null;
+
+        // clamp ends
+        if (targetTick <= this.tickNums[0]) {
+            const s = this.ticks[0];
+            return { prev: s, next: s };
+        }
+        if (targetTick >= this.tickNums[n - 1]) {
+            const s = this.ticks[n - 1];
+            return { prev: s, next: s };
+        }
+
+        // lower_bound: first idx with tickNums[idx] >= targetTick
+        let lo = 0;
+        let hi = n - 1;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (this.tickNums[mid] < targetTick) lo = mid + 1;
+            else hi = mid;
+        }
+
+        const next = this.ticks[lo];
+        const prev = this.ticks[lo - 1];
+        return { prev, next };
+    }
+
+    private makeRenderFrame(targetTick: number, prev: TickSnapshot, next: TickSnapshot): RenderFrame {
+        if (prev.tick === next.tick) {
+            // return render players derived from prev snapshot
+            const count = Math.min(prev.players.length, this.maxInstances);
+            const players: RenderPlayer[] = new Array(count);
+            for (let i = 0; i < count; i++) {
+            const p = prev.players[i];
+            players[i] = { x: p.x, y: p.y, alive: p.alive, team: p.team };
+            }
+            return { tick: prev.tick, players };
+        }
+
+        const denom = next.tick - prev.tick;
+        const alpha = denom > 0 ? (targetTick - prev.tick) / denom : 0;
+
+        const count = Math.min(prev.players.length, next.players.length, this.maxInstances);
+        const players: RenderPlayer[] = new Array(count);
+
+        for (let i = 0; i < count; i++) {
+            const a = prev.players[i];
+            const b = next.players[i];
+
+            players[i] = {
+            team: a.team,
+            alive: a.alive,
+            x: a.x + (b.x - a.x) * alpha,
+            y: a.y + (b.y - a.y) * alpha,
+            };
+        }
+
+        return { tick: targetTick, players };
+    }
+
+
 }
