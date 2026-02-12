@@ -5,7 +5,7 @@ console.log("WGSL source:\n---\n" + playerShaderWGSL + "\n---");
 export function createPlayerPipeline(device: GPUDevice, format: GPUTextureFormat) {
     const module = device.createShaderModule({ code: playerShaderWGSL });
 
-    const vertextBuffers: GPUVertexBufferLayout[] = [
+    const vertexBuffers: GPUVertexBufferLayout[] = [
         {
             arrayStride: 2 * 4,
             stepMode: "vertex",
@@ -43,12 +43,26 @@ export function createPlayerPipeline(device: GPUDevice, format: GPUTextureFormat
         vertex: {
             module,
             entryPoint: "vs_main",
-            buffers: vertextBuffers,
+            buffers: vertexBuffers,
         },
         fragment: {
             module,
             entryPoint: "fs_main",
-            targets: [{ format }],
+            targets: [{ 
+                format,
+                blend: {
+                    color: {
+                        srcFactor: "src-alpha",
+                        dstFactor: "one-minus-src-alpha",
+                        operation: "add",
+                    },
+                    alpha: {
+                        srcFactor: "one",
+                        dstFactor: "one-minus-src-alpha",
+                        operation: "add",
+                    },
+                },
+             }],
         },
         primitive: {
             topology: "triangle-list",
