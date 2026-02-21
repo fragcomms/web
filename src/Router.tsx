@@ -4,12 +4,13 @@ import { Navbar as LoggedNavbar } from './components/AuthNavBar'
 import { LoginForm } from './pages/login-form'
 import { ReplayLibrary } from './pages/replays/replay-library'
 import { ReplayDetails } from './pages/replays/replay-details';
-import ImportReplay from './pages/replays/replay-import'
+import { AudioLibrary } from './pages/replays/replay-import';
 import GPUTest from './pages/replays/replay-gpu'
 import Home from './pages/Home'
 import InviteBot from './pages/invite-bot'
 import About from './pages/About.tsx'
 import Settings from './pages/Settings'
+import { Pricing } from './pages/Pricing'
 import { useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/RouteProtector'
 
@@ -49,7 +50,7 @@ export default function Router() {
             <Route path="/replays/import" element={
               <ProtectedRoute>
                 <div className="main-content">
-                  <ImportReplay />
+                  <AudioLibrary />
                 </div>
               </ProtectedRoute>
             } />
@@ -95,10 +96,7 @@ export default function Router() {
 
             <Route path="/pricing" element={
               <div className="main-content">
-                <div className="text-white text-center">
-                  <h1 className="text-4xl font-bold mb-4">Pricing</h1>
-                  <p>lol not yet</p>
-                </div>
+                <Pricing />
               </div>
             } />
 

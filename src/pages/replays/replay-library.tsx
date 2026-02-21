@@ -4,15 +4,11 @@ import { Plus } from "lucide-react";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 
-// match exactly with replay table
+// match exactly with replay list API
 interface Replay {
   replay_id: number;
-  map_name: string; // TODO
-  match_date: string; // TODO
-  demo_fetch_time: string;
-  winner: boolean; // TODO
-  duration: string; // TODO
-  platform: string; // TODO
+  name: string | null;
+  fetch_time: string;
 }
 
 export function ReplayLibrary() {
@@ -66,7 +62,7 @@ export function ReplayLibrary() {
           <p className="mb-4">No replays found.</p>
           <Link to="/replays/import">
             <Button variant="outline" className="text-slate-300 border-slate-600 hover:text-white">
-              Upload your first match
+              Upload your first match!
             </Button>
           </Link>
         </div>
@@ -82,52 +78,29 @@ export function ReplayLibrary() {
 }
 
 function ReplayCard({ replay }: { replay: Replay }) {
-  const isWin = replay.winner === true; 
-  const borderColor = isWin ? "border-l-green-500" : "border-l-red-500";
-  const outcomeText = isWin ? "VICTORY" : "DEFEAT";
-  const outcomeColor = isWin ? "text-green-400" : "text-red-400";
-
   return (
     <Link to={`/replays/${replay.replay_id}`} className="block group">
       
-      <Card className={`bg-slate-800/50 border-slate-700 transition-all duration-200 
-        group-hover:bg-slate-800 group-hover:border-slate-600 
-        group-hover:shadow-lg border-l-4 ${borderColor}`}
-      >
-        <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4 p-4">
+      <Card className="bg-slate-800/50 border-slate-700 transition-all duration-200 group-hover:bg-slate-800 group-hover:border-slate-600 group-hover:shadow-lg border-l-4 border-l-blue-500">
+        <div className="flex items-center justify-between gap-4 p-4">
           <div className="flex flex-col">
-            <span className={`font-bold tracking-wider text-sm ${outcomeColor}`}>
-              {outcomeText}
-            </span>
-            <span className="text-white text-lg font-semibold capitalize group-hover:text-blue-400 transition-colors">
-              {replay.map_name || "Unknown Map"}
+            <span className="text-xs text-slate-400 uppercase tracking-wide">Fetch Time</span>
+            <span className="text-slate-200">
+              {replay.fetch_time
+                ? new Date(replay.fetch_time).toLocaleString()
+                : "N/A"}
             </span>
           </div>
 
-          <div className="flex flex-col md:items-center">
-            <span className="text-xs text-slate-400 uppercase tracking-wide">Platform</span>
-            <span className="text-slate-200">{replay.platform || "Competitive"}</span>
-          </div>
-
-          <div className="flex flex-col md:items-center">
-            <span className="text-xs text-slate-400 uppercase tracking-wide">Length</span>
-            <span className="text-slate-200">{replay.duration || "N/A"}</span>
-          </div>
-
-          <div className="flex flex-col md:items-end justify-center">
-            <span className="text-xs text-slate-500 mb-2">
-              {replay.demo_fetch_time ? new Date(replay.demo_fetch_time).toLocaleDateString() : "Recent"}
-            </span>
-            <button 
-              className="z-10 text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded transition-colors"
-              onClick={(e) => {
-                e.preventDefault();
-                console.log("Downloading replay...", replay.replay_id);
-              }}
-            >
-              Download .dem
-            </button>
-          </div>
+          <button
+            className="z-10 text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded transition-colors"
+            onClick={(e) => {
+              e.preventDefault();
+              console.log("Downloading replay...", replay.replay_id);
+            }}
+          >
+            Download .dem
+          </button>
         </div>
       </Card>
     </Link>
