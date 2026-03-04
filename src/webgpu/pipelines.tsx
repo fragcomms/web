@@ -1,8 +1,19 @@
 import playerShaderWGSL from "./shaders/player.wgsl?raw";
 console.log("WGSL source:\n---\n" + playerShaderWGSL + "\n---");
 
+export function createGlobalLayout(device: GPUDevice) {
+    return device.createBindGroupLayout({
+        entries: [
+            {
+                binding: 0,
+                visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+                buffer: {type: "uniform"},
+            },
+        ],
+    });
+}
 
-export function createPlayerPipeline(device: GPUDevice, format: GPUTextureFormat) {
+export function createPlayerPipeline(device: GPUDevice, format: GPUTextureFormat, globalLayout: GPUBindGroupLayout) {
     const module = device.createShaderModule({ code: playerShaderWGSL });
 
     const vertexBuffers: GPUVertexBufferLayout[] = [
@@ -24,18 +35,8 @@ export function createPlayerPipeline(device: GPUDevice, format: GPUTextureFormat
         },
     ];
 
-    const bindGroupLayout = device.createBindGroupLayout({
-        entries: [
-            {
-                binding: 0,
-                visibility: GPUShaderStage.VERTEX,
-                buffer: { type: "uniform" },
-            },
-        ],
-    });
-
     const pipelineLayout = device.createPipelineLayout({
-        bindGroupLayouts: [bindGroupLayout],
+        bindGroupLayouts: [globalLayout],
     });
 
     const pipeline = device.createRenderPipeline({
@@ -52,7 +53,7 @@ export function createPlayerPipeline(device: GPUDevice, format: GPUTextureFormat
                 format,
                 blend: {
                     color: {
-                        srcFactor: "src-alpha",
+                        srcFactor: "one",
                         dstFactor: "one-minus-src-alpha",
                         operation: "add",
                     },
@@ -69,6 +70,6 @@ export function createPlayerPipeline(device: GPUDevice, format: GPUTextureFormat
         },
     });
 
-    return { pipeline, bindGroupLayout };
+    return { pipeline };
 }
 
