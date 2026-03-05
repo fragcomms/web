@@ -5,7 +5,6 @@ import type { RenderFrame, RenderPlayer } from "./types";
 export class Renderer {
     private device: GPUDevice;
     private queue: GPUQueue;
-    private format: GPUTextureFormat;
     private context: GPUCanvasContext;
 
     private playerPipeline: GPURenderPipeline;
@@ -21,7 +20,6 @@ export class Renderer {
     constructor(
         device: GPUDevice,
         queue: GPUQueue,
-        format: GPUTextureFormat,
         context: GPUCanvasContext,
         playerPipeline: GPURenderPipeline,
         globalUniformBuffer: GPUBuffer,
@@ -32,7 +30,6 @@ export class Renderer {
     ) {
         this.device = device;
         this.queue = queue;
-        this.format = format;
         this.context = context;
         this.playerPipeline = playerPipeline;
         this.globalUniformBuffer = globalUniformBuffer;
@@ -99,7 +96,6 @@ export class Renderer {
         return new Renderer(
             device,
             queue,
-            format,
             context,
             pipeline,
             globalUniformBuffer,

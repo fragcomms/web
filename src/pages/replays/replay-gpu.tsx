@@ -47,7 +47,7 @@ export default function ReplayPage() {
 
         const elapsedSec = (performance.now() - t0) / 1000;
         const frame = player.getFrameAtElapsedSeconds(elapsedSec);
-        if (frame) renderer.render(frame);
+        if (frame) renderer.render(frame, elapsedSec);
 
         rafRef.current = requestAnimationFrame(loop);
       };
@@ -60,7 +60,11 @@ export default function ReplayPage() {
 
     return () => {
       cancelled = true;
-      renderer?.pause();
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      rendererRef.current = null;
+      playerRef.current = null;
     };
   }, []);
 
