@@ -1,15 +1,13 @@
 import { LoginForm } from "./login-form";
-import { AuthProvider } from "../context/AuthContext";
+
 import * as AuthContext from "../context/AuthContext";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import {describe, it, expect, vi, beforeEach, test } from "vitest";
 import '@testing-library/jest-dom';
-import { CardContent, CardDescription, CardFooter, CardHeader } from "../components/ui/card";
-import { Check } from "lucide-react";
+
 
 
 // MOCK DEPENDENCIES
-let mockUseAuth = vi.fn();
 vi.mock("../context/AuthContext");
 
 //mock user data
