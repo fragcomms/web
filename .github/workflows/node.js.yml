@@ -28,5 +28,21 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
+    - name: Lint (non-blocking)
+      id: lint
+      continue-on-error: true
+      run: npm run lint
+    - name: Report lint warning
+      if: steps.lint.outcome == 'failure'
+      run: echo "::warning title=Lint issues detected::npm run lint failed. Review lint output in this job."
     - run: npm run build --if-present
+    - name: Dev environment smoke check
+      run: |
+        set +e
+        timeout 45s npm run dev
+        code=$?
+        set -e
+        if [ "$code" -ne 0 ] && [ "$code" -ne 124 ]; then
+          exit "$code"
+        fi
     - run: npm run test --if-present
