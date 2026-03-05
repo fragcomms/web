@@ -5,9 +5,9 @@ name: Node.js CI
 
 on:
   push:
-    branches: [ "main", "workflow-test" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main", "workflow-test" ]
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -45,4 +45,4 @@ jobs:
         if [ "$code" -ne 0 ] && [ "$code" -ne 124 ]; then
           exit "$code"
         fi
-    - run: npm run test --if-present
+    - run: npm run test:ci
