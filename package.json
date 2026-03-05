@@ -9,7 +9,8 @@
     "frontend": "vite --host",
     "backend": "tsx backend/server.ts",
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
-    "test": "vitest run --reporter verbose"
+    "test": "vitest run --reporter verbose",
+    "test:ci": "vitest run"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
