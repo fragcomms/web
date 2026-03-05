@@ -1,4 +1,4 @@
-//@ts-expect-error react not req rn
+// @ts-expect-error react not req rn
 import React, { useState, useEffect } from "react";
 import { ClipboardIcon, CheckIcon } from "lucide-react";
 

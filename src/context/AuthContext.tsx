@@ -12,9 +12,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function AuthProvider({ children, value}: { children: ReactNode; value?: AuthContextType; }) {
+  const [user, setUser] = useState<User | null>(value?.user ??null);
+  const [isLoading, setIsLoading] = useState(value?.isLoading ?? true);
+
+  
 
   // Check auth on initial load (app startup)
   useEffect(() => {
@@ -22,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const checkAuthStatus = async () => {
+    if(value?.checkAuthStatus) return; // If value is provided, skip fetching
     try {
       // Replace after finish
       const response = await fetch(`${import.meta.env.VITE_API_URL}/profile`, {
@@ -42,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    if (value?.logout) return value.logout(); 
     try {
       await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, { 
         method: 'POST', 
@@ -54,7 +58,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, checkAuthStatus, logout }}>
+    <AuthContext.Provider value={{ 
+      user: value?.user ?? user,
+      isLoading: value?.isLoading ?? isLoading, 
+      checkAuthStatus: value?.checkAuthStatus ?? checkAuthStatus, 
+      logout: value?.logout ?? logout,
+      }}>
       {children}
     </AuthContext.Provider>
   );

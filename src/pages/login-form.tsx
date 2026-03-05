@@ -1,17 +1,21 @@
 // @ts-expect-error useeffect not req rn
 import { useState, useEffect } from "react";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import DiscordLogo from "../assets/discord-logo.svg?react";
-import { useAuth } from "../context/AuthContext"
+import { useAuth } from "../context/AuthContext";
 
-export function LoginForm() {
-  const { user, checkAuthStatus, logout } = useAuth()
 
-  const [ isLoading, setIsLoading ] = useState(false)
+interface LoginFormProps {
+  testLoading?: boolean; // for unit testing
+}
+
+export function LoginForm({ testLoading }: LoginFormProps) {
+  const { user, checkAuthStatus, logout } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleDiscordLogin = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
 
     try {
       const popup = window.open(
@@ -22,33 +26,34 @@ export function LoginForm() {
 
       const checkClosed = setInterval(() => {
         if (popup?.closed) {
-          clearInterval(checkClosed)
-          setIsLoading(false)
-          checkAuthStatus()
+          clearInterval(checkClosed);
+          setIsLoading(false);
+          checkAuthStatus();
         }
-      }, 1000)
+      }, 1000);
     } catch (e) {
-      console.error('Error with Discord login', e)
-      setIsLoading(false)
+      console.error('Error with Discord login', e);
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleFetchUserData = () => {
     window.open(`${import.meta.env.VITE_API_URL}/profile`, '_blank', 'width=600,height=700');
-  }
+  };
 
   const handleFetchConnections = () => {
     window.open(`${import.meta.env.VITE_API_URL}/connections`, '_blank', 'width=600,height=700');
-  }
+  };
+
+  // Determine button disabled state for testing
+  const buttonDisabled = isLoading || testLoading;
 
   if (user) {
     return (
       <Card className="w-full max-w-md bg-slate-800 border-slate-700">
         <CardHeader className="space-y-1">
           <CardTitle className="text-white">Welcome back!</CardTitle>
-          <CardDescription className="text-slate-400">
-            {user.username}
-          </CardDescription>
+          <CardDescription className="text-slate-400">{user.username}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center space-x-3">
@@ -80,14 +85,14 @@ export function LoginForm() {
         </CardContent>
         <CardFooter>
           <Button
-            onClick={logout} // Use the logout function from Context
+            onClick={logout}
             className="w-full bg-red-600 hover:bg-red-700 text-white"
           >
             Logout
           </Button>
         </CardFooter>
       </Card>
-    )
+    );
   }
 
   return (
@@ -102,10 +107,10 @@ export function LoginForm() {
         <Button
           onClick={handleDiscordLogin}
           className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white"
-          disabled={isLoading}
+          disabled={buttonDisabled}
         >
           <DiscordLogo className="w-5 h-5 mr-2 fill-white" />
-          {isLoading ? "Connecting..." : "Continue with Discord"}
+          {buttonDisabled ? "Connecting..." : "Continue with Discord"}
         </Button>
       </CardContent>
       <CardFooter>
@@ -114,5 +119,5 @@ export function LoginForm() {
         </p>
       </CardFooter>
     </Card>
-  )
+  );
 }
