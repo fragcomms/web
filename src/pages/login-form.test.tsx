@@ -1,11 +1,8 @@
 import { LoginForm } from "./login-form";
-
 import * as AuthContext from "../context/AuthContext";
 import { render, screen } from "@testing-library/react";
 import {describe, it, expect, vi, beforeEach} from "vitest";
 import '@testing-library/jest-dom';
-
-
 
 // MOCK DEPENDENCIES
 vi.mock("../context/AuthContext");
