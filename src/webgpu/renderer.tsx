@@ -44,9 +44,10 @@ export class Renderer {
 
         //simple orthographic viewProj (map 0..mapSize to clip)
         const half = 3000;
+        const aspect = canvas.width / canvas.height;
         const viewProj = new Float32Array([
-            1 / half,0,     0, 0,
-            0, -1 / half,     0, 0,
+            (1 / half) / aspect,0,     0, 0,
+            0, (-1 / half),     0, 0,
             0,       0,     1, 0,
             0,      0,     0, 1,
         ]);
