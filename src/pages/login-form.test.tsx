@@ -50,6 +50,7 @@ vi.mock("../components/ui/card", () => ({
     CardTitle: (props: any) => <h2 {...props} />,
 }));
 
+// TESTS
 describe("LoginForm", () => {
     beforeEach(() => {
         vi.clearAllMocks();

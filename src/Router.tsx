@@ -5,6 +5,7 @@ import { LoginForm } from './pages/login-form'
 import { ReplayLibrary } from './pages/replays/replay-library'
 import { ReplayDetails } from './pages/replays/replay-details';
 import { AudioLibrary } from './pages/replays/replay-import';
+import  AudioDelivery  from './pages/replays/audio-delivery';
 import GPUTest from './pages/replays/replay-gpu'
 import Home from './pages/Home'
 import InviteBot from './pages/invite-bot'
@@ -63,6 +64,15 @@ export default function Router() {
                 </div>
               </ProtectedRoute>
             } />
+
+            {/* protected */}
+            <Route path="/replays/audio-delivery" element={
+              <ProtectedRoute>
+                <div className="main-content">
+                  <AudioDelivery />
+                </div>
+              </ProtectedRoute>
+            } />
             
             {/* protected */}
             <Route path="/replays/:id" element={
@@ -105,6 +115,8 @@ export default function Router() {
                 <LoginForm />
               </div>
             } />
+
+            
           </Routes>
         </div>
       </div>
