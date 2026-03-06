@@ -1,4 +1,4 @@
-import type { ReplayJSON, TimelineTick, TimelinePlayer, RenderFrame, RenderPlayer, Team, SteamID } from "./types";
+import type { ReplayJSON, TimelineTick, TimelinePlayer, RenderFrame, RenderPlayer, RenderTracer, Team, SteamID, WeaponFireEvent } from "./types";
 
 type RosterInfo = { steamid: SteamID; team: Team; name: string };
 
@@ -13,12 +13,15 @@ export class ReplayPlayer {
 
     private rosterBySid = new Map<number, RosterInfo>();
 
+    private weaponFire: WeaponFireEvent[] = [];
+
     setReplay(data: ReplayJSON) {
         const tl = data.timeline;
         if (!Array.isArray(tl)) {
             console.error("Replay JSON missing timeline array. Keys: ", Object.keys(data as any));
             this.timeline = [];
             this.tickNums = [];
+            this.weaponFire = [];
             this.startTick = 0;
             this.elapsedSec = 0;
             this.rosterBySid.clear();
@@ -37,6 +40,9 @@ export class ReplayPlayer {
             if(!Number.isFinite(sidNum)) continue;
             this.rosterBySid.set(sidNum, { steamid: steamidStr, team: info.team, name: info.name });
         }
+
+        this.weaponFire = (data.events?.weapon_fire ?? []).slice();
+        this.weaponFire.sort((a, b) => a.tick - b.tick);
 
     }
 
@@ -98,7 +104,9 @@ export class ReplayPlayer {
 
     private makeRenderFrame(targetTick: number, prev: TimelineTick, next: TimelineTick): RenderFrame {
         if (prev.tick === next.tick) {
-            return { tick: prev.tick, players: this.tickToRenderPlayers(prev) };
+            const players = this.tickToRenderPlayers(prev);
+            const { tracers } = this.buildTracersForTick(prev.tick, players);
+            return { tick: prev.tick, players, tracers  };
         }
 
         const denom = next.tick - prev.tick;
@@ -139,7 +147,8 @@ export class ReplayPlayer {
             });
         }
 
-        return { tick: targetTick, players: out };
+        const { tracers } = this.buildTracersForTick(targetTick, out);
+        return { tick: targetTick, players: out, tracers };
     }
 
     private tickToRenderPlayers(tick: TimelineTick): RenderPlayer[] {
@@ -162,6 +171,55 @@ export class ReplayPlayer {
         return out;
     }
 
+    private buildTracersForTick(
+        targetTick: number,
+        players: RenderPlayer[],
+    ): { tracers: RenderTracer[] }{
+        const tracerLifetimeSec = 0.12;
+        const lifetimeTicks = tracerLifetimeSec * this.ticksPerSecond;
+        const minTick = targetTick - lifetimeTicks;
+
+        const poseBySteamid = new Map<SteamID, RenderPlayer>();
+        for (const p of players) poseBySteamid.set(p.steamid, p);
+
+        const startIdx = lowerBoundWeaponFire(this.weaponFire, minTick);
+
+        const tracers: RenderTracer[] = [];
+        for (let i = startIdx; i < this.weaponFire.length; i++){
+            const e = this.weaponFire[i];
+            if (e.tick > targetTick) break;
+
+            const shooter = poseBySteamid.get(e.sid);
+            if(!shooter || !shooter.alive) continue;
+
+            const ageTicks = targetTick - e.tick;
+            const life = 1 - ageTicks/lifetimeTicks;
+            if (life <= 0) continue;
+
+            const len = tracerLengthForWeapon(e.weapon);
+            const rotRad = shooter.rot * (Math.PI / 180);
+
+            const dx = Math.cos(rotRad);
+            const dy = Math.sin(rotRad);
+
+            const muzzle = 24;
+
+            const x0 = shooter.x + dx * muzzle;
+            const y0 = shooter.y + dy * muzzle;
+            const x1 = x0 + dx * len;
+            const y1 = y0 + dy * len;
+
+            tracers.push({
+                x0, y0, x1, y1, 
+                life,
+                team: shooter.team,
+            });
+        }
+
+        return { tracers };
+    }
+    
+
 }
 
 function lerpAngleDeg(aDeg: number, bDeg: number, t: number): number{
@@ -180,4 +238,23 @@ function wrapDeg(d: number): number{
     x = ((x % 360) + 360) % 360;
     if (x >= 180) x -= 360;
     return x;
+}
+
+function lowerBoundWeaponFire (arr: { tick: number }[], tick: number): number {
+    let lo = 0, hi = arr.length;
+    while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (arr[mid].tick < tick) lo = mid + 1;
+        else hi = mid;
+    }
+    return lo;
+}
+
+function tracerLengthForWeapon(weapon: string): number{
+    if (weapon.includes("awp") || weapon.includes("ssg08")) return 1800;
+    if (weapon.includes("ak47") || weapon.includes("m4")) return 1400;
+    if (weapon.includes("deagle")) return 1100;
+    if (weapon.includes("usp") || weapon.includes("glock") || weapon.includes("p250")) return 900;
+    if (weapon.includes("knife")) return 150;
+    return 1200;
 }

@@ -35,10 +35,21 @@ export type TimelineTick = {
     p: TimelinePlayer[];
 };
 
+export type WeaponFireEvent = {
+    tick: number;
+    sid: SteamID;
+    weapon: string;
+};
+
+export type ReplayEvents = {
+    weapon_fire?: WeaponFireEvent[];
+};
+
 export type ReplayJSON = {
     meta: ReplayMeta;
     players: ReplayRoster;
     timeline: TimelineTick[];
+    events?: ReplayEvents;
 };
 
 export type RenderPlayer = {
@@ -50,9 +61,17 @@ export type RenderPlayer = {
     team: Team;
 }
 
+export type RenderTracer = {
+    x0: number; y0: number;
+    x1: number; y1: number;
+    life: number;
+    team: Team;
+};
+
 export type RenderFrame = {
     tick: number;
     players: RenderPlayer[];
+    tracers: RenderTracer[];
 };
 
 //maybe defunct

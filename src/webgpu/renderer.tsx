@@ -1,8 +1,9 @@
 import { initWebGPU } from "./gpuContext";
-import { createGlobalLayout, createPlayerPipeline, createVisionPipeline  } from "./pipelines";
+import { createGlobalLayout, createPlayerPipeline, createVisionPipeline, createTracerPipeline  } from "./pipelines";
 import type { RenderFrame } from "./types";
 import { PlayerRenderer } from "./playerRenderer";
 import { VisionRenderer } from "./visionRenderer";
+import { TracerRenderer } from "./tracerRenderer"
 
 export class Renderer {
     private device: GPUDevice;
@@ -13,6 +14,7 @@ export class Renderer {
 
     private playerRenderer: PlayerRenderer;
     private visionRenderer: VisionRenderer;
+    private tracerRenderer: TracerRenderer;
 
     private timeVec4 = new Float32Array(4);
 
@@ -22,7 +24,8 @@ export class Renderer {
         context: GPUCanvasContext,
         globalUniformBuffer: GPUBuffer,
         playerRenderer: PlayerRenderer,
-        visionRenderer: VisionRenderer
+        visionRenderer: VisionRenderer,
+        tracerRenderer: TracerRenderer
     ) {
         this.device = device;
         this.queue = queue;
@@ -30,6 +33,7 @@ export class Renderer {
         this.globalUniformBuffer = globalUniformBuffer;
         this.playerRenderer = playerRenderer;
         this.visionRenderer = visionRenderer;
+        this.tracerRenderer = tracerRenderer;
     }
 
     static async create(canvas: HTMLCanvasElement): Promise<Renderer> {
@@ -39,7 +43,7 @@ export class Renderer {
 
         const { pipeline: playerPipeline } = createPlayerPipeline(device, format, globalLayout);
         const { pipeline: visionPipeline } = createVisionPipeline(device, format, globalLayout);
-
+        const { pipeline: tracerPipeline } = createTracerPipeline(device, format, globalLayout);
 
 
         //simple orthographic viewProj (map 0..mapSize to clip)
@@ -91,7 +95,6 @@ export class Renderer {
         });
 
         const playerRenderer = new PlayerRenderer(
-            device,
             queue,
             playerPipeline,
             globalBindGroup,
@@ -134,13 +137,38 @@ export class Renderer {
             maxVisionInstances,
         );
 
+        const tracerQuadVertexBuffer = device.createBuffer({
+            size: unitQuadVerts.byteLength,
+            usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+            mappedAtCreation: true,
+        });
+        new Float32Array(tracerQuadVertexBuffer.getMappedRange()).set(unitQuadVerts);
+        tracerQuadVertexBuffer.unmap();
+
+        const maxTracerInstances = 256;
+        const tracerInstanceStrideBytes = 8 * 4;
+        const tracerInstanceBuffer = device.createBuffer({
+            size: maxTracerInstances * tracerInstanceStrideBytes,
+            usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+        });
+
+        const tracerRenderer = new TracerRenderer(
+            queue,
+            tracerPipeline,
+            globalBindGroup,
+            tracerQuadVertexBuffer,
+            tracerInstanceBuffer,
+            maxTracerInstances
+        );
+
         return new Renderer(
             device,
             queue,
             context,
             globalUniformBuffer,
             playerRenderer,
-            visionRenderer
+            visionRenderer,
+            tracerRenderer
         );
     }
 
@@ -153,6 +181,7 @@ export class Renderer {
 
         const visionCount = this.visionRenderer.upload(frame.players);
         const playerCount = this.playerRenderer.upload(frame.players);
+        const tracerCount = this.tracerRenderer.upload(frame.tracers);
 
         const encoder = this.device.createCommandEncoder();
         const textureView = this.context.getCurrentTexture().createView();
@@ -167,6 +196,7 @@ export class Renderer {
         });
 
         this.visionRenderer.draw(pass, visionCount);
+        this.tracerRenderer.draw(pass,tracerCount);
         this.playerRenderer.draw(pass, playerCount);
 
         pass.end();
