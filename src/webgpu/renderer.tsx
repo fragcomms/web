@@ -1,42 +1,35 @@
 import { initWebGPU } from "./gpuContext";
-import { createGlobalLayout, createPlayerPipeline  } from "./pipelines";
-import type { RenderFrame, RenderPlayer } from "./types";
+import { createGlobalLayout, createPlayerPipeline, createVisionPipeline  } from "./pipelines";
+import type { RenderFrame } from "./types";
+import { PlayerRenderer } from "./playerRenderer";
+import { VisionRenderer } from "./visionRenderer";
 
 export class Renderer {
     private device: GPUDevice;
     private queue: GPUQueue;
     private context: GPUCanvasContext;
 
-    private playerPipeline: GPURenderPipeline;
-
     private globalUniformBuffer: GPUBuffer;
-    private globalBindGroup: GPUBindGroup;
 
-    private quadVertexBuffer: GPUBuffer;
-    private playerInstanceBuffer: GPUBuffer;
+    private playerRenderer: PlayerRenderer;
+    private visionRenderer: VisionRenderer;
 
-    private maxPlayerInstances: number = 64;
+    private timeVec4 = new Float32Array(4);
 
     constructor(
         device: GPUDevice,
         queue: GPUQueue,
         context: GPUCanvasContext,
-        playerPipeline: GPURenderPipeline,
         globalUniformBuffer: GPUBuffer,
-        globalBindGroup: GPUBindGroup,
-        quadVertexBuffer: GPUBuffer,
-        playerInstanceBuffer: GPUBuffer,
-        maxPlayerInstances: number
+        playerRenderer: PlayerRenderer,
+        visionRenderer: VisionRenderer
     ) {
         this.device = device;
         this.queue = queue;
         this.context = context;
-        this.playerPipeline = playerPipeline;
         this.globalUniformBuffer = globalUniformBuffer;
-        this.globalBindGroup = globalBindGroup;
-        this.quadVertexBuffer = quadVertexBuffer;
-        this.playerInstanceBuffer = playerInstanceBuffer;
-        this.maxPlayerInstances = maxPlayerInstances;
+        this.playerRenderer = playerRenderer;
+        this.visionRenderer = visionRenderer;
     }
 
     static async create(canvas: HTMLCanvasElement): Promise<Renderer> {
@@ -44,7 +37,10 @@ export class Renderer {
 
         const globalLayout = createGlobalLayout(device);
 
-        const { pipeline } = createPlayerPipeline(device, format, globalLayout);
+        const { pipeline: playerPipeline } = createPlayerPipeline(device, format, globalLayout);
+        const { pipeline: visionPipeline } = createVisionPipeline(device, format, globalLayout);
+
+
 
         //simple orthographic viewProj (map 0..mapSize to clip)
         const half = 3000;
@@ -87,79 +83,90 @@ export class Renderer {
         quadVertexBuffer.unmap();
 
         const maxPlayerInstances = 64;
-        const instanceStrideBytes = (2 + 3) * 4;
+        const instanceStrideBytes = 5 * 4;
         const playerInstanceBuffer = device.createBuffer({
             size: maxPlayerInstances * instanceStrideBytes,
             usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
         });
 
-        return new Renderer(
+        const playerRenderer = new PlayerRenderer(
             device,
             queue,
-            context,
-            pipeline,
-            globalUniformBuffer,
+            playerPipeline,
             globalBindGroup,
             quadVertexBuffer,
             playerInstanceBuffer,
             maxPlayerInstances
         );
+
+        //for vision
+        const unitQuadVerts = new Float32Array([
+            -1, -1,
+            1, -1,
+            -1, 1,
+            -1, 1,
+            1, -1,
+            1, 1,
+        ]);
+
+        const visionQuadVertexBuffer = device.createBuffer({
+            size: unitQuadVerts.byteLength,
+            usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+            mappedAtCreation: true,
+        });
+        new Float32Array(visionQuadVertexBuffer.getMappedRange()).set(unitQuadVerts);
+        visionQuadVertexBuffer.unmap();
+
+        const maxVisionInstances = 64;
+        const visionInstanceStrideBytes = 7 * 4;
+        const visionInstanceBuffer = device.createBuffer({
+            size: maxVisionInstances * visionInstanceStrideBytes,
+            usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+        });
+
+        const visionRenderer = new VisionRenderer(
+            queue,
+            visionPipeline,
+            globalBindGroup,
+            visionQuadVertexBuffer,
+            visionInstanceBuffer,
+            maxVisionInstances,
+        );
+
+        return new Renderer(
+            device,
+            queue,
+            context,
+            globalUniformBuffer,
+            playerRenderer,
+            visionRenderer
+        );
     }
 
     render(frame: RenderFrame, timeSec: number) {
-        this.queue.writeBuffer(this.globalUniformBuffer, 64, new Float32Array([timeSec]));
-        const playerCount = this.uploadPlayers(frame.players);
-        this.drawPlayers(playerCount);
-    }
+        this.timeVec4[0] = timeSec;
+        this.timeVec4[1] = 0;
+        this.timeVec4[2] = 0;
+        this.timeVec4[3] = 0;
+        this.queue.writeBuffer(this.globalUniformBuffer, 64, this.timeVec4);
 
-    private uploadPlayers(players: RenderPlayer[]): number {
-        const count = Math.min(players.length, this.maxPlayerInstances);
-        const strideFloats = 5;
-        const instanceData = new Float32Array(count * strideFloats);
+        const visionCount = this.visionRenderer.upload(frame.players);
+        const playerCount = this.playerRenderer.upload(frame.players);
 
-        const ctR = 0.2, ctG = 0.6, ctB = 1.0; //counterTerrorist RGB
-        const tR = 1.0, tG = 0.4, tB = 0.2; //terrorist RGB
-        const dim = 0.2;
-
-        for (let i = 0; i < count; i++) {
-            const p = players[i];
-            const base = i * strideFloats;
-
-            instanceData[base + 0] = p.x;
-            instanceData[base + 1] = p.y;
-
-            const isCT = p.team === 3;
-            const r = isCT ? ctR : tR;
-            const g = isCT ? ctG : tG;
-            const b = isCT ? ctB : tB;
-
-            instanceData[base + 2] = p.alive ? r : dim;
-            instanceData[base + 3] = p.alive ? g: dim;
-            instanceData[base + 4] = p.alive ? b : dim;
-        }
-
-        this.queue.writeBuffer(this.playerInstanceBuffer, 0, instanceData);
-        return count;
-    }
-
-    private drawPlayers(instanceCount: number) {
         const encoder = this.device.createCommandEncoder();
         const textureView = this.context.getCurrentTexture().createView();
-        
+
         const pass = encoder.beginRenderPass({
             colorAttachments: [{
                 view: textureView,
-                clearValue: { r: 0.05, g: 0.05, b: 0.08, a: 1},
+                clearValue: { r: 0.05, g: 0.05, b: 0.06, a: 1},
                 loadOp: "clear",
                 storeOp: "store",
             }],
         });
 
-        pass.setPipeline(this.playerPipeline);
-        pass.setBindGroup(0, this.globalBindGroup);
-        pass.setVertexBuffer(0, this.quadVertexBuffer);
-        pass.setVertexBuffer(1, this.playerInstanceBuffer);
-        pass.draw(6, instanceCount, 0, 0);
+        this.visionRenderer.draw(pass, visionCount);
+        this.playerRenderer.draw(pass, playerCount);
 
         pass.end();
         this.queue.submit([encoder.finish()]);

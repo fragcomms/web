@@ -1,13 +1,68 @@
 export type Team = 2 | 3; //team number either 2 or 3 for some reason
-
 export type SteamID = string;
 
+export type ReplayMeta = {
+    filename: string;
+    map: string;
+    interval: number;
+    length_ticks: number;
+    winner_team: Team;
+    winner_name: string;
+    won_by_team_that_started_as: string;
+    score_t: number;
+    score_ct: number;
+    final_score: string;
+};
+
+export type ReplayRosterEntry = {
+    name: string;
+    team: Team;
+};
+
+export type ReplayRoster = Record<SteamID, ReplayRosterEntry>;
+
+export type TimelinePlayer = {
+    sid: number;
+    hp: number;
+    x: number;
+    y: number;
+    rot: number;
+    p: number;
+};
+
+export type TimelineTick = {
+    tick: number;
+    p: TimelinePlayer[];
+};
+
+export type ReplayJSON = {
+    meta: ReplayMeta;
+    players: ReplayRoster;
+    timeline: TimelineTick[];
+};
+
+export type RenderPlayer = {
+    steamid: SteamID;
+    x: number;
+    y: number;
+    rot: number;
+    alive: boolean;
+    team: Team;
+}
+
+export type RenderFrame = {
+    tick: number;
+    players: RenderPlayer[];
+};
+
+//maybe defunct
 export type PlayerState = {
     steamid: SteamID; 
     name: string;
 
     x: number;
     y: number;
+    rot: number;
 
     alive: boolean;
     team: Team;
@@ -66,21 +121,3 @@ export type FlashEvent = {
   entityid: number;
 };
 
-export type ReplayJSON = {
-  ticks: TickSnapshot[];
-  shots: ShotEvent[];
-  hits: HitEvent[];
-  flashes: FlashEvent[];
-};
-
-export type RenderPlayer = {
-    x: number;
-    y: number;
-    alive: boolean;
-    team: Team;
-}
-
-export type RenderFrame = {
-    tick: number;
-    players: RenderPlayer[];
-};
