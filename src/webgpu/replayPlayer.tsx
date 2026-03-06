@@ -6,7 +6,7 @@ export class ReplayPlayer {
     private timeline: TimelineTick[] = [];
     private tickNums: number[] = [];
     private startTick = 0;
-
+    private endTick = 0;
     private elapsedSec = 0; 
 
     ticksPerSecond = 64;
@@ -23,6 +23,7 @@ export class ReplayPlayer {
             this.tickNums = [];
             this.weaponFire = [];
             this.startTick = 0;
+            this.endTick = 0;
             this.elapsedSec = 0;
             this.rosterBySid.clear();
             return;
@@ -31,6 +32,7 @@ export class ReplayPlayer {
         this.timeline = tl;
         this.tickNums = this.timeline.map((t) => t.tick);
         this.startTick = this.timeline.length ? this.timeline[0].tick : 0;
+        this.endTick = this.timeline.length ? this.timeline[this.timeline.length - 1].tick : 0;
         this.elapsedSec = 0;
 
         this.rosterBySid.clear();
@@ -46,19 +48,32 @@ export class ReplayPlayer {
 
     }
 
+    getDurationSeconds(): number {
+        if(this.endTick <= this.startTick){
+            return 0;
+        }
+        return (this.endTick - this.startTick) / this.ticksPerSecond;
+    }
+
+    getCurrentElapsedSeconds(): number {
+        return this.elapsedSec;
+    }
+
     reset() {
         this.elapsedSec = 0;
     }
 
     advance(dtSec: number): RenderFrame | null {
         if (dtSec > 0){
-            this.elapsedSec += dtSec;
+            const duration = this.getDurationSeconds();
+            this.elapsedSec = Math.min(this.elapsedSec + dtSec, duration);
         }
         return this.getFrameAtElapsedSeconds(this.elapsedSec);
     }
 
     seekToElapsedSeconds(sec: number): RenderFrame | null {
-        this.elapsedSec = Math.max(0, sec);
+        const duration = this.getDurationSeconds();
+        this.elapsedSec = Math.max(0, Math.min(sec,duration));
         return this.getFrameAtElapsedSeconds(this.elapsedSec);
     }
 
