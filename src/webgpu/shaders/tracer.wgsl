@@ -47,11 +47,35 @@ fn vs_main(
 @fragment
 fn fs_main(input: VSOut) -> @location(0) vec4<f32> {
     let side = abs(input.uv.y);
-    let w = fwidth(side);
-    let edgeMask = 1.0 - smoothstep(1.0 - w, 1.0 + w, side);
+    let along = (input.uv.x + 1.0) * 0.5;
 
-    let headFade = 0.85 + 0.15 * ((input.uv.x + 1.0) * 0.5);
-    let alpha = edgeMask * input.life * headFade * 0.9;
+    let wSide = fwidth(side);
 
-    return vec4<f32>(input.color * alpha, alpha);
+    //bright inner core
+    let core = 1.0 - smoothstep(0.04 - wSide, 0.16 + wSide, side);
+
+    //wider outer glow
+    let glow1 = 1.0 - smoothstep(0.08 - wSide, 1.2 + wSide, side);
+    let glow2 = 1.0 - smoothstep(0.2 - wSide, 1.8 + wSide, side);
+
+    //subtle animated shimmer
+    let shimmer = 0.5 + 0.5 * sin(along * 30.0 - uniforms.timeSec * 35.0);
+    let liquidGlow = glow2 * (0.55 + 0.45 * shimmer);
+
+    //stronger toward the head
+    let headBoost = 0.6 + 0.8 * along;
+
+    let alpha = (core * 1.2 + glow1 * 0.75 + liquidGlow * 0.55) * input.life * headBoost;
+
+    let coreColor = input.color;
+
+    let glowColor1 = mix(input.color, vec3<f32>(1, 0.0, 0.0), 0.55);
+    let glowColor2 = mix(input.color, vec3<f32>(1, 0.0, 0.0), 0.85);
+
+    let finalColor = 
+        coreColor * (core * 2.2) + 
+        glowColor1 * (glow1 * 1.2) +
+        glowColor2 * (liquidGlow * 0.8);
+
+    return vec4<f32>(finalColor * alpha, alpha);
 }

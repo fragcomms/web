@@ -190,7 +190,7 @@ export class ReplayPlayer {
         targetTick: number,
         players: RenderPlayer[],
     ): { tracers: RenderTracer[] }{
-        const tracerLifetimeSec = 0.12;
+        const tracerLifetimeSec = 0.15;
         const lifetimeTicks = tracerLifetimeSec * this.ticksPerSecond;
         const minTick = targetTick - lifetimeTicks;
 
