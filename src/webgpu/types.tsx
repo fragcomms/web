@@ -41,8 +41,20 @@ export type WeaponFireEvent = {
     weapon: string;
 };
 
+export type RoundStartEvent = {
+    tick: number;
+};
+
+export type RoundEndEvent = {
+    tick: number;
+    winner?: string;
+    reason?: string;
+};
+
 export type ReplayEvents = {
     weapon_fire?: WeaponFireEvent[];
+    round_start?: RoundStartEvent[];
+    round_end?: RoundEndEvent[];
 };
 
 export type ReplayJSON = {
