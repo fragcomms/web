@@ -1,4 +1,6 @@
+// audio delivery test page, only accessible through [URL]/replays/audio-delivery
 import {useRef} from "react";
+import { Button } from "../../components/ui/button";
 
 export default function AudioDelivery() {
 
@@ -11,15 +13,18 @@ export default function AudioDelivery() {
     };
 
     return (
-        <div style={{textAlign:"center", marginTop: "100px" }}>
-            <button onClick={playAudio}>
-                Play Audio
-            </button>
+        <div className = "min-h-screen text-white flex">
+            <div style={{textAlign:"center", marginTop: "100px" }}>
+                <Button onClick={playAudio}>
+                    Play Audio
+                </Button>
 
-            <audio 
-                ref= {audioRef} 
-                src= "/combined_1765180639387_098f3f51.wav" 
-                preload = "auto" />
+                <audio 
+                    ref= {audioRef} 
+                    src= "/combined_1765180639387_098f3f51.wav" 
+                    preload = "auto" />
+            </div>
         </div>
+        
     );
 }
