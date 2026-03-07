@@ -3,6 +3,7 @@ import { NodeSSH } from 'node-ssh';
 import pool from '../config/db.js';
 import { ensureAuth } from '../middleware/authentication.js';
 import { DiscordProfile as User } from '../types/user.js';
+import {streamMkaToWav} from '../audiosplit.js'
 
 const router = Router();
 
@@ -26,8 +27,8 @@ router.get("/", ensureAuth, async (req, res) => {
   }
 });
 
-// /api/audio/id/stream
-router.get("/:id/stream", ensureAuth, async (req, res) => {
+// /api/audio/id/stream/:trackIndex
+router.get("/:id/stream/:trackIndex", ensureAuth, async (req, res) => {
   const user = req.user as User;
   if (!user) return res.status(401).send("Unauthorized");
   const ssh = new NodeSSH();
@@ -42,7 +43,7 @@ router.get("/:id/stream", ensureAuth, async (req, res) => {
     if (result.rows.length === 0) return res.status(404).send("Audio not found");
     
     //fetching binary data from backend machine
-    const remotePath = result.rows[0].path;
+    const remotePath = result.rows[0].file_path;
     await ssh.connect({
       host: process.env.REMOTE_AUDIO_HOST,
       username: process.env.REMOTE_AUDIO_USER,
@@ -51,8 +52,18 @@ router.get("/:id/stream", ensureAuth, async (req, res) => {
 
     const sftp = await ssh.requestSFTP();
     const stream = sftp.createReadStream(remotePath);
-    res.setHeader('Content-Type', 'audio/mka');
-    stream.pipe(res);
+
+    const trackIndexStr = Array.isArray(req.params.trackIndex)
+      ? req.params.trackIndex[0] // if array, take first index
+      : req.params.trackIndex;
+
+    const trackIndex = parseInt(trackIndexStr, 10);
+
+    await streamMkaToWav(stream, trackIndex, res);
+
+
+
+  
 
     // clean up when finished
     stream.on('close', () => {
@@ -68,6 +79,61 @@ router.get("/:id/stream", ensureAuth, async (req, res) => {
   } catch (e) {
     console.error(e);
     ssh.dispose(); // make sure ssh is closed
+    res.status(500).send("Server Error");
+  }
+});
+
+// /api/audio/id/tracks
+router.get("/:id/tracks", ensureAuth, async (req, res) => {
+  const user = req.user as User;
+  if (!user) return res.status(401).send("Unauthorized");
+
+  const ssh = new NodeSSH();
+
+  try {
+
+    const query = `
+      SELECT a.file_path
+      FROM audios a
+      JOIN media_access ma ON a.audio_id = ma.audio_id
+      WHERE a.audio_id = $1 AND ma.discord_id = $2`;
+
+    const result = await pool.query(query, [req.params.id, user.discord_id]);
+
+    if (result.rows.length === 0)
+      return res.status(404).send("Audio not found");
+
+    const remotePath = result.rows[0].file_path;
+
+    await ssh.connect({
+      host: process.env.REMOTE_AUDIO_HOST,
+      username: process.env.REMOTE_AUDIO_USER,
+      password: process.env.REMOTE_AUDIO_PASS,
+    });
+
+    const ffprobeCmd = `
+      ffprobe -v quiet
+      -show_entries stream=index,codec_type
+      -of json
+      "${remotePath}"
+      `;
+
+    const resultProbe = await ssh.execCommand(ffprobeCmd);
+
+    ssh.dispose();
+
+    const data = JSON.parse(resultProbe.stdout);
+
+    const tracks = data.streams.filter(
+      (s: any) => s.codec_type === "audio"
+
+    );
+
+    res.json(tracks);
+
+  } catch (e) {
+    console.error(e);
+    ssh.dispose();
     res.status(500).send("Server Error");
   }
 });
@@ -89,7 +155,7 @@ router.get("/:id/transcription", ensureAuth, async (req, res) => {
     if (result.rows.length === 0) return res.status(404).send("Transcript not found");
     
     //fetching binary data from backend machine
-    const remotePath = result.rows[0].path;
+    const remotePath = result.rows[0].file_path;
     await ssh.connect({
       host: process.env.REMOTE_AUDIO_HOST,
       username: process.env.REMOTE_AUDIO_USER,

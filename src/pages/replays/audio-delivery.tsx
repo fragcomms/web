@@ -1,30 +1,35 @@
-// audio delivery test page, only accessible through [URL]/replays/audio-delivery
-import {useRef} from "react";
-import { Button } from "../../components/ui/button";
+import { useEffect, useState } from "react";
 
 export default function AudioDelivery() {
+  const [tracks, setTracks] = useState<number[]>([]);
+  const audioId = 1; // change to real audio id
 
-    const audioRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    async function fetchTracks() {
+      const res = await fetch(`/api/audio/${audioId}/tracks`);
+      const data = await res.json();
+      setTracks(data.map((t: any) => t.index));
+    }
 
-    const playAudio = () => {
-        audioRef.current?.play().catch ((err) => {
-            console.error("Error playing audio:", err);
-        });
-    };
+    fetchTracks();
+  }, []);
 
-    return (
-        <div className = "min-h-screen text-white flex">
-            <div style={{textAlign:"center", marginTop: "100px" }}>
-                <Button onClick={playAudio}>
-                    Play Audio
-                </Button>
+  return (
+    <div>
+      <h1>Audio Tracks</h1>
 
-                <audio 
-                    ref= {audioRef} 
-                    src= "/combined_1765180639387_098f3f51.wav" 
-                    preload = "auto" />
-            </div>
+      {tracks.map((track) => (
+        <div key={track}>
+          <p>Track {track}</p>
+
+          <audio controls>
+            <source
+              src={`/api/audio/${audioId}/stream/${track}`}
+              type="audio/wav"
+            />
+          </audio>
         </div>
-        
-    );
+      ))}
+    </div>
+  );
 }
