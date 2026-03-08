@@ -17,9 +17,7 @@ export function PricingTierCard({
 }: PricingTierCardProps) {
   return (
     <div
-      className={`bg-white relative rounded-[8px] size-full ${
-        highlighted ? "ring-2 ring-[#2c2c2c] shadow-lg" : ""
-      }`}
+      className={`bg-white relative rounded-[8px] size-full ${highlighted ? "ring-2 ring-[#2c2c2c] shadow-lg" : ""}`}
       data-name="Pricing Card"
     >
       <div className="content-stretch flex flex-col gap-[24px] items-center min-w-[inherit] overflow-clip p-[32px] relative rounded-[inherit] size-full">

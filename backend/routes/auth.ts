@@ -1,6 +1,6 @@
-import { Router } from 'express';
-import passport from 'passport';
-import { UserWithToken as User } from '../types/user.js';
+import { Router } from "express";
+import passport from "passport";
+import { UserWithToken as User } from "../types/user.js";
 
 const router = Router();
 
@@ -8,7 +8,7 @@ const router = Router();
 router.get("/discord", passport.authenticate("discord"));
 
 // /api/discord/callback
-router.get("/discord/callback", passport.authenticate("discord", { failureRedirect: "/"}), (req, res) => {
+router.get("/discord/callback", passport.authenticate("discord", { failureRedirect: "/" }), (req, res) => {
   const user = req.user as User;
   res.send(`
     <html>
@@ -19,8 +19,8 @@ router.get("/discord/callback", passport.authenticate("discord", { failureRedire
             setTimeout(() => window.close(), 5000);
         </script>
       </body>
-    </html>`)
-})
+    </html>`);
+});
 
 // /api/logout
 router.post("/logout", (req, res, next) => {
@@ -28,10 +28,10 @@ router.post("/logout", (req, res, next) => {
     if (err) return next(err);
     req.session.destroy((err) => {
       if (err) return next(err);
-      res.clearCookie('connect.sid');
+      res.clearCookie("connect.sid");
       res.send({ status: "Logged out" });
-    })
-  })
-})
+    });
+  });
+});
 
 export default router;

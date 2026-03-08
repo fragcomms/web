@@ -1,6 +1,6 @@
+import { Filter, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Filter, Search } from "lucide-react";
 import { AudioItem } from "../../components/AudioItem";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -73,7 +73,7 @@ export function AudioLibrary() {
 
       if (!res.ok) {
         const payload = (await res.json().catch(() => null)) as
-          | { error?: string; details?: string }
+          | { error?: string; details?: string; }
           | null;
 
         throw new Error(
@@ -94,7 +94,7 @@ export function AudioLibrary() {
     [audio.audio_id, audio.creation_time, String(audio.sampling_rate)]
       .join(" ")
       .toLowerCase()
-      .includes(search.toLowerCase()),
+      .includes(search.toLowerCase())
   );
 
   const selectedAudio = selectedAudioId
@@ -109,8 +109,7 @@ export function AudioLibrary() {
 
   return (
     <div className="min-h-screen text-white">
-
-        {/* Main Content */}
+      {/* Main Content */}
       <div className="mx-auto max-w-screen-2xl px-6 py-8">
         {/* Header */}
         <div className="mb-8 flex items-center justify-center text-center">
@@ -149,20 +148,16 @@ export function AudioLibrary() {
             {/* Audio List */}
             <div className="space-y-4">
               {/* Loading/error/empty states are mutually exclusive */}
-              {isLoading && (
-                <div className="text-gray-400">Loading audio files...</div>
-              )}
+              {isLoading && <div className="text-gray-400">Loading audio files...</div>}
 
-              {!isLoading && error && (
-                <div className="text-red-400">{error}</div>
-              )}
+              {!isLoading && error && <div className="text-red-400">{error}</div>}
 
               {!isLoading && !error && filteredAudio.length === 0 && (
                 <div className="text-gray-400">No audio files found.</div>
               )}
 
-              {!isLoading && !error &&
-                filteredAudio.map((audio) => (
+              {!isLoading && !error
+                && filteredAudio.map((audio) => (
                   <AudioItem
                     key={audio.audio_id}
                     audio={audio}

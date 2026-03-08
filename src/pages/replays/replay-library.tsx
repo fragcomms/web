@@ -1,8 +1,8 @@
+import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus } from "lucide-react";
-import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
+import { Card } from "../../components/ui/card";
 
 // match exactly with replay list API
 interface Replay {
@@ -19,13 +19,13 @@ export function ReplayLibrary() {
     async function fetchReplays() {
       try {
         const res = await fetch(`${import.meta.env.VITE_API_URL}/replays`, {
-          credentials: 'include'
+          credentials: "include",
         });
-        
+
         if (res.ok) {
           const data = await res.json();
           // Debugging: Check the console to see the real field names!
-          console.log("Fetched Replays:", data); 
+          console.log("Fetched Replays:", data);
           setReplays(data);
         }
       } catch (error) {
@@ -57,30 +57,29 @@ export function ReplayLibrary() {
         </Link>
       </div>
 
-      {replays.length === 0 ? (
-        <div className="text-slate-400 text-center py-10 bg-slate-800/30 rounded-xl border border-slate-700/50">
-          <p className="mb-4">No replays found.</p>
-          <Link to="/replays/import">
-            <Button variant="outline" className="text-slate-300 border-slate-600 hover:text-white">
-              Upload your first match!
-            </Button>
-          </Link>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {replays.map((replay) => (
-            <ReplayCard key={replay.replay_id} replay={replay} />
-          ))}
-        </div>
-      )}
+      {replays.length === 0
+        ? (
+          <div className="text-slate-400 text-center py-10 bg-slate-800/30 rounded-xl border border-slate-700/50">
+            <p className="mb-4">No replays found.</p>
+            <Link to="/replays/import">
+              <Button variant="outline" className="text-slate-300 border-slate-600 hover:text-white">
+                Upload your first match!
+              </Button>
+            </Link>
+          </div>
+        )
+        : (
+          <div className="flex flex-col gap-3">
+            {replays.map((replay) => <ReplayCard key={replay.replay_id} replay={replay} />)}
+          </div>
+        )}
     </div>
   );
 }
 
-function ReplayCard({ replay }: { replay: Replay }) {
+function ReplayCard({ replay }: { replay: Replay; }) {
   return (
     <Link to={`/replays/${replay.replay_id}`} className="block group">
-      
       <Card className="bg-slate-800/50 border-slate-700 transition-all duration-200 group-hover:bg-slate-800 group-hover:border-slate-600 group-hover:shadow-lg border-l-4 border-l-blue-500">
         <div className="flex items-center justify-between gap-4 p-4">
           <div className="flex flex-col">

@@ -1,10 +1,9 @@
 // @ts-expect-error useeffect not req rn
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import DiscordLogo from "../assets/discord-logo.svg?react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
-import DiscordLogo from "../assets/discord-logo.svg?react";
 import { useAuth } from "../context/AuthContext";
-
 
 interface LoginFormProps {
   testLoading?: boolean; // for unit testing
@@ -20,8 +19,8 @@ export function LoginForm({ testLoading }: LoginFormProps) {
     try {
       const popup = window.open(
         `${import.meta.env.VITE_API_URL}/auth/discord`,
-        'discord-login',
-        'width=600,height=700,scrollbars=yes,resizable=yes'
+        "discord-login",
+        "width=600,height=700,scrollbars=yes,resizable=yes",
       );
 
       const checkClosed = setInterval(() => {
@@ -32,17 +31,17 @@ export function LoginForm({ testLoading }: LoginFormProps) {
         }
       }, 1000);
     } catch (e) {
-      console.error('Error with Discord login', e);
+      console.error("Error with Discord login", e);
       setIsLoading(false);
     }
   };
 
   const handleFetchUserData = () => {
-    window.open(`${import.meta.env.VITE_API_URL}/profile`, '_blank', 'width=600,height=700');
+    window.open(`${import.meta.env.VITE_API_URL}/profile`, "_blank", "width=600,height=700");
   };
 
   const handleFetchConnections = () => {
-    window.open(`${import.meta.env.VITE_API_URL}/connections`, '_blank', 'width=600,height=700');
+    window.open(`${import.meta.env.VITE_API_URL}/connections`, "_blank", "width=600,height=700");
   };
 
   // Determine button disabled state for testing
@@ -58,7 +57,9 @@ export function LoginForm({ testLoading }: LoginFormProps) {
         <CardContent className="space-y-4">
           <div className="flex items-center space-x-3">
             <img
-              src={user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : '/default-avatar.png'}
+              src={user.avatar
+                ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
+                : "/default-avatar.png"}
               alt="Profile"
               className="w-12 h-12 rounded-full"
             />

@@ -1,6 +1,6 @@
 // @ts-expect-error react not req rn
-import React, { useState, useEffect } from "react";
-import { ClipboardIcon, CheckIcon } from "lucide-react";
+import { CheckIcon, ClipboardIcon } from "lucide-react";
+import React, { useEffect, useState } from "react";
 
 export default function InviteBot() {
   const [inviteLink, setInviteLink] = useState("");
@@ -83,17 +83,19 @@ export default function InviteBot() {
             : "bg-gray-600 cursor-not-allowed"
         } text-white font-semibold px-6 py-2 rounded-lg transition-colors duration-200`}
       >
-        {copied ? (
-          <>
-            <CheckIcon className="w-5 h-5 text-green-400" />
-            Link Copied!
-          </>
-        ) : (
-          <>
-            <ClipboardIcon className="w-5 h-5" />
-            Copy Invite Link
-          </>
-        )}
+        {copied
+          ? (
+            <>
+              <CheckIcon className="w-5 h-5 text-green-400" />
+              Link Copied!
+            </>
+          )
+          : (
+            <>
+              <ClipboardIcon className="w-5 h-5" />
+              Copy Invite Link
+            </>
+          )}
       </button>
     </div>
   );

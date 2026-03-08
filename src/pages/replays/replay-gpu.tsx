@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { ArrowLeftRight } from 'lucide-react';
-import { Renderer } from '../../webgpu/renderer';
-import { ReplayPlayer } from '../../webgpu/replayPlayer';
-import type { ReplayJSON } from '../../webgpu/types';
+import { ArrowLeftRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Renderer } from "../../webgpu/renderer";
+import { ReplayPlayer } from "../../webgpu/replayPlayer";
+import type { ReplayJSON } from "../../webgpu/types";
 
 export default function ReplayPage() {
   // Canvas target where WebGPU renders each replay frame.
@@ -45,8 +45,8 @@ export default function ReplayPage() {
       rendererRef.current = renderer;
 
       // Load replay JSON and seed the player timeline.
-      const res = await fetch('/003802019139782967518_1486376156.dem.json', {
-        cache: 'no-store',
+      const res = await fetch("/003802019139782967518_1486376156.dem.json", {
+        cache: "no-store",
       });
       if (!res.ok) {
         throw new Error(`Failed to load replay: ${res.status} ${res.statusText}`);
@@ -152,13 +152,12 @@ export default function ReplayPage() {
     handleSeek(seekSec);
   };
 
-  const activeRound =
-    roundStartTicks.length > 0
-      ? getRoundFromTick(
-          roundStartTicks,
-          replayStartTick + currentTimeSec * (playerRef.current?.ticksPerSecond ?? 64),
-        )
-      : 1;
+  const activeRound = roundStartTicks.length > 0
+    ? getRoundFromTick(
+      roundStartTicks,
+      replayStartTick + currentTimeSec * (playerRef.current?.ticksPerSecond ?? 64),
+    )
+    : 1;
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center gap-4">
@@ -170,12 +169,12 @@ export default function ReplayPage() {
       </div>
 
       <div className="flex flex-col items-center gap-3">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button
             onClick={() => setIsPlaying((p) => !p)}
             className="px-4 py-2 rounded bg-slate-700 text-white"
           >
-            {isPlaying ? 'Pause' : 'Play'}
+            {isPlaying ? "Pause" : "Play"}
           </button>
 
           <input
@@ -210,8 +209,8 @@ export default function ReplayPage() {
                   onClick={() => handleRoundSelect(index)}
                   className={`h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center transition-colors ${
                     isCurrent
-                      ? 'bg-blue-500 border-blue-400 text-white'
-                      : 'bg-slate-900 border-slate-600 text-slate-200 hover:border-slate-400 hover:text-white'
+                      ? "bg-blue-500 border-blue-400 text-white"
+                      : "bg-slate-900 border-slate-600 text-slate-200 hover:border-slate-400 hover:text-white"
                   }`}
                   title={`Jump to round ${roundNumber}`}
                 >
@@ -254,5 +253,5 @@ function formatTime(sec: number): string {
   const total = Math.floor(sec);
   const m = Math.floor(total / 60);
   const s = total % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }

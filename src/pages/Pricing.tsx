@@ -1,7 +1,7 @@
 import { PricingTierCard } from "../components/PricingTierCard";
 
 export function Pricing() {
-const pricingTiers = [
+  const pricingTiers = [
     {
       title: "Placeholder",
       price: 0,
@@ -82,7 +82,8 @@ const pricingTiers = [
                 Can I change plans later?
               </h3>
               <p className="font-['Inter:Regular',sans-serif] text-[16px] text-[#757575]">
-                Yes, you can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle.
+                Yes, you can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing
+                cycle.
               </p>
             </div>
             <div className="bg-white rounded-[8px] p-[24px] text-left border border-[#d9d9d9]">

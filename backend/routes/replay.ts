@@ -1,10 +1,10 @@
-import { Router } from 'express';
-import pool from '../config/db.js';
-import { ensureAuth } from '../middleware/authentication.js'
-import { DiscordProfile as User } from '../types/user.js';
+import { Router } from "express";
+import pool from "../config/db.js";
+import { ensureAuth } from "../middleware/authentication.js";
+import { DiscordProfile as User } from "../types/user.js";
 
 const router = Router();
-const REPLAY_PIPELINE_URL = process.env.REPLAY_PIPELINE_URL ?? 'http://10.0.0.91:8000';
+const REPLAY_PIPELINE_URL = process.env.REPLAY_PIPELINE_URL ?? "http://10.0.0.91:8000";
 
 // /api/replay
 router.get("/", ensureAuth, async (req, res) => {
@@ -18,7 +18,7 @@ router.get("/", ensureAuth, async (req, res) => {
       JOIN media_access ma ON r.audio_id = ma.audio_id
       WHERE ma.discord_id = $1
       ORDER BY d.fetch_time DESC`;
-    
+
     const result = await pool.query(query, [user.discord_id]);
     res.json(result.rows);
   } catch (e) {
@@ -48,12 +48,12 @@ router.get("/:id", ensureAuth, async (req, res) => {
   }
 });
 
-//TODO: allow user to create a replay
+// TODO: allow user to create a replay
 
 // /api/replays/process
-router.post('/process', ensureAuth, async (req, res) => {
+router.post("/process", ensureAuth, async (req, res) => {
   const user = req.user as User;
-  if (!user) return res.status(401).send('Unauthorized');
+  if (!user) return res.status(401).send("Unauthorized");
 
   const { audio_id, sharecode, prompt } = req.body as {
     audio_id?: string;
@@ -62,7 +62,7 @@ router.post('/process', ensureAuth, async (req, res) => {
   };
 
   if (!audio_id || !sharecode || !sharecode.trim()) {
-    return res.status(400).json({ error: 'audio_id and sharecode are required' });
+    return res.status(400).json({ error: "audio_id and sharecode are required" });
   }
 
   try {
@@ -75,15 +75,15 @@ router.post('/process', ensureAuth, async (req, res) => {
     const result = await pool.query(query, [audio_id, user.discord_id]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Audio not found' });
+      return res.status(404).json({ error: "Audio not found" });
     }
 
     const filePath = result.rows[0].file_path as string;
 
     const downloadResponse = await fetch(`${REPLAY_PIPELINE_URL}/download`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ sharecode }),
     });
@@ -91,37 +91,37 @@ router.post('/process', ensureAuth, async (req, res) => {
     if (!downloadResponse.ok) {
       const details = await downloadResponse.text();
       return res.status(502).json({
-        error: 'Download/parse pipeline failed',
+        error: "Download/parse pipeline failed",
         details,
       });
     }
 
     const transcribeResponse = await fetch(`${REPLAY_PIPELINE_URL}/transcribe`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         file_path: filePath,
-        prompt: prompt ?? '',
+        prompt: prompt ?? "",
       }),
     });
 
     if (!transcribeResponse.ok) {
       const details = await transcribeResponse.text();
       return res.status(502).json({
-        error: 'Transcription failed',
+        error: "Transcription failed",
         details,
       });
     }
 
     return res.json({
       success: true,
-      message: 'Replay download/parse and transcription completed',
+      message: "Replay download/parse and transcription completed",
     });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ error: 'Server error during replay processing' });
+    return res.status(500).json({ error: "Server error during replay processing" });
   }
 });
 

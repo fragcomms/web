@@ -1,104 +1,99 @@
-import { LoginForm } from "./login-form";
-import * as AuthContext from "../context/AuthContext";
 import { render, screen } from "@testing-library/react";
-import {describe, it, expect, vi, beforeEach} from "vitest";
-import '@testing-library/jest-dom';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as AuthContext from "../context/AuthContext";
+import { LoginForm } from "./login-form";
+import "@testing-library/jest-dom";
 
 // MOCK DEPENDENCIES
 vi.mock("../context/AuthContext");
 
-//mock user data
+// mock user data
 const mockUser = {
-    id: "123123321",
-    username: "testuser",
-    global_name: "myglobalname",
-    email: "test@test.com",
-    avatar: null,
-  };
+  id: "123123321",
+  username: "testuser",
+  global_name: "myglobalname",
+  email: "test@test.com",
+  avatar: null,
+};
 
 // mock useAuth from AuthContext
 vi.mock("../context/AuthContext", async (importOriginal) => {
-    const actual: any = await importOriginal();
-    return {
-        ...actual,
-        useAuth: vi.fn(() => ({
-            user: null,
-            isLoading: false,
-            checkAuthStatus: vi.fn(),
-            logout: vi.fn(),
-        })),
-    };
+  const actual: any = await importOriginal();
+  return {
+    ...actual,
+    useAuth: vi.fn(() => ({
+      user: null,
+      isLoading: false,
+      checkAuthStatus: vi.fn(),
+      logout: vi.fn(),
+    })),
+  };
 });
 
 // mock discord logo
 vi.mock("../assets/discord-logo.svg?react", () => ({
-    default: () => <svg data-testid="discord-logo" />,
+  default: () => <svg data-testid="discord-logo" />,
 }));
 
 // mock button component
 vi.mock("../components/ui/button", () => ({
-    Button: (props: any) => <button disabled={props.disabled}>{props.children}</button>,
+  Button: (props: any) => <button disabled={props.disabled}>{props.children}</button>,
 }));
 
 // mock card components
 vi.mock("../components/ui/card", () => ({
-    Card: (props: any) => <div {...props} />,
-    CardContent: (props: any) => <div {...props} />,
-    CardDescription: (props: any) => <div {...props} />,
-    CardHeader: (props: any) => <div {...props} />,
-    CardFooter: (props: any) => <div {...props} />,
-    CardTitle: (props: any) => <h2 {...props} />,
+  Card: (props: any) => <div {...props} />,
+  CardContent: (props: any) => <div {...props} />,
+  CardDescription: (props: any) => <div {...props} />,
+  CardHeader: (props: any) => <div {...props} />,
+  CardFooter: (props: any) => <div {...props} />,
+  CardTitle: (props: any) => <h2 {...props} />,
 }));
 
 describe("LoginForm", () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-    // #1 TEST LOGIN BUTTON APPEARS WHEN NOT LOGGED IN 
-    it("shows 'Continue with Discord' button when user not logged in", () => {
-        render(<LoginForm />);
-        
-        // expected discord login button
-        const button = screen.getByRole("button", { name: /continue with Discord/i });
-        expect(button).toBeInTheDocument();
-        expect(button).not.toBeDisabled();
-        expect(screen.getByTestId("discord-logo")).toBeInTheDocument();
-    });
+  // #1 TEST LOGIN BUTTON APPEARS WHEN NOT LOGGED IN
+  it("shows 'Continue with Discord' button when user not logged in", () => {
+    render(<LoginForm />);
 
-    // #2 TEST LOGIN BUTTON DISABLED WHEN CLICKED
-    it("shows disabled button that says 'Connecting...' state when testLoading is true", () => {
-        render(<LoginForm testLoading={true} />);
-        
-        // expected button disabled
-        const button = screen.getByRole("button");
-        expect(button).toBeInTheDocument();
-        expect(button).toBeDisabled();
-        expect(button).toHaveTextContent(/connecting/i);
-    });
+    // expected discord login button
+    const button = screen.getByRole("button", { name: /continue with Discord/i });
+    expect(button).toBeInTheDocument();
+    expect(button).not.toBeDisabled();
+    expect(screen.getByTestId("discord-logo")).toBeInTheDocument();
+  });
 
-    
-    // #3 TEST LOGGED IN UI
-    it("renders logged-in UI when user exists", () => {
-        
+  // #2 TEST LOGIN BUTTON DISABLED WHEN CLICKED
+  it("shows disabled button that says 'Connecting...' state when testLoading is true", () => {
+    render(<LoginForm testLoading={true} />);
 
-        vi.spyOn(AuthContext, "useAuth").mockReturnValue({
-            user: mockUser,
-            checkAuthStatus: vi.fn(),
-            logout: vi.fn(),
-        } as any);
+    // expected button disabled
+    const button = screen.getByRole("button");
+    expect(button).toBeInTheDocument();
+    expect(button).toBeDisabled();
+    expect(button).toHaveTextContent(/connecting/i);
+  });
 
-        render(<LoginForm />);
+  // #3 TEST LOGGED IN UI
+  it("renders logged-in UI when user exists", () => {
+    vi.spyOn(AuthContext, "useAuth").mockReturnValue({
+      user: mockUser,
+      checkAuthStatus: vi.fn(),
+      logout: vi.fn(),
+    } as any);
 
-        // user info
-        expect(screen.getByText(/testuser/i)).toBeInTheDocument();
-        expect(screen.getByText(/test@test.com/i)).toBeInTheDocument();
+    render(<LoginForm />);
 
-        // buttons
-        expect(screen.getByText(/view profile data/i)).toBeInTheDocument();
-        expect(screen.getByText(/view connections/i)).toBeInTheDocument();
-        expect(screen.getByText(/logout/i)).toBeInTheDocument();
-    });
+    // user info
+    expect(screen.getByText(/testuser/i)).toBeInTheDocument();
+    expect(screen.getByText(/test@test.com/i)).toBeInTheDocument();
 
-
+    // buttons
+    expect(screen.getByText(/view profile data/i)).toBeInTheDocument();
+    expect(screen.getByText(/view connections/i)).toBeInTheDocument();
+    expect(screen.getByText(/logout/i)).toBeInTheDocument();
+  });
 });

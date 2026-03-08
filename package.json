@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build && tsc -b",
+    "format": "dprint fmt",
+    "format:check": "dprint check",
     "lint": "eslint .",
     "frontend": "vite --host",
     "backend": "tsx backend/server.ts",
@@ -55,6 +57,7 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "baseline-browser-mapping": "^2.9.15",
     "concurrently": "^9.2.1",
+    "dprint": "^0.52.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
