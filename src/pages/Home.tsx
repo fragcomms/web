@@ -22,7 +22,7 @@ export default function Home() {
       <div className="flex gap-4 justify-center mb-16">
         <Link
           to={target}
-          className="bg-gray-800 hover:bg-gray-700 text-white font-bold text-lg px-8 py-3 rounded-lg transition-colors duration-200"
+          className="bg-gray-700 hover:bg-gray-600 text-white font-bold text-lg px-8 py-3 rounded-lg transition-colors duration-200"
         >
           {buttonText}
         </Link>

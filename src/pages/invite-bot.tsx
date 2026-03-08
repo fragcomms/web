@@ -43,7 +43,7 @@ export default function InviteBot() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center text-white px-4">
+    <div className="w-full h-full flex flex-1 flex-col items-center justify-center text-white px-4">
       <img
         src="/logo.png"
         alt="FragComms Bot"
@@ -63,11 +63,10 @@ export default function InviteBot() {
         href={inviteLink || "#"}
         target="_blank"
         rel="noopener noreferrer"
-        className={`${
-          inviteLink
-            ? "bg-gray-800 hover:bg-gray-700"
-            : "bg-gray-600 cursor-not-allowed"
-        } text-white font-bold px-6 py-3 rounded-lg mb-4 transition-colors duration-200`}
+        className={`${inviteLink
+          ? "bg-gray-700 hover:bg-gray-600"
+          : "bg-gray-700 cursor-not-allowed"
+          } text-white font-bold px-6 py-3 rounded-lg mb-4 transition-colors duration-200`}
       >
         {loading ? "Loading..." : "Invite Bot"}
       </a>
@@ -76,11 +75,10 @@ export default function InviteBot() {
       <button
         onClick={copyInvite}
         disabled={!inviteLink}
-        className={`flex items-center gap-2 ${
-          inviteLink
-            ? "bg-gray-800 hover:bg-gray-700"
-            : "bg-gray-600 cursor-not-allowed"
-        } text-white font-semibold px-6 py-2 rounded-lg transition-colors duration-200`}
+        className={`flex items-center gap-2 ${inviteLink
+          ? "bg-gray-700 hover:bg-gray-600"
+          : "bg-gray-700 cursor-not-allowed"
+          } text-white font-semibold px-6 py-2 rounded-lg transition-colors duration-200`}
       >
         {copied
           ? (

@@ -23,19 +23,19 @@ export default function Router() {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
+      <div className="min-h-screen flex flex-col bg-slate-800">
         {/* Fixed Navbar */}
         {user ? <LoggedNavbar /> : <PublicNavbar />}
 
         {/* Page Content with top padding to account for fixed navbar */}
-        <div className="pt-20">
+        <div className="flex-1 flex flex-col pt-20">
           {/* Add padding-top for fixed navbar height */}
           <Routes>
             {/* Default Page - Home */}
             <Route
               path="/"
               element={
-                <div className="main-content">
+                <div className="w-full flex-1 flex flex-col p-4 items-center justify-center">
                   <Home />
                 </div>
               }
@@ -46,7 +46,7 @@ export default function Router() {
               path="/replays"
               element={
                 <ProtectedRoute>
-                  <div className="w-full min-h-[calc(100vh-80px)] flex flex-col justify-start items-center pt-8 px-4">
+                  <div className="w-full min-h-[calc(100vh-80px)] flex flex-1 flex-col justify-start items-center pt-8 px-4">
                     <ReplayLibrary />
                   </div>
                 </ProtectedRoute>
@@ -58,7 +58,7 @@ export default function Router() {
               path="/replays/import"
               element={
                 <ProtectedRoute>
-                  <div className="main-content">
+                  <div className="w-full flex-1 flex flex-col p-4">
                     <AudioLibrary />
                   </div>
                 </ProtectedRoute>
@@ -70,7 +70,7 @@ export default function Router() {
               path="/replays/gpu"
               element={
                 <ProtectedRoute>
-                  <div className="main-content">
+                  <div className="w-full flex-1 flex flex-col p-4">
                     <GPUTest />
                   </div>
                 </ProtectedRoute>
@@ -94,7 +94,7 @@ export default function Router() {
               path="/settings"
               element={
                 <ProtectedRoute>
-                  <div className="main-content">
+                  <div className="w-full flex-1 flex flex-col p-4">
                     <Settings />
                   </div>
                 </ProtectedRoute>
@@ -104,7 +104,7 @@ export default function Router() {
             <Route
               path="/invite-bot"
               element={
-                <div className="main-content">
+                <div className="w-full flex-1 flex flex-col p-4">
                   <InviteBot />
                 </div>
               }
@@ -113,7 +113,7 @@ export default function Router() {
             <Route
               path="/about"
               element={
-                <div className="centered-card">
+                <div className="w-full flex-1 flex flex-col p-4 items-center justify-center">
                   <About />
                 </div>
               }
@@ -122,7 +122,7 @@ export default function Router() {
             <Route
               path="/pricing"
               element={
-                <div className="main-content">
+                <div className="w-full flex-1 flex flex-col p-4">
                   <Pricing />
                 </div>
               }
@@ -131,7 +131,7 @@ export default function Router() {
             <Route
               path="/login"
               element={
-                <div className="centered-card">
+                <div className="w-full flex-1 flex flex-col p-4 items-center justify-center">
                   <LoginForm />
                 </div>
               }

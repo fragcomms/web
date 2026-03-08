@@ -25,7 +25,7 @@ export function Navbar() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 items-center justify-between">
           <div className="flex items-center gap-8">
-            <NavLogo to="/login" />
+            <NavLogo to="/" />
             <div className="flex gap-6">
               {navItems.map((item) => (
                 <Link
