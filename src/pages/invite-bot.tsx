@@ -1,6 +1,7 @@
 // @ts-expect-error react not req rn
-import React, { useState, useEffect } from "react";
-import { ClipboardIcon, CheckIcon } from "lucide-react";
+
+import { CheckIcon, ClipboardIcon } from "lucide-react";
+import React, { useEffect, useState } from "react";
 
 export default function InviteBot() {
   const [inviteLink, setInviteLink] = useState("");
@@ -12,7 +13,9 @@ export default function InviteBot() {
   useEffect(() => {
     const fetchInviteLink = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/getBotInviteLink`);
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/getBotInviteLink`,
+        );
         if (!res.ok) throw new Error("Failed to fetch invite link");
 
         const data = await res.json(); // { url: "..." }
@@ -51,7 +54,9 @@ export default function InviteBot() {
         className="w-32 h-32 mb-6 rounded-full shadow-lg object-cover"
       />
 
-      <h1 className="text-4xl font-bold mb-4 text-center">Invite Bot to Server</h1>
+      <h1 className="text-4xl font-bold mb-4 text-center">
+        Invite Bot to Server
+      </h1>
       <p className="text-lg mb-8 text-center max-w-md">
         Add the FragComms Audio Recording Bot to your Discord server.
       </p>

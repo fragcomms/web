@@ -1,24 +1,28 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { Navbar as PublicNavbar } from './components/PublicNavBar'
-import { Navbar as LoggedNavbar } from './components/AuthNavBar'
-import { LoginForm } from './pages/login-form'
-import { ReplayLibrary } from './pages/replays/replay-library'
-import { ReplayDetails } from './pages/replays/replay-details';
-import { AudioLibrary } from './pages/replays/replay-import';
-import GPUTest from './pages/replays/replay-gpu'
-import Home from './pages/Home'
-import InviteBot from './pages/invite-bot'
-import About from './pages/About.tsx'
-import Settings from './pages/Settings'
-import { Pricing } from './pages/Pricing'
-import { useAuth } from './context/AuthContext';
-import { ProtectedRoute } from './components/RouteProtector'
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { Navbar as LoggedNavbar } from "./components/AuthNavBar";
+import { Navbar as PublicNavbar } from "./components/PublicNavBar";
+import { ProtectedRoute } from "./components/RouteProtector";
+import { useAuth } from "./context/AuthContext";
+import About from "./pages/About.tsx";
+import Home from "./pages/Home";
+import InviteBot from "./pages/invite-bot";
+import { LoginForm } from "./pages/login-form";
+import { Pricing } from "./pages/Pricing";
+import { ReplayDetails } from "./pages/replays/replay-details";
+import GPUTest from "./pages/replays/replay-gpu";
+import { AudioLibrary } from "./pages/replays/replay-import";
+import { ReplayLibrary } from "./pages/replays/replay-library";
+import Settings from "./pages/Settings";
 
 export default function Router() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading...</div>;
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">
+        Loading...
+      </div>
+    );
   }
 
   return (
@@ -28,86 +32,118 @@ export default function Router() {
         {user ? <LoggedNavbar /> : <PublicNavbar />}
 
         {/* Page Content with top padding to account for fixed navbar */}
-        <div className="pt-20"> {/* Add padding-top for fixed navbar height */}
+        <div className="pt-20">
+          {" "}
+          {/* Add padding-top for fixed navbar height */}
           <Routes>
             {/* Default Page - Home */}
-            <Route path="/" element={
-              <div className="main-content">
-                <Home />
-              </div>
-            } />
-
-            {/* protected */}
-            <Route path="/replays" element={
-              <ProtectedRoute>
-                <div className="w-full min-h-[calc(100vh-80px)] flex flex-col justify-start items-center pt-8 px-4">
-                  <ReplayLibrary />
-                </div>
-              </ProtectedRoute>
-            } />
-
-            {/* protected */}
-            <Route path="/replays/import" element={
-              <ProtectedRoute>
+            <Route
+              path="/"
+              element={
                 <div className="main-content">
-                  <AudioLibrary />
+                  <Home />
                 </div>
-              </ProtectedRoute>
-            } />
+              }
+            />
 
             {/* protected */}
-            <Route path="/replays/gpu" element={
-              <ProtectedRoute>
+            <Route
+              path="/replays"
+              element={
+                <ProtectedRoute>
+                  <div className="w-full min-h-[calc(100vh-80px)] flex flex-col justify-start items-center pt-8 px-4">
+                    <ReplayLibrary />
+                  </div>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* protected */}
+            <Route
+              path="/replays/import"
+              element={
+                <ProtectedRoute>
+                  <div className="main-content">
+                    <AudioLibrary />
+                  </div>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* protected */}
+            <Route
+              path="/replays/gpu"
+              element={
+                <ProtectedRoute>
+                  <div className="main-content">
+                    <GPUTest />
+                  </div>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* protected */}
+            <Route
+              path="/replays/:id"
+              element={
+                <ProtectedRoute>
+                  <div className="w-full min-h-[calc(100vh-80px)] pt-8 px-4 flex flex-col items-center">
+                    <ReplayDetails />
+                  </div>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* protected */}
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <div className="main-content">
+                    <Settings />
+                  </div>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/invite-bot"
+              element={
                 <div className="main-content">
-                  <GPUTest />
+                  <InviteBot />
                 </div>
-              </ProtectedRoute>
-            } />
-            
-            {/* protected */}
-            <Route path="/replays/:id" element={
-              <ProtectedRoute>
-                <div className="w-full min-h-[calc(100vh-80px)] pt-8 px-4 flex flex-col items-center">
-                  <ReplayDetails />
-                </div>
-              </ProtectedRoute>
-            } />
+              }
+            />
 
-            {/* protected */}
-            <Route path="/settings" element={
-              <ProtectedRoute>
+            <Route
+              path="/about"
+              element={
+                <div className="centered-card">
+                  <About />
+                </div>
+              }
+            />
+
+            <Route
+              path="/pricing"
+              element={
                 <div className="main-content">
-                  <Settings />
+                  <Pricing />
                 </div>
-              </ProtectedRoute>
-            } />
+              }
+            />
 
-            <Route path="/invite-bot" element={
-              <div className="main-content">
-                <InviteBot />
-              </div>
-            } />
-
-            <Route path="/about" element={
-              <div className="centered-card">
-                <About />
-              </div>
-            } />
-
-            <Route path="/pricing" element={
-              <div className="main-content">
-                <Pricing />
-              </div>
-            } />
-
-            <Route path="/login" element={
-              <div className="centered-card">
-                <LoginForm />
-              </div>
-            } />
+            <Route
+              path="/login"
+              element={
+                <div className="centered-card">
+                  <LoginForm />
+                </div>
+              }
+            />
           </Routes>
         </div>
       </div>
     </BrowserRouter>
-  )
+  );
 }

@@ -1,26 +1,26 @@
-import { Link } from 'react-router-dom'
-import { NavLogo } from './NavBar/logo'
-import { useAuth } from '../context/AuthContext'
+import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { NavLogo } from "./NavBar/logo";
 
 const navLinkClassName =
-  'text-lg text-slate-300 transition-colors hover:text-white'
+  "text-lg text-slate-300 transition-colors hover:text-white";
 const navItems = [
-  { to: '/about', label: 'About' },
-  { to: '/pricing', label: 'Pricing' },
-  { to: '/invite-bot', label: 'Invite' },
-  { to: '/replays', label: 'Replays' },
-  { to: '/settings', label: 'Settings' },
-]
+  { to: "/about", label: "About" },
+  { to: "/pricing", label: "Pricing" },
+  { to: "/invite-bot", label: "Invite" },
+  { to: "/replays", label: "Replays" },
+  { to: "/settings", label: "Settings" },
+];
 
 const logoutClassName =
-  'rounded-md bg-slate-700 px-5 py-2.5 text-base text-white transition-colors hover:bg-slate-600'
+  "rounded-md bg-slate-700 px-5 py-2.5 text-base text-white transition-colors hover:bg-slate-600";
 
 export function Navbar() {
-  const { logout } = useAuth()
+  const { logout } = useAuth();
 
   const handleLogout = async () => {
-    await logout()
-  }
+    await logout();
+  };
 
   return (
     <nav className="fixed left-0 right-0 top-0 z-50 border-b border-slate-700 bg-slate-800/80 backdrop-blur-sm">
@@ -30,11 +30,7 @@ export function Navbar() {
             <NavLogo to="/login" />
             <div className="flex gap-6">
               {navItems.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={navLinkClassName}
-                >
+                <Link key={item.to} to={item.to} className={navLinkClassName}>
                   {item.label}
                 </Link>
               ))}
@@ -50,5 +46,5 @@ export function Navbar() {
         </div>
       </div>
     </nav>
-  )
+  );
 }

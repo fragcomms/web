@@ -43,8 +43,12 @@ export function PricingTierCard({
               className="content-stretch flex font-['Inter:Bold',sans-serif] font-bold items-start leading-none relative shrink-0"
               data-name="Price"
             >
-              <p className="relative shrink-0 text-[24px] tracking-[-0.48px]">$</p>
-              <p className="relative shrink-0 text-[48px] tracking-[-0.96px]">{price}</p>
+              <p className="relative shrink-0 text-[24px] tracking-[-0.48px]">
+                $
+              </p>
+              <p className="relative shrink-0 text-[48px] tracking-[-0.96px]">
+                {price}
+              </p>
             </div>
             <p className="font-['Inter:Regular',sans-serif] font-normal leading-[1.8] relative shrink-0 text-[14px]">
               {period}

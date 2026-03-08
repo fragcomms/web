@@ -1,8 +1,8 @@
-import { Router } from 'express';
-import { NodeSSH } from 'node-ssh';
-import pool from '../config/db.js';
-import { ensureAuth } from '../middleware/authentication.js';
-import { DiscordProfile as User } from '../types/user.js';
+import { Router } from "express";
+import { NodeSSH } from "node-ssh";
+import pool from "../config/db.js";
+import { ensureAuth } from "../middleware/authentication.js";
+import type { DiscordProfile as User } from "../types/user.js";
 
 const router = Router();
 
@@ -22,7 +22,7 @@ router.get("/", ensureAuth, async (req, res) => {
     res.json(result.rows);
   } catch (e) {
     console.error(e);
-    res.status(500).send("Database error")
+    res.status(500).send("Database error");
   }
 });
 
@@ -39,8 +39,9 @@ router.get("/:id/stream", ensureAuth, async (req, res) => {
       JOIN media_access ma ON a.audio_id = ma.audio_id
       WHERE a.audio_id = $1 AND ma.discord_id = $2`;
     const result = await pool.query(query, [req.params.id, user.discord_id]);
-    if (result.rows.length === 0) return res.status(404).send("Audio not found");
-    
+    if (result.rows.length === 0)
+      return res.status(404).send("Audio not found");
+
     //fetching binary data from backend machine
     const remotePath = result.rows[0].path;
     await ssh.connect({
@@ -51,20 +52,19 @@ router.get("/:id/stream", ensureAuth, async (req, res) => {
 
     const sftp = await ssh.requestSFTP();
     const stream = sftp.createReadStream(remotePath);
-    res.setHeader('Content-Type', 'audio/mka');
+    res.setHeader("Content-Type", "audio/mka");
     stream.pipe(res);
 
     // clean up when finished
-    stream.on('close', () => {
+    stream.on("close", () => {
       ssh.dispose();
-    })
+    });
 
     // clean up if error
-    stream.on('error', (e: Error) => {
-      console.error("Stream error:", e)
+    stream.on("error", (e: Error) => {
+      console.error("Stream error:", e);
       ssh.dispose();
-    })
-    
+    });
   } catch (e) {
     console.error(e);
     ssh.dispose(); // make sure ssh is closed
@@ -86,8 +86,9 @@ router.get("/:id/transcription", ensureAuth, async (req, res) => {
       JOIN media_access ma ON ma.audio_id = t.audio_id
       WHERE t.audio_id = $1 AND ma.discord_id = $2`;
     const result = await pool.query(query, [req.params.id, user.discord_id]);
-    if (result.rows.length === 0) return res.status(404).send("Transcript not found");
-    
+    if (result.rows.length === 0)
+      return res.status(404).send("Transcript not found");
+
     //fetching binary data from backend machine
     const remotePath = result.rows[0].path;
     await ssh.connect({
@@ -98,20 +99,19 @@ router.get("/:id/transcription", ensureAuth, async (req, res) => {
 
     const sftp = await ssh.requestSFTP();
     const stream = sftp.createReadStream(remotePath);
-    res.setHeader('Content-Type', 'audio/mka');
+    res.setHeader("Content-Type", "audio/mka");
     stream.pipe(res);
 
     // clean up when finished
-    stream.on('close', () => {
+    stream.on("close", () => {
       ssh.dispose();
-    })
+    });
 
     // clean up if error
-    stream.on('error', (e: Error) => {
-      console.error("Stream error:", e)
+    stream.on("error", (e: Error) => {
+      console.error("Stream error:", e);
       ssh.dispose();
-    })
-    
+    });
   } catch (e) {
     console.error(e);
     ssh.dispose(); // make sure ssh is closed
@@ -124,7 +124,7 @@ router.get("/:id/transcription", ensureAuth, async (req, res) => {
 /**
  * we already have all separated transcripts, just need to
  * think about how to route it accordingly to be fetchable
- * 
+ *
  * /api/id/transcription/discordid ?
  * and then there will be multiple records in the database that have a reference to a singular audio_id
  */
