@@ -25,6 +25,7 @@ export default function ReplayPage() {
   const [durationSec, setDurationSec] = useState(0);
   const [replayStartTick, setReplayStartTick] = useState(0);
   const [roundStartTicks, setRoundStartTicks] = useState<number[]>([]);
+  const [ticksPerSecond, setTicksPerSecond] = useState(64);
 
   // Keep imperative ref synchronized with React state.
   useEffect(() => {
@@ -58,6 +59,7 @@ export default function ReplayPage() {
       const player = new ReplayPlayer();
       player.setReplay(data);
       playerRef.current = player;
+      setTicksPerSecond(player.ticksPerSecond);
 
       const firstTimelineTick = data.timeline[0]?.tick ?? 0;
       setReplayStartTick(firstTimelineTick);
@@ -145,7 +147,6 @@ export default function ReplayPage() {
 
   const handleRoundSelect = (roundIndex: number) => {
     const roundStartTick = roundStartTicks[roundIndex];
-    const ticksPerSecond = playerRef.current?.ticksPerSecond ?? 64;
     const seekSec = Math.max(0, (roundStartTick - replayStartTick) / ticksPerSecond);
 
     setIsPlaying(true);
@@ -155,24 +156,28 @@ export default function ReplayPage() {
   const activeRound = roundStartTicks.length > 0
     ? getRoundFromTick(
       roundStartTicks,
-      replayStartTick + currentTimeSec * (playerRef.current?.ticksPerSecond ?? 64),
+      replayStartTick + currentTimeSec * ticksPerSecond,
     )
     : 1;
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center gap-4">
+    // Parent: A full-screen column. We use p-6 for a little edge padding.
+    <div className="w-full flex flex-col gap-4">
+
+      {/* THE MAP: `self-start` pins this specific box to the left edge */}
       <div
-        style={{ width: 1280, height: 720 }}
-        className="border border-slate-700 rounded-xl overflow-hidden"
+        className="w-full max-w-[720px] aspect-square border border-slate-700 rounded-xl overflow-hidden self-start shrink-0"
       >
         <canvas ref={canvasRef} className="block w-full h-full" />
       </div>
 
-      <div className="flex flex-col items-center gap-3">
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      {/* THE CONTROLS: `self-center` keeps it centered on the browser screen. 
+          `mt-auto` pushes it firmly to the bottom of the screen. */}
+      <div className="w-full flex flex-col items-center gap-3 self-center">
+        <div className="flex items-center gap-3 w-full max-w-[800px]">
           <button
             onClick={() => setIsPlaying((p) => !p)}
-            className="px-4 py-2 rounded bg-slate-700 text-white"
+            className="min-w-[80px] px-4 py-2 rounded bg-slate-700 text-white"
           >
             {isPlaying ? "Pause" : "Play"}
           </button>
@@ -183,13 +188,12 @@ export default function ReplayPage() {
             max={durationSec}
             step={0.01}
             value={currentTimeSec}
-            // Pause while dragging to prevent fighting between playback and seek.
             onMouseDown={() => setIsPlaying(false)}
             onChange={(e) => {
               const sec = Number(e.target.value);
               handleSeek(sec);
             }}
-            style={{ width: 500 }}
+            className="flex-1 cursor-pointer"
           />
 
           <span className="text-white">
@@ -197,7 +201,7 @@ export default function ReplayPage() {
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-1.5">
+        <div className="flex flex-wrap self-center justify-center gap-1.5 max-w-[600px]">
           {roundStartTicks.map((_, index) => {
             const roundNumber = index + 1;
             const isCurrent = roundNumber === activeRound;
@@ -207,11 +211,10 @@ export default function ReplayPage() {
                 <button
                   type="button"
                   onClick={() => handleRoundSelect(index)}
-                  className={`h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center transition-colors ${
-                    isCurrent
-                      ? "bg-blue-500 border-blue-400 text-white"
-                      : "bg-slate-900 border-slate-600 text-slate-200 hover:border-slate-400 hover:text-white"
-                  }`}
+                  className={`h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center transition-colors ${isCurrent
+                    ? "bg-blue-500 border-blue-400 text-white"
+                    : "bg-slate-900 border-slate-600 text-slate-200 hover:border-slate-400 hover:text-white"
+                    }`}
                   title={`Jump to round ${roundNumber}`}
                 >
                   {roundNumber}
