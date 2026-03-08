@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
-import { createContext, useContext, useEffect, useState } from "react";
-import type { DiscordProfile as User } from "../types/user";
+import { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import type { DiscordProfile as User } from '../types/user';
 
 // Define the shape of the context
 interface AuthContextType {
@@ -8,19 +8,15 @@ interface AuthContextType {
   isLoading: boolean;
   checkAuthStatus: () => Promise<void>;
   logout: () => Promise<void>;
-}
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({
-  children,
-  value,
-}: {
-  children: ReactNode;
-  value?: AuthContextType;
-}) {
-  const [user, setUser] = useState<User | null>(value?.user ?? null);
+export function AuthProvider({ children, value}: { children: ReactNode; value?: AuthContextType; }) {
+  const [user, setUser] = useState<User | null>(value?.user ??null);
   const [isLoading, setIsLoading] = useState(value?.isLoading ?? true);
+
+  
 
   // Check auth on initial load (app startup)
   useEffect(() => {
@@ -28,11 +24,11 @@ export function AuthProvider({
   }, []);
 
   const checkAuthStatus = async () => {
-    if (value?.checkAuthStatus) return; // If value is provided, skip fetching
+    if(value?.checkAuthStatus) return; // If value is provided, skip fetching
     try {
       // Replace after finish
       const response = await fetch(`${import.meta.env.VITE_API_URL}/profile`, {
-        credentials: "include",
+        credentials: 'include'
       });
       if (response.ok) {
         const data = await response.json();
@@ -49,11 +45,11 @@ export function AuthProvider({
   };
 
   const logout = async () => {
-    if (value?.logout) return value.logout();
+    if (value?.logout) return value.logout(); 
     try {
-      await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
-        method: "POST",
-        credentials: "include",
+      await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, { 
+        method: 'POST', 
+        credentials: 'include' 
       });
       setUser(null);
     } catch (error) {
@@ -62,14 +58,12 @@ export function AuthProvider({
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user: value?.user ?? user,
-        isLoading: value?.isLoading ?? isLoading,
-        checkAuthStatus: value?.checkAuthStatus ?? checkAuthStatus,
-        logout: value?.logout ?? logout,
-      }}
-    >
+    <AuthContext.Provider value={{ 
+      user: value?.user ?? user,
+      isLoading: value?.isLoading ?? isLoading, 
+      checkAuthStatus: value?.checkAuthStatus ?? checkAuthStatus, 
+      logout: value?.logout ?? logout,
+      }}>
       {children}
     </AuthContext.Provider>
   );
@@ -79,7 +73,7 @@ export function AuthProvider({
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 }

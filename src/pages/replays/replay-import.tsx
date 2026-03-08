@@ -1,6 +1,6 @@
-import { Filter, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Filter, Search } from "lucide-react";
 import { AudioItem } from "../../components/AudioItem";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -59,26 +59,22 @@ export function AudioLibrary() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/replays/process`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            audio_id: selectedAudioId,
-            sharecode: sharecode.trim(),
-          }),
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/process`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        credentials: "include",
+        body: JSON.stringify({
+          audio_id: selectedAudioId,
+          sharecode: sharecode.trim(),
+        }),
+      });
 
       if (!res.ok) {
-        const payload = (await res.json().catch(() => null)) as {
-          error?: string;
-          details?: string;
-        } | null;
+        const payload = (await res.json().catch(() => null)) as
+          | { error?: string; details?: string }
+          | null;
 
         throw new Error(
           payload?.error || payload?.details || "Failed to process replay",
@@ -87,8 +83,7 @@ export function AudioLibrary() {
 
       navigate("/replays");
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to process replay";
+      const message = err instanceof Error ? err.message : "Failed to process replay";
       setSubmitError(message);
     } finally {
       setIsSubmitting(false);
@@ -103,7 +98,7 @@ export function AudioLibrary() {
   );
 
   const selectedAudio = selectedAudioId
-    ? (audioData.find((audio) => audio.audio_id === selectedAudioId) ?? null)
+    ? audioData.find((audio) => audio.audio_id === selectedAudioId) ?? null
     : null;
 
   function handleChooseDifferentAudio() {
@@ -114,7 +109,8 @@ export function AudioLibrary() {
 
   return (
     <div className="min-h-screen text-white">
-      {/* Main Content */}
+
+        {/* Main Content */}
       <div className="mx-auto max-w-screen-2xl px-6 py-8">
         {/* Header */}
         <div className="mb-8 flex items-center justify-center text-center">
@@ -145,11 +141,7 @@ export function AudioLibrary() {
                   className="bg-[#151d2b] border-[#1e2936] pl-10 text-white placeholder:text-gray-500"
                 />
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-gray-400 hover:text-white"
-              >
+              <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white">
                 <Filter className="h-4 w-4" />
               </Button>
             </div>
@@ -169,8 +161,7 @@ export function AudioLibrary() {
                 <div className="text-gray-400">No audio files found.</div>
               )}
 
-              {!isLoading &&
-                !error &&
+              {!isLoading && !error &&
                 filteredAudio.map((audio) => (
                   <AudioItem
                     key={audio.audio_id}
@@ -208,9 +199,7 @@ export function AudioLibrary() {
                 </Button>
               </div>
             </div>
-            {submitError && (
-              <div className="text-red-400 text-sm">{submitError}</div>
-            )}
+            {submitError && <div className="text-red-400 text-sm">{submitError}</div>}
           </div>
         )}
       </div>

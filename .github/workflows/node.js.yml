@@ -22,24 +22,18 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-
     - run: npm ci
-
-    - name: Biome Lint and Format
+    - name: Lint (non-blocking)
       id: lint
       continue-on-error: true
-      run: npx @biomejs/biome check --reporter=github .
-
+      run: npm run lint
     - name: Report lint warning
       if: steps.lint.outcome == 'failure'
-      run: echo "::warning title=Biome found formatting or linting issues. Review the inline PR annotations or the job output."
-
+      run: echo "::warning title=Lint issues detected::npm run lint failed. Review lint output in this job."
     - run: npm run build --if-present
-    
     - run: npm run test:ci

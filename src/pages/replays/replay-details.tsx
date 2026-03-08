@@ -1,15 +1,15 @@
-import { AlertCircle, ArrowLeft, FileText } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Button } from "../../components/ui/button";
+import { ArrowLeft, FileText, AlertCircle } from "lucide-react";
 
 // Update Interface to match your Python SQL query exactly
 interface ReplayDetailsType {
   replay_id: number;
-  audio_id: number;
+  audio_id: number;      
   demo_fetch_time: string; // TODO
   demo_path: string; // TODO
-  audio_path: string;
+  audio_path: string; 
   file_ext: string; // TODO
 }
 
@@ -26,13 +26,10 @@ export function ReplayDetails() {
     async function fetchDetails() {
       try {
         // Fetch from Node Gateway
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/replays/${id}`,
-          {
-            credentials: "include",
-          },
-        );
-
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/${id}`, {
+          credentials: 'include'
+        });
+        
         if (res.ok) {
           const json = await res.json();
           console.log("MATCH DATA RECEIVED:", json); // <--- Debug Log
@@ -55,19 +52,16 @@ export function ReplayDetails() {
     async function fetchTranscript() {
       setTranscriptLoading(true);
       try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/audio/${data?.audio_id}/transcription`,
-          {
-            credentials: "include",
-          },
-        );
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/audio/${data?.audio_id}/transcription`, {
+          credentials: 'include'
+        });
 
         if (res.ok) {
           const text = await res.text();
           setTranscript(text);
         } else {
           // If 404, it just means no transcript exists yet
-          setTranscriptError(true);
+          setTranscriptError(true); 
         }
       } catch (error) {
         console.error("Failed to load transcript", error);
@@ -83,10 +77,7 @@ export function ReplayDetails() {
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 text-white pt-8">
       <Link to="/replays">
-        <Button
-          variant="ghost"
-          className="pl-0 hover:bg-transparent hover:text-slate-300"
-        >
+        <Button variant="ghost" className="pl-0 hover:bg-transparent hover:text-slate-300">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Replays
         </Button>
@@ -94,9 +85,7 @@ export function ReplayDetails() {
 
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">Match Details</h1>
-        <p className="text-slate-400">
-          Replay ID: <span className="text-white font-mono">{id}</span>
-        </p>
+        <p className="text-slate-400">Replay ID: <span className="text-white font-mono">{id}</span></p>
       </div>
 
       {isLoading ? (
@@ -105,20 +94,19 @@ export function ReplayDetails() {
         <div>Replay not found.</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-1 gap-6 mt-8">
+          
           {/* AUDIO PLAYER CARD */}
           <div className="bg-slate-800/50 border border-slate-700 p-6 rounded-xl flex flex-col items-center justify-center gap-4">
-            <h3 className="text-xl font-semibold text-slate-200">
-              Match Audio
-            </h3>
-
+            <h3 className="text-xl font-semibold text-slate-200">Match Audio</h3>
+            
             {/* SAFETY CHECK: Only render if audio_id exists */}
             {data.audio_id ? (
               <>
-                <audio
-                  controls
+                <audio 
+                  controls 
                   className="w-full max-w-md"
                   // Use the ID from data, not the URL param
-                  src={`${import.meta.env.VITE_API_URL}/audio/stream/${data.audio_id}`}
+                  src={`${import.meta.env.VITE_API_URL}/audio/stream/${data.audio_id}`} 
                 />
                 <p className="text-xs text-slate-500">
                   Linked Audio ID: {data.audio_id}
@@ -136,11 +124,11 @@ export function ReplayDetails() {
               <FileText className="h-5 w-5 text-blue-400" />
               <h3 className="font-semibold text-slate-200">Transcription</h3>
             </div>
-
+            
             <div className="p-6 overflow-y-auto flex-1 bg-slate-900/50 font-mono text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
               {transcriptLoading ? (
                 <div className="flex items-center justify-center h-full text-slate-500">
-                  Fetching transcript...
+                   Fetching transcript...
                 </div>
               ) : transcript ? (
                 // Display the text

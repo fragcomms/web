@@ -10,11 +10,7 @@ interface AudioItemProps {
   onClick?: () => void;
 }
 
-export function AudioItem({
-  audio,
-  isSelected = false,
-  onClick,
-}: AudioItemProps) {
+export function AudioItem({ audio, isSelected = false, onClick }: AudioItemProps) {
   return (
     <div
       className={`group flex items-center gap-6 rounded-lg bg-[#151d2b] border p-4 hover:border-indigo-600 hover:bg-[#1a2332] cursor-pointer transition-all ${

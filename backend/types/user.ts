@@ -7,6 +7,6 @@ export interface DiscordProfile {
   global_name?: string;
 }
 
-export interface UserWithToken extends DiscordProfile {
+export interface UserWithToken extends DiscordProfile{
   token: string;
 }

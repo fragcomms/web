@@ -1,7 +1,7 @@
 import { PricingTierCard } from "../components/PricingTierCard";
 
 export function Pricing() {
-  const pricingTiers = [
+const pricingTiers = [
     {
       title: "Placeholder",
       price: 0,
@@ -52,8 +52,7 @@ export function Pricing() {
             Simple, Transparent Pricing
           </h1>
           <p className="font-['Inter:Regular',sans-serif] text-[18px] text-white max-w-[600px] mx-auto">
-            Choose the perfect plan for your team. All plans include a 14-day
-            free trial.
+            Choose the perfect plan for your team. All plans include a 14-day free trial.
           </p>
         </div>
 
@@ -83,8 +82,7 @@ export function Pricing() {
                 Can I change plans later?
               </h3>
               <p className="font-['Inter:Regular',sans-serif] text-[16px] text-[#757575]">
-                Yes, you can upgrade or downgrade your plan at any time. Changes
-                will be reflected in your next billing cycle.
+                Yes, you can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle.
               </p>
             </div>
             <div className="bg-white rounded-[8px] p-[24px] text-left border border-[#d9d9d9]">
@@ -92,8 +90,7 @@ export function Pricing() {
                 What payment methods do you accept?
               </h3>
               <p className="font-['Inter:Regular',sans-serif] text-[16px] text-[#757575]">
-                We accept all major credit cards, PayPal, and bank transfers for
-                Enterprise plans.
+                We accept all major credit cards, PayPal, and bank transfers for Enterprise plans.
               </p>
             </div>
             <div className="bg-white rounded-[8px] p-[24px] text-left border border-[#d9d9d9]">
@@ -101,8 +98,7 @@ export function Pricing() {
                 Is there a refund policy?
               </h3>
               <p className="font-['Inter:Regular',sans-serif] text-[16px] text-[#757575]">
-                We offer a 30-day money-back guarantee. If you're not satisfied,
-                we'll refund your payment in full.
+                We offer a 30-day money-back guarantee. If you're not satisfied, we'll refund your payment in full.
               </p>
             </div>
           </div>
