@@ -1,6 +1,5 @@
-// @ts-expect-error react not req rn
 import { CheckIcon, ClipboardIcon } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function InviteBot() {
   const [inviteLink, setInviteLink] = useState("");
