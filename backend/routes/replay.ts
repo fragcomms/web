@@ -2,9 +2,10 @@ import { Router } from "express";
 import pool from "../config/db.js";
 import { ensureAuth } from "../middleware/authentication.js";
 import { DiscordProfile as User } from "../types/user.js";
+// import { pipeline } from "stream";
 
 const router = Router();
-const REPLAY_PIPELINE_URL = process.env.REPLAY_PIPELINE_URL ?? "http://10.0.0.91:8000";
+const REPLAY_PIPELINE_URL = "http://" + process.env.REMOTE_HOST + ":" + process.env.REMOTE_PORT
 
 // /api/replay
 router.get("/", ensureAuth, async (req, res) => {
@@ -55,15 +56,19 @@ router.post("/process", ensureAuth, async (req, res) => {
   const user = req.user as User;
   if (!user) return res.status(401).send("Unauthorized");
 
-  const { audio_id, sharecode, prompt } = req.body as {
+  const { audio_id, sharecode, prompt, replay_name } = req.body as {
     audio_id?: string;
     sharecode?: string;
     prompt?: string;
+    replay_name?: string;
   };
 
   if (!audio_id || !sharecode || !sharecode.trim()) {
     return res.status(400).json({ error: "audio_id and sharecode are required" });
   }
+
+  // fallback if empty
+  const finalReplayName = replay_name || `Replay ${sharecode}`;
 
   try {
     const query = `
@@ -78,46 +83,34 @@ router.post("/process", ensureAuth, async (req, res) => {
       return res.status(404).json({ error: "Audio not found" });
     }
 
-    const filePath = result.rows[0].file_path as string;
-
-    const downloadResponse = await fetch(`${REPLAY_PIPELINE_URL}/download`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ sharecode }),
-    });
-
-    if (!downloadResponse.ok) {
-      const details = await downloadResponse.text();
-      return res.status(502).json({
-        error: "Download/parse pipeline failed",
-        details,
-      });
-    }
-
-    const transcribeResponse = await fetch(`${REPLAY_PIPELINE_URL}/transcribe`, {
+    const pipelineResponse = await fetch(`${REPLAY_PIPELINE_URL}/create_replay`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        file_path: filePath,
+        match_code: sharecode,
+        audio_id: Number(audio_id),
         prompt: prompt ?? "",
+        replay_name: finalReplayName,
       }),
     });
 
-    if (!transcribeResponse.ok) {
-      const details = await transcribeResponse.text();
+    if (!pipelineResponse.ok) {
+      const details = await pipelineResponse.text();
       return res.status(502).json({
-        error: "Transcription failed",
+        error: "Failed to start replay pipeline",
         details,
       });
     }
 
+    const data = await pipelineResponse.json();
+
+    // confirmation that its processing
     return res.json({
       success: true,
-      message: "Replay download/parse and transcription completed",
+      message: "Replay pipeline initialized",
+      job_id: data.job_id,
     });
   } catch (e) {
     console.error(e);

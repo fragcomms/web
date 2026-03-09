@@ -161,18 +161,11 @@ export default function ReplayPage() {
     : 1;
 
   return (
-    // Parent: A full-screen column. We use p-6 for a little edge padding.
     <div className="w-full flex flex-col gap-4">
-
-      {/* THE MAP: `self-start` pins this specific box to the left edge */}
-      <div
-        className="w-full max-w-[720px] aspect-square border border-slate-700 rounded-xl overflow-hidden self-start shrink-0"
-      >
+      <div className="w-full max-w-[720px] aspect-square border border-slate-700 rounded-xl overflow-hidden self-start shrink-0">
         <canvas ref={canvasRef} className="block w-full h-full" />
       </div>
 
-      {/* THE CONTROLS: `self-center` keeps it centered on the browser screen. 
-          `mt-auto` pushes it firmly to the bottom of the screen. */}
       <div className="w-full flex flex-col items-center gap-3 self-center">
         <div className="flex items-center gap-3 w-full max-w-[800px]">
           <button
@@ -211,10 +204,11 @@ export default function ReplayPage() {
                 <button
                   type="button"
                   onClick={() => handleRoundSelect(index)}
-                  className={`h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center transition-colors ${isCurrent
-                    ? "bg-blue-500 border-blue-400 text-white"
-                    : "bg-slate-900 border-slate-600 text-slate-200 hover:border-slate-400 hover:text-white"
-                    }`}
+                  className={`h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center transition-colors ${
+                    isCurrent
+                      ? "bg-blue-500 border-blue-400 text-white"
+                      : "bg-slate-900 border-slate-600 text-slate-200 hover:border-slate-400 hover:text-white"
+                  }`}
                   title={`Jump to round ${roundNumber}`}
                 >
                   {roundNumber}

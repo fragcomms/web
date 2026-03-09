@@ -63,10 +63,11 @@ export default function InviteBot() {
         href={inviteLink || "#"}
         target="_blank"
         rel="noopener noreferrer"
-        className={`${inviteLink
-          ? "bg-gray-700 hover:bg-gray-600"
-          : "bg-gray-700 cursor-not-allowed"
-          } text-white font-bold px-6 py-3 rounded-lg mb-4 transition-colors duration-200`}
+        className={`${
+          inviteLink
+            ? "bg-gray-700 hover:bg-gray-600"
+            : "bg-gray-700 cursor-not-allowed"
+        } text-white font-bold px-6 py-3 rounded-lg mb-4 transition-colors duration-200`}
       >
         {loading ? "Loading..." : "Invite Bot"}
       </a>
@@ -75,10 +76,11 @@ export default function InviteBot() {
       <button
         onClick={copyInvite}
         disabled={!inviteLink}
-        className={`flex items-center gap-2 ${inviteLink
-          ? "bg-gray-700 hover:bg-gray-600"
-          : "bg-gray-700 cursor-not-allowed"
-          } text-white font-semibold px-6 py-2 rounded-lg transition-colors duration-200`}
+        className={`flex items-center gap-2 ${
+          inviteLink
+            ? "bg-gray-700 hover:bg-gray-600"
+            : "bg-gray-700 cursor-not-allowed"
+        } text-white font-semibold px-6 py-2 rounded-lg transition-colors duration-200`}
       >
         {copied
           ? (
