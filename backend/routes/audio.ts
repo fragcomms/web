@@ -1,10 +1,11 @@
 import { Router } from "express";
-import { NodeSSH } from "node-ssh";
+import { Readable } from "stream";
 import pool from "../config/db.js";
 import { ensureAuth } from "../middleware/authentication.js";
 import { DiscordProfile as User } from "../types/user.js";
 
 const router = Router();
+const REPLAY_PIPELINE_URL = "http://" + process.env.REMOTE_HOST + ":" + process.env.REMOTE_PORT;
 
 // /api/audio
 router.get("/", ensureAuth, async (req, res) => {
@@ -30,7 +31,7 @@ router.get("/", ensureAuth, async (req, res) => {
 router.get("/:id/stream", ensureAuth, async (req, res) => {
   const user = req.user as User;
   if (!user) return res.status(401).send("Unauthorized");
-  const ssh = new NodeSSH();
+
   try {
     // fetching data from db
     const query = `
@@ -42,31 +43,19 @@ router.get("/:id/stream", ensureAuth, async (req, res) => {
     if (result.rows.length === 0) return res.status(404).send("Audio not found");
 
     // fetching binary data from backend machine
-    const remotePath = result.rows[0].path;
-    await ssh.connect({
-      host: process.env.REMOTE_AUDIO_HOST,
-      username: process.env.REMOTE_AUDIO_USER,
-      password: process.env.REMOTE_AUDIO_PASS,
-    });
+    const remotePath = result.rows[0].file_path;
+    const remoteResponse = await fetch(`${REPLAY_PIPELINE_URL}/get_audio?filepath=${encodeURIComponent(remotePath)}`)
 
-    const sftp = await ssh.requestSFTP();
-    const stream = sftp.createReadStream(remotePath);
+    if (!remoteResponse.ok || !remoteResponse.body) {
+      console.error("FastAPI Error:", await remoteResponse.text());
+      return res.status(remoteResponse.status).send("Failed to stream audio from processing server");
+    }
+
     res.setHeader("Content-Type", "audio/mka");
-    stream.pipe(res);
+    Readable.fromWeb(remoteResponse.body as any).pipe(res);
 
-    // clean up when finished
-    stream.on("close", () => {
-      ssh.dispose();
-    });
-
-    // clean up if error
-    stream.on("error", (e: Error) => {
-      console.error("Stream error:", e);
-      ssh.dispose();
-    });
   } catch (e) {
-    console.error(e);
-    ssh.dispose(); // make sure ssh is closed
+    console.error("Audio stream error: ", e);
     res.status(500).send("Server Error");
   }
 });
@@ -76,7 +65,6 @@ router.get("/:id/stream", ensureAuth, async (req, res) => {
 router.get("/:id/transcription", ensureAuth, async (req, res) => {
   const user = req.user as User;
   if (!user) return res.status(401).send("Unauthorized");
-  const ssh = new NodeSSH();
   try {
     // fetching data from db
     const query = `
@@ -87,35 +75,28 @@ router.get("/:id/transcription", ensureAuth, async (req, res) => {
     const result = await pool.query(query, [req.params.id, user.discord_id]);
     if (result.rows.length === 0) return res.status(404).send("Transcript not found");
 
-    // fetching binary data from backend machine
-    const remotePath = result.rows[0].path;
-    await ssh.connect({
-      host: process.env.REMOTE_AUDIO_HOST,
-      username: process.env.REMOTE_AUDIO_USER,
-      password: process.env.REMOTE_AUDIO_PASS,
-    });
+    const remotePath = result.rows[0].file_path;
 
-    const sftp = await ssh.requestSFTP();
-    const stream = sftp.createReadStream(remotePath);
-    res.setHeader("Content-Type", "audio/mka");
-    stream.pipe(res);
+    const remoteResponse = await fetch(
+      `${REPLAY_PIPELINE_URL}/get_transcript?filepath=${encodeURIComponent(remotePath)}`
+    )
 
-    // clean up when finished
-    stream.on("close", () => {
-      ssh.dispose();
-    });
+    if (!remoteResponse.ok || !remoteResponse.body) {
+      console.error("FastAPI Error:", await remoteResponse.text());
+      return res.status(remoteResponse.status).send("Failed to retrieve transcript");
+    }
 
-    // clean up if error
-    stream.on("error", (e: Error) => {
-      console.error("Stream error:", e);
-      ssh.dispose();
-    });
+    res.setHeader("Content-Type", "text/plain"); 
+    Readable.fromWeb(remoteResponse.body as any).pipe(res);
+
   } catch (e) {
-    console.error(e);
-    ssh.dispose(); // make sure ssh is closed
+    console.error("Transcription fetch error: ", e);
     res.status(500).send("Server Error");
   }
 });
+
+// /api/audio/id/transcription/discordid
+// router.get("/:id/transcription/:discordid")
 
 // TODO: figure out how to decentralize transcript transport
 // and use the server to make a master transcript instead
@@ -123,8 +104,17 @@ router.get("/:id/transcription", ensureAuth, async (req, res) => {
  * we already have all separated transcripts, just need to
  * think about how to route it accordingly to be fetchable
  *
- * /api/id/transcription/discordid ?
+ * /api/audio/id/transcription/discordid ?
  * and then there will be multiple records in the database that have a reference to a singular audio_id
  */
+/* UPDATE: transcriptions will now be in json to make easy access to fields
+the backend_scripts will NOT compile a master transcript because we want to
+stream the json, and when the user doesn't want this person's transcript,
+we will stop feeding it to the client and thus allowing us to effectively
+stop giving the user this person's transcript, making it easier for us.
+*/
+/*
+ALTERNATIVE: what about giving it all to the user immediately instead of streaming? would be more simpler than the initial approach
+*/
 
 export default router;
