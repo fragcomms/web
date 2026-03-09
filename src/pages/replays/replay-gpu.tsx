@@ -2,11 +2,13 @@
 
 import { ArrowLeftRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
 import { Renderer } from "../../webgpu/renderer";
 import { ReplayPlayer } from "../../webgpu/replayPlayer";
 import type { ReplayJSON } from "../../webgpu/types";
 
 export default function ReplayPage() {
+  const { id } = useParams<{ id: string }>();
   // Canvas target where WebGPU renders each replay frame.
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -27,6 +29,11 @@ export default function ReplayPage() {
   const [roundStartTicks, setRoundStartTicks] = useState<number[]>([]);
   const [ticksPerSecond, setTicksPerSecond] = useState(64);
 
+  // adding fetch/error states so we know when it is fetching and when
+  // the fetch errored out
+  const [isFetching, setIsFetching] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   // Keep imperative ref synchronized with React state.
   useEffect(() => {
     isPlayingRef.current = isPlaying;
@@ -37,85 +44,102 @@ export default function ReplayPage() {
     let cancelled = false;
 
     (async () => {
+      if (!id) {
+        setFetchError("No replay ID provided in the URL.");
+        setIsFetching(false);
+        return;
+      }
+
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      // Initialize WebGPU renderer once.
-      const renderer = await Renderer.create(canvas);
-      if (cancelled) return;
-      rendererRef.current = renderer;
+      try {
+        const targetUrl = `${import.meta.env.VITE_API_URL}/replays/${id}/json`;
 
-      // Load replay JSON and seed the player timeline.
-      const res = await fetch("/003802019139782967518_1486376156.dem.json", {
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        throw new Error(`Failed to load replay: ${res.status} ${res.statusText}`);
-      }
+        const res = await fetch(targetUrl, {
+          cache: "no-store",
+          credentials: "include",
+        });
 
-      const data = (await res.json()) as ReplayJSON;
-      if (cancelled) return;
+        if (!res.ok) {
+          throw new Error(`Server Error ${res.status}: ${res.statusText}`);
+        }
 
-      const player = new ReplayPlayer();
-      player.setReplay(data);
-      playerRef.current = player;
-      setTicksPerSecond(player.ticksPerSecond);
-
-      const firstTimelineTick = data.timeline[0]?.tick ?? 0;
-      setReplayStartTick(firstTimelineTick);
-
-      const starts = (data.events?.round_start ?? [])
-        .map((round) => round.tick)
-        .filter((tick) => Number.isFinite(tick))
-        .sort((a, b) => a - b);
-      setRoundStartTicks(starts);
-
-      const duration = player.getDurationSeconds();
-      setDurationSec(duration);
-      setCurrentTimeSec(0);
-
-      const firstFrame = player.seekToElapsedSeconds(0);
-      if (firstFrame && rendererRef.current) {
-        rendererRef.current.render(firstFrame, 0);
-      }
-
-      // Main playback loop: compute delta time, advance/seek frame, then render.
-      const loop = (nowMs: number) => {
+        // Initialize WebGPU renderer once.
+        const renderer = await Renderer.create(canvas);
         if (cancelled) return;
+        rendererRef.current = renderer;
 
-        const renderer = rendererRef.current;
-        const player = playerRef.current;
-        if (!renderer || !player) return;
+        // Load replay JSON and seed the player timeline.
+        const data: ReplayJSON = JSON.parse(await res.text());
+        const player = new ReplayPlayer();
+        player.setReplay(data);
+        playerRef.current = player;
+        setTicksPerSecond(player.ticksPerSecond);
 
-        if (lastTimeRef.current === null) {
+        const firstTimelineTick = data.timeline[0]?.tick ?? 0;
+        setReplayStartTick(firstTimelineTick);
+
+        const starts = (data.events?.round_start ?? [])
+          .map((round) => round.tick)
+          .filter((tick) => Number.isFinite(tick))
+          .sort((a, b) => a - b);
+        setRoundStartTicks(starts);
+
+        const duration = player.getDurationSeconds();
+        setDurationSec(duration);
+        setCurrentTimeSec(0);
+
+        const firstFrame = player.seekToElapsedSeconds(0);
+        if (firstFrame && rendererRef.current) {
+          rendererRef.current.render(firstFrame, 0);
+        }
+
+        setIsFetching(false);
+
+        // Main playback loop: compute delta time, advance/seek frame, then render.
+        const loop = (nowMs: number) => {
+          if (cancelled) return;
+
+          const renderer = rendererRef.current;
+          const player = playerRef.current;
+
+          if (!renderer || !player) return;
+
+          if (lastTimeRef.current === null) {
+            lastTimeRef.current = nowMs;
+          }
+
+          const dtSec = (nowMs - lastTimeRef.current) / 1000;
           lastTimeRef.current = nowMs;
-        }
 
-        const dtSec = (nowMs - lastTimeRef.current) / 1000;
-        lastTimeRef.current = nowMs;
+          let frame = null;
 
-        let frame = null;
+          if (isPlayingRef.current) {
+            // Advance timeline in real-time while playing.
+            frame = player.advance(dtSec);
+            setCurrentTimeSec(player.getCurrentElapsedSeconds());
+          } else {
+            // While paused, render the current timeline position.
+            frame = player.getFrameAtElapsedSeconds(player.getCurrentElapsedSeconds());
+          }
 
-        if (isPlayingRef.current) {
-          // Advance timeline in real-time while playing.
-          frame = player.advance(dtSec);
-          setCurrentTimeSec(player.getCurrentElapsedSeconds());
-        } else {
-          // While paused, render the current timeline position.
-          frame = player.getFrameAtElapsedSeconds(player.getCurrentElapsedSeconds());
-        }
+          if (frame) {
+            renderer.render(frame, player.getCurrentElapsedSeconds());
+          }
 
-        if (frame) {
-          renderer.render(frame, player.getCurrentElapsedSeconds());
-        }
+          rafRef.current = requestAnimationFrame(loop);
+        };
 
         rafRef.current = requestAnimationFrame(loop);
-      };
-
-      rafRef.current = requestAnimationFrame(loop);
-    })().catch((err) => {
-      console.error(err);
-    });
+      } catch (err: any) {
+        console.error(err);
+        if (!cancelled) {
+          setFetchError(err.message || "An unknown error occurred while loading the replay.");
+          setIsFetching(false);
+        }
+      }
+    })();
 
     return () => {
       // Cleanup animation and runtime refs on unmount.
@@ -129,7 +153,7 @@ export default function ReplayPage() {
       playerRef.current = null;
       lastTimeRef.current = null;
     };
-  }, []);
+  }, [id]);
 
   // Random-access seek: jump timeline and immediately redraw target frame.
   const handleSeek = (sec: number) => {
@@ -160,6 +184,14 @@ export default function ReplayPage() {
     )
     : 1;
 
+  if (fetchError) {
+    return (
+      <div className="w-full flex-1 flex items-center justify-center text-red-400 p-8">
+        <p className="text-xl font-semibold">Error: {fetchError}</p>
+      </div>
+    )
+  }
+
   return (
     <div className="w-full flex flex-col gap-4">
       <div className="w-full max-w-[720px] aspect-square border border-slate-700 rounded-xl overflow-hidden self-start shrink-0">
@@ -171,6 +203,7 @@ export default function ReplayPage() {
           <button
             onClick={() => setIsPlaying((p) => !p)}
             className="min-w-[80px] px-4 py-2 rounded bg-slate-700 text-white"
+            disabled={isFetching}
           >
             {isPlaying ? "Pause" : "Play"}
           </button>
@@ -187,6 +220,7 @@ export default function ReplayPage() {
               handleSeek(sec);
             }}
             className="flex-1 cursor-pointer"
+            disabled={isFetching}
           />
 
           <span className="text-white">
@@ -204,12 +238,12 @@ export default function ReplayPage() {
                 <button
                   type="button"
                   onClick={() => handleRoundSelect(index)}
-                  className={`h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center transition-colors ${
-                    isCurrent
-                      ? "bg-blue-500 border-blue-400 text-white"
-                      : "bg-slate-900 border-slate-600 text-slate-200 hover:border-slate-400 hover:text-white"
-                  }`}
+                  className={`h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center transition-colors ${isCurrent
+                    ? "bg-blue-500 border-blue-400 text-white"
+                    : "bg-slate-900 border-slate-600 text-slate-200 hover:border-slate-400 hover:text-white"
+                    }`}
                   title={`Jump to round ${roundNumber}`}
+                  disabled={isFetching}
                 >
                   {roundNumber}
                 </button>

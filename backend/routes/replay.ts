@@ -5,9 +5,9 @@ import { DiscordProfile as User } from "../types/user.js";
 // import { pipeline } from "stream";
 
 const router = Router();
-const REPLAY_PIPELINE_URL = "http://" + process.env.REMOTE_HOST + ":" + process.env.REMOTE_PORT
+const REPLAY_PIPELINE_URL = "http://" + process.env.REMOTE_HOST + ":" + process.env.REMOTE_PORT;
 
-// /api/replay
+// /api/replays
 router.get("/", ensureAuth, async (req, res) => {
   const user = req.user as User;
   if (!user) return res.status(401).send("Unauthorized");
@@ -28,7 +28,7 @@ router.get("/", ensureAuth, async (req, res) => {
   }
 });
 
-// /api/replay/id
+// /api/replays/id
 router.get("/:id", ensureAuth, async (req, res) => {
   const user = req.user as User;
   if (!user) return res.status(401).send("Unauthorized");
@@ -49,7 +49,44 @@ router.get("/:id", ensureAuth, async (req, res) => {
   }
 });
 
-// TODO: allow user to create a replay
+// /api/replays/:id/json
+router.get("/:id/json", ensureAuth, async (req, res) => {
+  const user = req.user as User;
+  if (!user) return res.status(401).send("Unauthorized");
+  try {
+    const query = `
+      SELECT d.file_path
+      FROM replays r
+      JOIN demos d ON d.demo_id = r.demo_id
+      JOIN media_access ma ON ma.audio_id = r.audio_id
+      WHERE r.replay_id = $1  AND ma.discord_id = $2
+      `;
+
+    const result = await pool.query(query, [req.params.id, user.discord_id]);
+
+    if (result.rows.length === 0) return res.status(404).send("Replay json not found or unauthorized");
+
+    const jsonFilePath = result.rows[0].file_path;
+    const remoteResponse = await fetch(
+      `${REPLAY_PIPELINE_URL}/get_json?filepath=${encodeURIComponent(jsonFilePath)}`
+    )
+
+    if (!remoteResponse.ok) {
+      const err = await remoteResponse.text();
+      console.error("Python server error: ", err);
+      return res.status(remoteResponse.status).send("Failed to retrieve file from processing server")
+    }
+
+    res.setHeader("Content-Type", "application/json");
+
+    const arrayBuffer = await remoteResponse.arrayBuffer();
+    return res.send(Buffer.from(arrayBuffer));
+  
+  } catch (e) {
+    console.error(e);
+    res.status(500).send("Database error");
+  }
+});
 
 // /api/replays/process
 router.post("/process", ensureAuth, async (req, res) => {

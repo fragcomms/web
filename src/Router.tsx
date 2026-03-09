@@ -67,23 +67,11 @@ export default function Router() {
 
             {/* protected */}
             <Route
-              path="/replays/gpu"
-              element={
-                <ProtectedRoute>
-                  <div className="w-full flex-1 flex flex-col p-4">
-                    <GPUTest />
-                  </div>
-                </ProtectedRoute>
-              }
-            />
-
-            {/* protected */}
-            <Route
               path="/replays/:id"
               element={
                 <ProtectedRoute>
                   <div className="w-full min-h-[calc(100vh-80px)] pt-8 px-4 flex flex-col items-center">
-                    <ReplayDetails />
+                    <GPUTest />
                   </div>
                 </ProtectedRoute>
               }

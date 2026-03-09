@@ -91,7 +91,7 @@ function ReplayCard({ replay }: { replay: Replay; }) {
             </span>
           </div>
 
-          <button
+          {/* <button
             className="z-10 text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded transition-colors"
             onClick={(e) => {
               e.preventDefault();
@@ -99,7 +99,7 @@ function ReplayCard({ replay }: { replay: Replay; }) {
             }}
           >
             Download .dem
-          </button>
+          </button> */}
         </div>
       </Card>
     </Link>
