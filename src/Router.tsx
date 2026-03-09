@@ -8,7 +8,7 @@ import Home from "./pages/Home";
 import InviteBot from "./pages/invite-bot";
 import { LoginForm } from "./pages/login-form";
 import { Pricing } from "./pages/Pricing";
-import { ReplayDetails } from "./pages/replays/replay-details";
+// import { ReplayDetails } from "./pages/replays/replay-details";
 import GPUTest from "./pages/replays/replay-gpu";
 import { AudioLibrary } from "./pages/replays/replay-import";
 import { ReplayLibrary } from "./pages/replays/replay-library";
