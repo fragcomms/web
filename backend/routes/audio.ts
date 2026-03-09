@@ -3,13 +3,21 @@ import { NodeSSH } from 'node-ssh';
 import pool from '../config/db.js';
 import { ensureAuth } from '../middleware/authentication.js';
 import { DiscordProfile as User } from '../types/user.js';
-import {streamMkaToWav} from '../audiosplit.js'
+import {streamMkaToWav, listMkaTracks} from '../audiosplit.js'
+import path from 'path';
+import fs from 'fs'; 
+
 
 const router = Router();
 
-// /api/audio
-router.get("/", ensureAuth, async (req, res) => {
+console.log("Audio router loaded");
+
+//
+router.get("/", ensureAuth, async (req, res) => { //ensureAuth bypass for testing
+  console.log("AUDIO ROUTE HIT"); // API TEST
+
   const user = req.user as User;
+
   if (!user) return res.status(401).send("Unauthorized");
   try {
     const query = `
@@ -25,13 +33,18 @@ router.get("/", ensureAuth, async (req, res) => {
     console.error(e);
     res.status(500).send("Database error")
   }
+
+
+  
 });
 
 // /api/audio/id/stream/:trackIndex
 router.get("/:id/stream/:trackIndex", ensureAuth, async (req, res) => {
   const user = req.user as User;
   if (!user) return res.status(401).send("Unauthorized");
+
   const ssh = new NodeSSH();
+
   try {
     //fetching data from db
     const query = `
@@ -40,6 +53,7 @@ router.get("/:id/stream/:trackIndex", ensureAuth, async (req, res) => {
       JOIN media_access ma ON a.audio_id = ma.audio_id
       WHERE a.audio_id = $1 AND ma.discord_id = $2`;
     const result = await pool.query(query, [req.params.id, user.discord_id]);
+    
     if (result.rows.length === 0) return res.status(404).send("Audio not found");
     
     //fetching binary data from backend machine
@@ -56,8 +70,9 @@ router.get("/:id/stream/:trackIndex", ensureAuth, async (req, res) => {
     const trackIndexStr = Array.isArray(req.params.trackIndex)
       ? req.params.trackIndex[0] // if array, take first index
       : req.params.trackIndex;
-
     const trackIndex = parseInt(trackIndexStr, 10);
+
+
 
     await streamMkaToWav(stream, trackIndex, res);
 
@@ -85,23 +100,23 @@ router.get("/:id/stream/:trackIndex", ensureAuth, async (req, res) => {
 
 // /api/audio/id/tracks
 router.get("/:id/tracks", ensureAuth, async (req, res) => {
+  console.log("TRACKS ROUTE HIT", req.params.id); // API TEST
   const user = req.user as User;
   if (!user) return res.status(401).send("Unauthorized");
 
   const ssh = new NodeSSH();
 
-  try {
-
-    const query = `
-      SELECT a.file_path
+  try{
+    const result = await pool.query(
+      `SELECT a.file_path
       FROM audios a
       JOIN media_access ma ON a.audio_id = ma.audio_id
-      WHERE a.audio_id = $1 AND ma.discord_id = $2`;
+      WHERE a.audio_id = $1 AND ma.discord_id = $2`,
+      [req.params.id, user.discord_id]
+    );
 
-    const result = await pool.query(query, [req.params.id, user.discord_id]);
-
-    if (result.rows.length === 0)
-      return res.status(404).send("Audio not found");
+    if (result.rows.length === 0) 
+      return res.status(404).send("Audio not found")
 
     const remotePath = result.rows[0].file_path;
 
@@ -111,31 +126,23 @@ router.get("/:id/tracks", ensureAuth, async (req, res) => {
       password: process.env.REMOTE_AUDIO_PASS,
     });
 
-    const ffprobeCmd = `
-      ffprobe -v quiet
-      -show_entries stream=index,codec_type
-      -of json
-      "${remotePath}"
-      `;
-
-    const resultProbe = await ssh.execCommand(ffprobeCmd);
+    const tracks = await listMkaTracks(ssh, remotePath);
+    const trackIndexes = tracks.map((t: any) => t.index);
 
     ssh.dispose();
 
-    const data = JSON.parse(resultProbe.stdout);
-
-    const tracks = data.streams.filter(
-      (s: any) => s.codec_type === "audio"
-
-    );
-
-    res.json(tracks);
-
-  } catch (e) {
-    console.error(e);
+    // return track indexes and length
+    res.json({
+      tracks: trackIndexes, 
+      length: trackIndexes.length
+    });
+  
+  } catch(err) {
+    console.error(err);
     ssh.dispose();
     res.status(500).send("Server Error");
   }
+
 });
 
 // practically same thing as stream

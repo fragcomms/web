@@ -66,7 +66,7 @@ export default function Router() {
             } />
 
             {/* protected */}
-            <Route path="/replays/audio-delivery" element={
+            <Route path="/replays/audio-delivery/:id" element={
               <ProtectedRoute>
                 <div className="main-content">
                   <AudioDelivery />

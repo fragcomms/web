@@ -4,24 +4,15 @@ import {Response} from 'express';
 import path from 'path';
 import fs from 'fs';
 import { on } from 'events';
+import { NodeSSH } from 'node-ssh';
 
 
 // input mka file, return array of {index, codec} objects (all tracks found in file)
-export async function listMkaTracks(inputFile: string) {
-    return new Promise<{index: number, codec: string}[]>((resolve, reject) => {
-        ffmpeg.ffprobe(inputFile, (err, metadata) => {
-            if (err) {
-                console.error("Error probing file:", err);
-                return reject(err);
-            }
-
-            const audioStreams = metadata.streams
-                .filter(s => s.codec_type === 'audio')
-                .map(s => ({ index: s.index, codec: s.codec_name || 'unknown'}));
-
-            resolve(audioStreams);
-        });
-    });
+export async function listMkaTracks(ssh: NodeSSH, remotePath: string) {
+    return [
+  { index: 0, name: "user 1" },
+  { index: 1, name: "user 2" },
+];
 }
 
 
