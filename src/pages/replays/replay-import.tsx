@@ -264,7 +264,7 @@ export function AudioLibrary() {
             <h2 className="text-lg">Enter Match Sharecode</h2>
             <Input
               value={sharecode}
-              onChange={(event) => setSharecode(event.target.value.toUpperCase())}
+              onChange={(event) => setSharecode(event.target.value)}
               placeholder="CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx"
               className="bg-[#0e1622] border-[#1e2936] text-white placeholder:text-gray-500"
             />
