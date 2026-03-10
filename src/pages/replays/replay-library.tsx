@@ -70,7 +70,9 @@ export function ReplayLibrary() {
         )
         : (
           <div className="flex flex-col gap-3">
-            {replays.map((replay) => <ReplayCard key={replay.replay_id} replay={replay} />)}
+            {[...replays]
+              .sort((a, b) => new Date(b.fetch_time).getTime() - new Date(a.fetch_time).getTime())
+              .map((replay) => <ReplayCard key={replay.replay_id} replay={replay} />)}
           </div>
         )}
     </div>
