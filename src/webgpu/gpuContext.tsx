@@ -40,23 +40,17 @@ export async function initWebGPU(canvas: HTMLCanvasElement): Promise<GPUContext>
     throw new Error("WebGPU not supported in this browser.");
   }
 
-  let adapter = null;
-  try {
-    adapter = await navigator.gpu.requestAdapter({
-      powerPreference: "low-power",
-      forceFallbackAdapter: true,
-    })
-  } catch (e) {
-    console.warn("Standard adapter request failed, checking for fallback...", e)
-  }
+  const adapter = await navigator.gpu.requestAdapter({
+    featureLevel: "compatibility",
+    compatibilityMode: true,
+  } as any);
+  if (!adapter) throw new Error("Failed to get GPU adapter.");
 
-  if (!adapter) {
-    throw new Error(
-      "Your GPU is blacklisted by your browser."
-    )
-  }
+  const device = await adapter.requestDevice({
+    requiredLimits: adapter.limits as any,
+  });
+  if (!device) throw new Error("Failed to get GPU device.");
 
-  const device = await adapter.requestDevice();
   const context = canvas.getContext("webgpu") as GPUCanvasContext;
   if (!context) throw new Error("Failed to get WebGPU context.");
 
