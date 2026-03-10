@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight } from "lucide-react";
+import { ArrowLeftRight, Clock3 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Renderer } from "../../webgpu/renderer";
@@ -33,6 +33,7 @@ export default function ReplayPage() {
   // the fetch errored out
   const [isFetching, setIsFetching] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [transcriptText, setTranscriptText] = useState("Transcription will appear here.");
 
   // Keep imperative ref synchronized with React state.
   useEffect(() => {
@@ -155,6 +156,43 @@ export default function ReplayPage() {
     };
   }, [id]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchTranscriptPlaceholder() {
+      if (!id) {
+        setTranscriptText("No replay ID provided for transcript.");
+        return;
+      }
+
+      setTranscriptText("Loading transcript...");
+
+      try {
+        // Placeholder API call.
+        // const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/${id}/transcript`, {
+        //   cache: "no-store",
+        //   credentials: "include",
+        // });
+        // const payload = await res.json();
+        // if (!cancelled) setTranscriptText(payload.text ?? "No transcript available.");
+
+        if (!cancelled) {
+          setTranscriptText("Transcript API placeholder: wire /replays/:id/transcript here.");
+        }
+      } catch {
+        if (!cancelled) {
+          setTranscriptText("Failed to load transcript.");
+        }
+      }
+    }
+
+    void fetchTranscriptPlaceholder();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
   // Random-access seek: jump timeline and immediately redraw target frame.
   const handleSeek = (sec: number) => {
     const player = playerRef.current;
@@ -177,12 +215,30 @@ export default function ReplayPage() {
     handleSeek(seekSec);
   };
 
+  // Resolve the currently active round from the global replay clock.
   const activeRound = roundStartTicks.length > 0
     ? getRoundFromTick(
       roundStartTicks,
       replayStartTick + currentTimeSec * ticksPerSecond,
     )
     : 1;
+
+  // Derive absolute replay bounds for the active round.
+  const replayEndTick = replayStartTick + durationSec * ticksPerSecond;
+  const activeRoundIndex = Math.max(0, activeRound - 1);
+  const activeRoundStartTick = roundStartTicks[activeRoundIndex] ?? replayStartTick;
+  const activeRoundEndTick = roundStartTicks[activeRoundIndex + 1] ?? replayEndTick;
+
+  // Convert active round bounds into replay seconds.
+  const activeRoundStartSec = Math.max(0, (activeRoundStartTick - replayStartTick) / ticksPerSecond);
+  const activeRoundEndSec = Math.max(activeRoundStartSec, (activeRoundEndTick - replayStartTick) / ticksPerSecond);
+
+  // Round-local values used by the transport UI (slider/time label).
+  const activeRoundDurationSec = Math.max(0, activeRoundEndSec - activeRoundStartSec);
+  const activeRoundElapsedSec = Math.min(
+    activeRoundDurationSec,
+    Math.max(0, currentTimeSec - activeRoundStartSec),
+  );
 
   if (fetchError) {
     return (
@@ -194,8 +250,20 @@ export default function ReplayPage() {
 
   return (
     <div className="w-full flex flex-col gap-4">
-      <div className="w-full max-w-[720px] aspect-square border border-slate-700 rounded-xl overflow-hidden self-start shrink-0">
-        <canvas ref={canvasRef} className="block w-full h-full" />
+      <div className="flex w-full items-start justify-center gap-4">
+        <div className="w-full max-w-[720px] aspect-square border border-slate-700 rounded-xl overflow-hidden shrink-0">
+          <canvas ref={canvasRef} className="block w-full h-full" />
+        </div>
+
+        <aside className="w-full max-w-[320px] h-[720px] rounded-xl border border-slate-700 bg-slate-900/90 p-3">
+          <div className="mb-2 text-sm font-semibold text-slate-200">AI-Generated Transcript</div>
+          <div
+            className="h-[calc(100%-1.5rem)] overflow-y-auto rounded-md border border-slate-800 bg-slate-950/50 p-2 text-sm text-slate-300"
+            aria-live="polite"
+          >
+            <p className="whitespace-pre-wrap text-slate-300">{transcriptText}</p>
+          </div>
+        </aside>
       </div>
 
       <div className="w-full flex flex-col items-center gap-3 self-center">
@@ -211,30 +279,31 @@ export default function ReplayPage() {
           <input
             type="range"
             min={0}
-            max={durationSec}
+            max={activeRoundDurationSec}
             step={0.01}
-            value={currentTimeSec}
+            value={activeRoundElapsedSec}
             onMouseDown={() => setIsPlaying(false)}
             onChange={(e) => {
+              // Map round-local seek back into absolute replay seconds.
               const sec = Number(e.target.value);
-              handleSeek(sec);
+              handleSeek(activeRoundStartSec + sec);
             }}
             className="flex-1 cursor-pointer"
             disabled={isFetching}
           />
 
           <span className="text-white">
-            {formatTime(currentTimeSec)} / {formatTime(durationSec)}
+            {formatTime(activeRoundElapsedSec)} / {formatTime(activeRoundDurationSec)}
           </span>
         </div>
 
-        <div className="flex flex-wrap self-center justify-center gap-1.5 max-w-[600px]">
+        <div className="flex w-full max-w-[600px] flex-nowrap self-center justify-center gap-1.5 pb-1">
           {roundStartTicks.map((_, index) => {
             const roundNumber = index + 1;
             const isCurrent = roundNumber === activeRound;
 
             return (
-              <div key={roundNumber} className="flex items-center gap-1.5">
+              <div key={roundNumber} className="flex shrink-0 items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => handleRoundSelect(index)}
@@ -256,15 +325,26 @@ export default function ReplayPage() {
                     <ArrowLeftRight className="h-4 w-4" />
                   </div>
                 )}
+
+                {roundNumber === 24 && roundStartTicks.length > 25 && (
+                  <div
+                    className="flex h-7 w-7 items-center justify-center text-slate-300"
+                    title="Overtime rounds"
+                  >
+                    <Clock3 className="h-4 w-4" />
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       </div>
+
     </div>
   );
 }
 
+// Finds the current round number (1-indexed) from a replay tick.
 function getRoundFromTick(roundStartTicks: number[], currentTick: number): number {
   if (roundStartTicks.length === 0) return 1;
 
@@ -280,6 +360,7 @@ function getRoundFromTick(roundStartTicks: number[], currentTick: number): numbe
   return round;
 }
 
+// Formats seconds as mm:ss for transport UI.
 function formatTime(sec: number): string {
   const total = Math.floor(sec);
   const m = Math.floor(total / 60);

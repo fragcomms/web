@@ -1,4 +1,4 @@
-import { Filter, Search } from "lucide-react";
+import { AlertTriangle, Filter, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AudioItem } from "../../components/AudioItem";
@@ -11,6 +11,81 @@ type AudioRow = {
   sampling_rate: number;
 };
 
+type SubmitErrorState = {
+  title: string;
+  details: string[];
+};
+
+const SHARECODE_PATTERN = /^CSGO(?:-[A-Z0-9]{5}){5}$/;
+
+function parseDetailLines(value: unknown): string[] {
+  if (typeof value === "string") {
+    return value
+      .split(/\n|;/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (typeof item === "string") return item.trim();
+        if (item && typeof item === "object") return JSON.stringify(item);
+        return String(item);
+      })
+      .filter(Boolean);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, item]) => `${key}: ${typeof item === "string" ? item : JSON.stringify(item)}`)
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function formatSubmitError(
+  payload: unknown,
+  status?: number,
+  statusText?: string,
+): SubmitErrorState {
+  const fallbackTitle = status
+    ? `Failed to process replay (${status}${statusText ? ` ${statusText}` : ""})`
+    : "Failed to process replay";
+
+  if (!payload) {
+    return { title: fallbackTitle, details: [] };
+  }
+
+  if (typeof payload === "string") {
+    return { title: payload, details: [] };
+  }
+
+  if (payload && typeof payload === "object") {
+    const typedPayload = payload as {
+      error?: unknown;
+      message?: unknown;
+      details?: unknown;
+      errors?: unknown;
+    };
+
+    const title =
+      (typeof typedPayload.error === "string" && typedPayload.error)
+      || (typeof typedPayload.message === "string" && typedPayload.message)
+      || fallbackTitle;
+
+    const details = [
+      ...parseDetailLines(typedPayload.details),
+      ...parseDetailLines(typedPayload.errors),
+    ];
+
+    return { title, details };
+  }
+
+  return { title: fallbackTitle, details: [] };
+}
+
 export function AudioLibrary() {
   const navigate = useNavigate();
 
@@ -20,7 +95,7 @@ export function AudioLibrary() {
   const [error, setError] = useState<string | null>(null);
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
   const [sharecode, setSharecode] = useState("");
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<SubmitErrorState | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -50,8 +125,21 @@ export function AudioLibrary() {
   }, []);
 
   async function handleProcessReplay() {
-    if (!selectedAudioId || !sharecode.trim()) {
-      setSubmitError("Please select an audio file and enter a sharecode.");
+    const normalizedSharecode = sharecode.trim().toUpperCase();
+
+    if (!selectedAudioId || !normalizedSharecode) {
+      setSubmitError({
+        title: "Please select an audio file and enter a sharecode.",
+        details: [],
+      });
+      return;
+    }
+
+    if (!SHARECODE_PATTERN.test(normalizedSharecode)) {
+      setSubmitError({
+        title: "Invalid match sharecode format.",
+        details: ["Expected format: CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx"],
+      });
       return;
     }
 
@@ -67,24 +155,20 @@ export function AudioLibrary() {
         credentials: "include",
         body: JSON.stringify({
           audio_id: selectedAudioId,
-          sharecode: sharecode.trim(),
+          sharecode: normalizedSharecode,
         }),
       });
 
       if (!res.ok) {
-        const payload = (await res.json().catch(() => null)) as
-          | { error?: string; details?: string; }
-          | null;
-
-        throw new Error(
-          payload?.error || payload?.details || "Failed to process replay",
-        );
+        const payload = await res.json().catch(() => null);
+        setSubmitError(formatSubmitError(payload, res.status, res.statusText));
+        return;
       }
 
       navigate("/replays");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to process replay";
-      setSubmitError(message);
+      setSubmitError({ title: message, details: [] });
     } finally {
       setIsSubmitting(false);
     }
@@ -180,7 +264,7 @@ export function AudioLibrary() {
             <h2 className="text-lg">Enter Match Sharecode</h2>
             <Input
               value={sharecode}
-              onChange={(event) => setSharecode(event.target.value)}
+              onChange={(event) => setSharecode(event.target.value.toUpperCase())}
               placeholder="CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx"
               className="bg-[#0e1622] border-[#1e2936] text-white placeholder:text-gray-500"
             />
@@ -194,7 +278,23 @@ export function AudioLibrary() {
                 </Button>
               </div>
             </div>
-            {submitError && <div className="text-red-400 text-sm">{submitError}</div>}
+            {submitError && (
+              <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 text-destructive" />
+                  <div className="space-y-1">
+                    <p className="font-medium text-destructive">{submitError.title}</p>
+                    {submitError.details.length > 0 && (
+                      <ul className="list-disc space-y-0.5 pl-5 text-destructive/90">
+                        {submitError.details.map((detail) => (
+                          <li key={detail}>{detail}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
