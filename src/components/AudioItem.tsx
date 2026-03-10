@@ -32,17 +32,21 @@ export function AudioItem({ audio, isSelected = false, onClick }: AudioItemProps
       </div>
 
       {/* Content */}
-      <div className="flex flex-1 flex-col gap-2">
-        <div className="text-sm text-gray-300">
+      <div className="flex flex-1 items-center justify-between gap-4">
+        <div className="text-lg text-gray-300">
           <div className="flex items-center gap-1.5">
             <Clock className="h-3.5 w-3.5" />
             <span>
               Fetch Time: {new Date(audio.creation_time).toLocaleString()}
             </span>
           </div>
-          <div className="mt-1 text-xs text-gray-500">
-            Audio ID: {audio.audio_id} * {audio.sampling_rate} Hz
+          <div className="mt-1 text-sm text-gray-500">
+            {audio.sampling_rate} Hz
           </div>
+        </div>
+
+        <div className="text-right text-sm text-gray-500">
+          Audio ID: {audio.audio_id}
         </div>
       </div>
     </div>

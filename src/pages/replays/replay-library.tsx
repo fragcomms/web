@@ -46,8 +46,8 @@ export function ReplayLibrary() {
     <div className="w-full max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white mb-1">Match History</h1>
-          <p className="text-slate-400 text-sm">Browse and manage your saved matches</p>
+          <h1 className="text-2xl font-bold text-white mb-1">Replay Library</h1>
+          <p className="text-slate-400 text-sm">Browse and manage your replays.</p>
         </div>
         <Link to="/replays/import">
           <Button className="bg-[#5865F2] hover:bg-[#4752C4] text-white transition-colors">

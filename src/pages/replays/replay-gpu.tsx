@@ -288,7 +288,7 @@ export default function ReplayPage() {
   }
 
   return (
-    <div className="w-full flex flex-col gap-4">
+    <div className="w-full overflow-x-hidden flex flex-col gap-4">
       <div className="flex w-full items-start justify-center gap-4">
         <div className="w-full max-w-[720px] aspect-square border border-slate-700 rounded-xl overflow-hidden shrink-0">
           <canvas ref={canvasRef} className="block w-full h-full" />
@@ -358,13 +358,13 @@ export default function ReplayPage() {
           </span>
         </div>
 
-        <div className="flex w-full max-w-[600px] flex-nowrap self-center justify-center gap-1.5 pb-1">
+        <div className="flex w-full max-w-[600px] flex-wrap self-center justify-center gap-1.5 pb-1">
           {roundStartTicks.map((_, index) => {
             const roundNumber = index + 1;
             const isCurrent = roundNumber === activeRound;
 
             return (
-              <div key={roundNumber} className="flex shrink-0 items-center gap-1.5">
+              <div key={roundNumber} className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => handleRoundSelect(index)}

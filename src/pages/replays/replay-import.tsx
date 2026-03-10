@@ -105,7 +105,16 @@ export function AudioLibrary() {
   const [isWaitingForReplay, setIsWaitingForReplay] = useState(false);
   const [search, setSearch] = useState("");
 
-  async function waitForReplayInLibrary(targetReplayName: string) {
+  async function snapshotReplayIds(): Promise<Set<string>> {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/replays`, {
+      credentials: "include",
+    });
+    if (!res.ok) return new Set();
+    const library: ReplayRow[] = await res.json();
+    return new Set(library.map((r) => r.replay_id));
+  }
+
+  async function waitForNewReplay(knownIds: Set<string>) {
     const maxAttempts = 120;
     const pollIntervalMs = 2000;
 
@@ -119,9 +128,9 @@ export function AudioLibrary() {
       }
 
       const library: ReplayRow[] = await res.json();
-      const replayExists = library.some((replay) => replay.name === targetReplayName);
+      const isNew = library.some((replay) => !knownIds.has(replay.replay_id));
 
-      if (replayExists) {
+      if (isNew) {
         return;
       }
 
@@ -183,6 +192,7 @@ export function AudioLibrary() {
 
     try {
       const replayName = `Replay ${normalizedSharecode}`;
+      const knownReplayIds = await snapshotReplayIds();
       const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/process`, {
         method: "POST",
         headers: {
@@ -203,7 +213,7 @@ export function AudioLibrary() {
       }
 
       setIsWaitingForReplay(true);
-      await waitForReplayInLibrary(replayName);
+      await waitForNewReplay(knownReplayIds);
       navigate("/replays");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to process replay";
@@ -240,13 +250,13 @@ export function AudioLibrary() {
           <div className="w-full">
             <div className="mb-4">
               <h1 className="text-4xl md:text-6xl font-bold bg-linear-to-r from-white via-[#e0e7ff] to-[#60a5fa] bg-clip-text text-transparent pb-4">
-                {selectedAudioId ? "Create Replay" : "Select Audio to Process"}
+                {selectedAudioId ? "Match Code Entry" : "Audio Selection"}
               </h1>
             </div>
             <p className="text-lg md:text-xl text-[#cbd5e1] mt-6 mb-8 font-light">
               {selectedAudioId
-                ? "Enter your match sharecode to create a replay with this audio"
-                : "Choose an audio file you want to process"}
+                ? "Enter your match sharecode to create a replay with this audio."
+                : "Choose an audio file you wish to process."}
             </p>
           </div>
         </div>
@@ -282,12 +292,13 @@ export function AudioLibrary() {
 
               {!isLoading && !error
                 && filteredAudio.map((audio) => (
-                  <AudioItem
-                    key={audio.audio_id}
-                    audio={audio}
-                    isSelected={selectedAudioId === audio.audio_id}
-                    onClick={() => setSelectedAudioId(audio.audio_id)}
-                  />
+                  <div key={audio.audio_id} className="mx-auto w-2/3">
+                    <AudioItem
+                      audio={audio}
+                      isSelected={selectedAudioId === audio.audio_id}
+                      onClick={() => setSelectedAudioId(audio.audio_id)}
+                    />
+                  </div>
                 ))}
             </div>
           </>
@@ -295,7 +306,11 @@ export function AudioLibrary() {
 
         {selectedAudioId && (
           <div className="mt-8 space-y-3 rounded-lg border border-[#1e2936] bg-[#151d2b] p-4">
-            {selectedAudio && <AudioItem audio={selectedAudio} isSelected />}
+            {selectedAudio && (
+              <div className="mx-auto w-2/3">
+                <AudioItem audio={selectedAudio} isSelected />
+              </div>
+            )}
             <div className="flex justify-center">
               <Button variant="outline" onClick={handleChooseDifferentAudio}>
                 Choose Different Audio
