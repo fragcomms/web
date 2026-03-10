@@ -16,7 +16,7 @@ type SubmitErrorState = {
   details: string[];
 };
 
-const SHARECODE_PATTERN = /^CSGO(?:-[A-Z0-9]{5}){5}$/;
+const SHARECODE_PATTERN = /^CSGO(?:-[A-Za-z0-9]{5}){5}$/;
 
 function parseDetailLines(value: unknown): string[] {
   if (typeof value === "string") {
@@ -125,7 +125,7 @@ export function AudioLibrary() {
   }, []);
 
   async function handleProcessReplay() {
-    const normalizedSharecode = sharecode.trim().toUpperCase();
+    const normalizedSharecode = sharecode.trim();
 
     if (!selectedAudioId || !normalizedSharecode) {
       setSubmitError({
@@ -138,7 +138,7 @@ export function AudioLibrary() {
     if (!SHARECODE_PATTERN.test(normalizedSharecode)) {
       setSubmitError({
         title: "Invalid match sharecode format.",
-        details: ["Expected format: CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx"],
+        details: ["Expected format: CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx (case-sensitive)"],
       });
       return;
     }
