@@ -1,4 +1,4 @@
-import { AlertTriangle, Filter, Search } from "lucide-react";
+import { AlertTriangle, Filter, Loader2, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AudioItem } from "../../components/AudioItem";
@@ -14,6 +14,12 @@ type AudioRow = {
 type SubmitErrorState = {
   title: string;
   details: string[];
+};
+
+type ReplayRow = {
+  replay_id: string;
+  name: string;
+  fetch_time: string;
 };
 
 const SHARECODE_PATTERN = /^CSGO(?:-[A-Za-z0-9]{5}){5}$/;
@@ -96,7 +102,36 @@ export function AudioLibrary() {
   const [sharecode, setSharecode] = useState("");
   const [submitError, setSubmitError] = useState<SubmitErrorState | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWaitingForReplay, setIsWaitingForReplay] = useState(false);
   const [search, setSearch] = useState("");
+
+  async function waitForReplayInLibrary(targetReplayName: string) {
+    const maxAttempts = 120;
+    const pollIntervalMs = 2000;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/replays`, {
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to check replay status (${res.status} ${res.statusText})`);
+      }
+
+      const library: ReplayRow[] = await res.json();
+      const replayExists = library.some((replay) => replay.name === targetReplayName);
+
+      if (replayExists) {
+        return;
+      }
+
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, pollIntervalMs);
+      });
+    }
+
+    throw new Error("Replay processing is taking longer than expected. Please check your library shortly.");
+  }
 
   useEffect(() => {
     // Load user-visible audio options once on page load
@@ -144,8 +179,10 @@ export function AudioLibrary() {
 
     setSubmitError(null);
     setIsSubmitting(true);
+    setIsWaitingForReplay(false);
 
     try {
+      const replayName = `Replay ${normalizedSharecode}`;
       const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/process`, {
         method: "POST",
         headers: {
@@ -155,6 +192,7 @@ export function AudioLibrary() {
         body: JSON.stringify({
           audio_id: selectedAudioId,
           sharecode: normalizedSharecode,
+          replay_name: replayName,
         }),
       });
 
@@ -164,12 +202,15 @@ export function AudioLibrary() {
         return;
       }
 
+      setIsWaitingForReplay(true);
+      await waitForReplayInLibrary(replayName);
       navigate("/replays");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to process replay";
       setSubmitError({ title: message, details: [] });
     } finally {
       setIsSubmitting(false);
+      setIsWaitingForReplay(false);
     }
   }
 
@@ -271,12 +312,18 @@ export function AudioLibrary() {
               <div className="rounded-xl border border-[#253144] bg-[#0e1622] p-2">
                 <Button
                   onClick={handleProcessReplay}
-                  disabled={isSubmitting || !sharecode.trim()}
+                  disabled={isSubmitting || isWaitingForReplay || !sharecode.trim()}
                 >
-                  {isSubmitting ? "Creating replay..." : "Create Replay"}
+                  {isWaitingForReplay ? "Waiting for replay..." : isSubmitting ? "Creating replay..." : "Create Replay"}
                 </Button>
               </div>
             </div>
+            {isWaitingForReplay && (
+              <div className="flex items-center justify-center gap-2 text-sm text-slate-300">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Processing replay. You&apos;ll be redirected once it appears in your library.</span>
+              </div>
+            )}
             {submitError && (
               <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm">
                 <div className="flex items-start gap-2">
