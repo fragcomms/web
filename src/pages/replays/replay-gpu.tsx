@@ -173,8 +173,6 @@ export default function ReplayPage() {
         return;
       }
 
-      console.log("[Transcript] 1. Starting fetch for replay ID:", id);
-
       try {
         const replayRes = await fetch(`${import.meta.env.VITE_API_URL}/replays/${id}`, {
           credentials: "include",
@@ -183,17 +181,13 @@ export default function ReplayPage() {
         if (!replayRes.ok) throw new Error(`Metadata fetch failed: ${replayRes.status}`);
         const replayData = await replayRes.json();
 
-        console.log("[Transcript] 2. Replay metadata received:", replayData);
-
         const audioId = replayData.audio_id;
 
         if (!audioId) {
-          console.warn("[Transcript] 2b. No audio_id exists on this replay row!");
           if (!cancelled) setTranscriptText("No audio linked to this replay.");
           return;
         }
 
-        console.log(`[Transcript] 3. Fetching master JSON for audio ID: ${audioId}`);
         const transcriptRes = await fetch(`${import.meta.env.VITE_API_URL}/audio/${audioId}/transcriptions`, {
           credentials: "include",
         });
@@ -201,10 +195,7 @@ export default function ReplayPage() {
         if (!transcriptRes.ok) throw new Error(`Transcript fetch failed: ${transcriptRes.status}`);
         const masterJson = await transcriptRes.json();
 
-        console.log("[Transcript] 4. Master JSON received:", masterJson);
-
         if (Object.keys(masterJson).length === 0) {
-          console.warn("[Transcript] 4b. Master JSON is empty {}");
           if (!cancelled) setTranscriptText("No transcripts generated yet.");
           return;
         }
@@ -223,8 +214,6 @@ export default function ReplayPage() {
 
         combined.sort((a, b) => a.start - b.start);
 
-        console.log(`[Transcript] 5. Successfully mapped ${combined.length} total segments.`);
-
         if (!cancelled) {
           setTranscripts(combined);
           setTranscriptText("");
@@ -232,7 +221,6 @@ export default function ReplayPage() {
       } catch (e) {
         if (!cancelled) {
           setTranscriptText("Failed to load transcript. Check console.");
-          console.error("[Transcript] Error caught:", e);
         }
       }
     }
