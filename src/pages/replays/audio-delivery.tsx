@@ -61,7 +61,7 @@ export default function AudioDelivery() {
           <p>Track {track}</p>
           <audio className = 
           "track-audio" 
-          controls 
+          //controls
           crossOrigin="use-credentials" 
           preload="auto"
           >

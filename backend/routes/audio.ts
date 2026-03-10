@@ -100,7 +100,7 @@ router.get("/:id/stream/:trackIndex", ensureAuth, async (req, res) => {
 
 // /api/audio/id/tracks
 router.get("/:id/tracks", ensureAuth, async (req, res) => {
-  console.log("TRACKS ROUTE HIT", req.params.id); // API TEST
+  console.log("TRACKS ROUTE HIT @ INDEX", req.params.id); // API TEST
   const user = req.user as User;
   if (!user) return res.status(401).send("Unauthorized");
 
