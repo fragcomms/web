@@ -70,8 +70,7 @@ function formatSubmitError(
       errors?: unknown;
     };
 
-    const title =
-      (typeof typedPayload.error === "string" && typedPayload.error)
+    const title = (typeof typedPayload.error === "string" && typedPayload.error)
       || (typeof typedPayload.message === "string" && typedPayload.message)
       || fallbackTitle;
 
@@ -286,9 +285,7 @@ export function AudioLibrary() {
                     <p className="font-medium text-destructive">{submitError.title}</p>
                     {submitError.details.length > 0 && (
                       <ul className="list-disc space-y-0.5 pl-5 text-destructive/90">
-                        {submitError.details.map((detail) => (
-                          <li key={detail}>{detail}</li>
-                        ))}
+                        {submitError.details.map((detail) => <li key={detail}>{detail}</li>)}
                       </ul>
                     )}
                   </div>

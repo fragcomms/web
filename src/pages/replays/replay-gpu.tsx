@@ -368,10 +368,11 @@ export default function ReplayPage() {
                 <button
                   type="button"
                   onClick={() => handleRoundSelect(index)}
-                  className={`h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center transition-colors ${isCurrent
-                    ? "bg-blue-500 border-blue-400 text-white"
-                    : "bg-slate-900 border-slate-600 text-slate-200 hover:border-slate-400 hover:text-white"
-                    }`}
+                  className={`h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center transition-colors ${
+                    isCurrent
+                      ? "bg-blue-500 border-blue-400 text-white"
+                      : "bg-slate-900 border-slate-600 text-slate-200 hover:border-slate-400 hover:text-white"
+                  }`}
                   title={`Jump to round ${roundNumber}`}
                   disabled={isFetching}
                 >
