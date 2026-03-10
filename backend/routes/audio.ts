@@ -44,7 +44,7 @@ router.get("/:id/stream", ensureAuth, async (req, res) => {
 
     // fetching binary data from backend machine
     const remotePath = result.rows[0].file_path;
-    const remoteResponse = await fetch(`${REPLAY_PIPELINE_URL}/get_audio?filepath=${encodeURIComponent(remotePath)}`)
+    const remoteResponse = await fetch(`${REPLAY_PIPELINE_URL}/get_audio?filepath=${encodeURIComponent(remotePath)}`);
 
     if (!remoteResponse.ok || !remoteResponse.body) {
       console.error("FastAPI Error:", await remoteResponse.text());
@@ -53,45 +53,57 @@ router.get("/:id/stream", ensureAuth, async (req, res) => {
 
     res.setHeader("Content-Type", "audio/mka");
     Readable.fromWeb(remoteResponse.body as any).pipe(res);
-
   } catch (e) {
     console.error("Audio stream error: ", e);
     res.status(500).send("Server Error");
   }
 });
 
-// practically same thing as stream
-// /api/audio/id/transcription
-router.get("/:id/transcription", ensureAuth, async (req, res) => {
+// the implementation of doing multiple requests for transcripts
+// and merging it into a master transcript
+// /api/audio/:id/transcriptions
+router.get("/:id/transcriptions", ensureAuth, async (req, res) => {
   const user = req.user as User;
   if (!user) return res.status(401).send("Unauthorized");
+
   try {
-    // fetching data from db
     const query = `
-      SELECT t.file_path 
+      SELECT t.file_path
       FROM transcripts t
       JOIN media_access ma ON ma.audio_id = t.audio_id
-      WHERE t.audio_id = $1 AND ma.discord_id = $2`;
+      WHERE t.audio_id = $1 AND ma.discord_id = $2
+    `;
+
     const result = await pool.query(query, [req.params.id, user.discord_id]);
-    if (result.rows.length === 0) return res.status(404).send("Transcript not found");
 
-    const remotePath = result.rows[0].file_path;
+    if (result.rows.length === 0) return res.json({});
 
-    const remoteResponse = await fetch(
-      `${REPLAY_PIPELINE_URL}/get_transcript?filepath=${encodeURIComponent(remotePath)}`
-    )
+    const fetchPromises = result.rows.map(async (row) => {
+      const remoteResponse = await fetch(
+        `${REPLAY_PIPELINE_URL}/get_transcript?filepath=${encodeURIComponent(row.file_path)}`,
+      );
 
-    if (!remoteResponse.ok || !remoteResponse.body) {
-      console.error("FastAPI Error:", await remoteResponse.text());
-      return res.status(remoteResponse.status).send("Failed to retrieve transcript");
+      if (!remoteResponse.ok) {
+        console.error(`Failed to fetch transcript: ${row.file_path}`);
+        return null;
+      }
+
+      return await remoteResponse.json();
+    });
+
+    const yoinkedTranscripts = await Promise.all(fetchPromises);
+
+    const masterTranscript: Record<string, any> = {};
+
+    for (const item of yoinkedTranscripts) {
+      if (item && item.discord_id) {
+        masterTranscript[item.discord_id] = item.segments;
+      }
     }
 
-    res.setHeader("Content-Type", "text/plain"); 
-    Readable.fromWeb(remoteResponse.body as any).pipe(res);
-
+    res.json(masterTranscript);
   } catch (e) {
-    console.error("Transcription fetch error: ", e);
-    res.status(500).send("Server Error");
+    console.log(e);
   }
 });
 

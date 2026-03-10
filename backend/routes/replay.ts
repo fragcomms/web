@@ -34,7 +34,7 @@ router.get("/:id", ensureAuth, async (req, res) => {
   if (!user) return res.status(401).send("Unauthorized");
   try {
     const query = `
-      SELECT r.replay_id, r.name, d.fetch_time, d.file_path
+      SELECT r.replay_id, r.name, d.fetch_time, d.file_path, r.audio_id
       FROM replays r
       JOIN demos d ON d.demo_id = r.demo_id
       JOIN media_access ma ON ma.audio_id = r.audio_id
@@ -68,20 +68,19 @@ router.get("/:id/json", ensureAuth, async (req, res) => {
 
     const jsonFilePath = result.rows[0].file_path;
     const remoteResponse = await fetch(
-      `${REPLAY_PIPELINE_URL}/get_json?filepath=${encodeURIComponent(jsonFilePath)}`
-    )
+      `${REPLAY_PIPELINE_URL}/get_json?filepath=${encodeURIComponent(jsonFilePath)}`,
+    );
 
     if (!remoteResponse.ok) {
       const err = await remoteResponse.text();
       console.error("Python server error: ", err);
-      return res.status(remoteResponse.status).send("Failed to retrieve file from processing server")
+      return res.status(remoteResponse.status).send("Failed to retrieve file from processing server");
     }
 
     res.setHeader("Content-Type", "application/json");
 
     const arrayBuffer = await remoteResponse.arrayBuffer();
     return res.send(Buffer.from(arrayBuffer));
-  
   } catch (e) {
     console.error(e);
     res.status(500).send("Database error");

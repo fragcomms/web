@@ -7,8 +7,15 @@ import { Renderer } from "../../webgpu/renderer";
 import { ReplayPlayer } from "../../webgpu/replayPlayer";
 import type { ReplayJSON } from "../../webgpu/types";
 
+interface TranscriptSegment {
+  discordId: string;
+  start: number;
+  end: number;
+  text: string;
+}
+
 export default function ReplayPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams<{ id: string; }>();
   // Canvas target where WebGPU renders each replay frame.
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -28,12 +35,13 @@ export default function ReplayPage() {
   const [replayStartTick, setReplayStartTick] = useState(0);
   const [roundStartTicks, setRoundStartTicks] = useState<number[]>([]);
   const [ticksPerSecond, setTicksPerSecond] = useState(64);
+  const [transcriptText, setTranscriptText] = useState("Loading transcript...");
+  const [transcripts, setTranscripts] = useState<TranscriptSegment[]>([]);
 
   // adding fetch/error states so we know when it is fetching and when
   // the fetch errored out
   const [isFetching, setIsFetching] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [transcriptText, setTranscriptText] = useState("Transcription will appear here.");
 
   // Keep imperative ref synchronized with React state.
   useEffect(() => {
@@ -159,34 +167,77 @@ export default function ReplayPage() {
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchTranscriptPlaceholder() {
+    async function fetchTranscript() {
       if (!id) {
         setTranscriptText("No replay ID provided for transcript.");
         return;
       }
 
-      setTranscriptText("Loading transcript...");
+      console.log("[Transcript] 1. Starting fetch for replay ID:", id);
 
       try {
-        // Placeholder API call.
-        // const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/${id}/transcript`, {
-        //   cache: "no-store",
-        //   credentials: "include",
-        // });
-        // const payload = await res.json();
-        // if (!cancelled) setTranscriptText(payload.text ?? "No transcript available.");
+        const replayRes = await fetch(`${import.meta.env.VITE_API_URL}/replays/${id}`, {
+          credentials: "include",
+        });
+
+        if (!replayRes.ok) throw new Error(`Metadata fetch failed: ${replayRes.status}`);
+        const replayData = await replayRes.json();
+
+        console.log("[Transcript] 2. Replay metadata received:", replayData);
+
+        const audioId = replayData.audio_id;
+
+        if (!audioId) {
+          console.warn("[Transcript] 2b. No audio_id exists on this replay row!");
+          if (!cancelled) setTranscriptText("No audio linked to this replay.");
+          return;
+        }
+
+        console.log(`[Transcript] 3. Fetching master JSON for audio ID: ${audioId}`);
+        const transcriptRes = await fetch(`${import.meta.env.VITE_API_URL}/audio/${audioId}/transcriptions`, {
+          credentials: "include",
+        });
+
+        if (!transcriptRes.ok) throw new Error(`Transcript fetch failed: ${transcriptRes.status}`);
+        const masterJson = await transcriptRes.json();
+
+        console.log("[Transcript] 4. Master JSON received:", masterJson);
+
+        if (Object.keys(masterJson).length === 0) {
+          console.warn("[Transcript] 4b. Master JSON is empty {}");
+          if (!cancelled) setTranscriptText("No transcripts generated yet.");
+          return;
+        }
+
+        const combined: TranscriptSegment[] = [];
+        for (const [discordId, segments] of Object.entries(masterJson)) {
+          for (const seg of (segments as any[])) {
+            combined.push({
+              discordId,
+              start: seg.start,
+              end: seg.end,
+              text: seg.text,
+            });
+          }
+        }
+
+        combined.sort((a, b) => a.start - b.start);
+
+        console.log(`[Transcript] 5. Successfully mapped ${combined.length} total segments.`);
 
         if (!cancelled) {
-          setTranscriptText("Transcript API placeholder: wire /replays/:id/transcript here.");
+          setTranscripts(combined);
+          setTranscriptText("");
         }
-      } catch {
+      } catch (e) {
         if (!cancelled) {
-          setTranscriptText("Failed to load transcript.");
+          setTranscriptText("Failed to load transcript. Check console.");
+          console.error("[Transcript] Error caught:", e);
         }
       }
     }
 
-    void fetchTranscriptPlaceholder();
+    void fetchTranscript();
 
     return () => {
       cancelled = true;
@@ -245,7 +296,7 @@ export default function ReplayPage() {
       <div className="w-full flex-1 flex items-center justify-center text-red-400 p-8">
         <p className="text-xl font-semibold">Error: {fetchError}</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -256,12 +307,34 @@ export default function ReplayPage() {
         </div>
 
         <aside className="w-full max-w-[320px] h-[720px] rounded-xl border border-slate-700 bg-slate-900/90 p-3">
-          <div className="mb-2 text-sm font-semibold text-slate-200">AI-Generated Transcript</div>
+          <div className="mb-2 text-sm font-semibold text-slate-200">Match Comms</div>
           <div
             className="h-[calc(100%-1.5rem)] overflow-y-auto rounded-md border border-slate-800 bg-slate-950/50 p-2 text-sm text-slate-300"
             aria-live="polite"
           >
-            <p className="whitespace-pre-wrap text-slate-300">{transcriptText}</p>
+            {transcripts.length > 0
+              ? (
+                <div className="flex flex-col gap-3">
+                  {transcripts.map((t, i) => (
+                    <div key={i} className="flex flex-col">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-xs text-slate-500 font-mono">[{formatTime(t.start)}]</span>
+                        <span className="font-semibold text-blue-400 text-xs truncate max-w-[150px]">
+                          {t.discordId}
+                        </span>
+                      </div>
+                      <span className="text-slate-200 leading-snug">{t.text}</span>
+                    </div>
+                  ))}
+                </div>
+              )
+              : (
+                <div className="h-full flex items-center justify-center">
+                  <p className="whitespace-pre-wrap text-slate-400 italic text-center px-4">
+                    {transcriptText}
+                  </p>
+                </div>
+              )}
           </div>
         </aside>
       </div>
@@ -339,7 +412,6 @@ export default function ReplayPage() {
           })}
         </div>
       </div>
-
     </div>
   );
 }
