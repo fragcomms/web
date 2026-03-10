@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, Clock3 } from "lucide-react";
+import { ArrowLeftRight, Clock3, Mic, MicOff, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Renderer } from "../../webgpu/renderer";
@@ -289,15 +289,55 @@ export default function ReplayPage() {
 
   return (
     <div className="w-full overflow-x-hidden flex flex-col gap-4">
+      {/* TODO(placeholder): Replace with real replay title (e.g., team names from replay metadata). */}
+      <h1 className="text-center text-2xl font-semibold text-slate-100">
+        Team 1 vs. Team 2
+      </h1>
+
       <div className="flex w-full items-start justify-center gap-4">
+        <div className="flex h-[720px] w-28 shrink-0 flex-col gap-2">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div
+              key={`player-icon-${index}`}
+              className={`flex w-full flex-col items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 p-2 ${
+                index === 5 ? "mt-auto border-t border-slate-600 pt-3" : ""
+              }`}
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700">
+                <User className="h-5 w-5 text-slate-300" />
+              </div>
+              {/* TODO(placeholder): Replace with mapped Discord display names per speaker/channel. */}
+              <div className="rounded border border-slate-600 bg-slate-900 px-2 py-0.5 text-[9px] uppercase tracking-wide text-slate-300">
+                {index === 5 ? "Discord Coach" : "Discord Player"}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  className="flex h-7 w-7 items-center justify-center rounded border border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400"
+                  aria-label={`Mute player ${index + 1}`}
+                >
+                  <MicOff className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  className="flex h-7 w-7 items-center justify-center rounded border border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400"
+                  aria-label={`Unmute player ${index + 1}`}
+                >
+                  <Mic className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div className="w-full max-w-[720px] aspect-square border border-slate-700 rounded-xl overflow-hidden shrink-0">
           <canvas ref={canvasRef} className="block w-full h-full" />
         </div>
 
-        <aside className="w-full max-w-[320px] h-[720px] rounded-xl border border-slate-700 bg-slate-900/90 p-3">
-          <div className="mb-2 text-sm font-semibold text-slate-200">Match Comms</div>
+        <aside className="w-full max-w-[320px] h-[720px] rounded-xl border border-slate-700 bg-slate-900/90 p-3 flex flex-col">
+          <div className="mb-2 shrink-0 text-sm font-semibold text-slate-200">Match Comms</div>
           <div
-            className="h-[calc(100%-1.5rem)] overflow-y-auto rounded-md border border-slate-800 bg-slate-950/50 p-2 text-sm text-slate-300"
+            className="min-h-0 flex-1 overflow-y-auto rounded-md border border-slate-800 bg-slate-950/50 p-2 text-sm text-slate-300"
             aria-live="polite"
           >
             {transcripts.length > 0

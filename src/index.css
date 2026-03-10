@@ -18,8 +18,23 @@ html {
 }
 
 body {
+  margin: 0;
+  min-height: 100vh;
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+  background-color: #0f172a;
+}
+
+body,
+#root {
+  overflow-x: hidden;
 }
 
 /* Global container for consistent centering */
