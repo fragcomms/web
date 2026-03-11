@@ -228,8 +228,8 @@ export default function ReplayPage() {
         if (!cancelled) {
           setTranscriptText("Failed to load transcript. Check console.");
           console.error(e);
-          return [];
         }
+        return [];
       }
     }
 
