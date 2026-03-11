@@ -65,8 +65,9 @@ export default function ReplayPage() {
 
   // Handle round selection from the transport bar
   // TODO: logic is kinda screwed, should pause once round is finished
+  // +12 is decided by the tick interval in our parser
   const handleRoundSelect = useCallback((roundIndex: number) => {
-    const seekSec = Math.max(0, (roundStartTicks[roundIndex] - replayStartTick) / ticksPerSecond);
+    const seekSec = Math.max(0, ((roundStartTicks[roundIndex]+12) - replayStartTick) / ticksPerSecond);
     setIsPlaying(true);
     handleSeek(seekSec);
   }, [roundStartTicks, replayStartTick, ticksPerSecond, setIsPlaying, handleSeek]);
@@ -78,11 +79,19 @@ export default function ReplayPage() {
       : 1;
 
     const activeRoundIndex = Math.max(0, currentActiveRound - 1);
-    const startTick = roundStartTicks[activeRoundIndex] ?? replayStartTick;
-    const endTick = roundStartTicks[activeRoundIndex + 1] ?? (replayStartTick + durationSec * ticksPerSecond);
 
-    const startSec = Math.max(0, (startTick - replayStartTick) / ticksPerSecond);
-    const duration = Math.max(0, Math.max(startSec, (endTick - replayStartTick) / ticksPerSecond) - startSec);
+    const rawStartTick = roundStartTicks[activeRoundIndex] ?? replayStartTick;
+    const rawEndTick = roundStartTicks[activeRoundIndex + 1] ?? (replayStartTick + durationSec * ticksPerSecond);
+
+    // slice teleport tick out
+    const activeRoundStartTick = activeRoundIndex === 0 ? rawStartTick : rawStartTick + 12;
+    const activeRoundEndTick = activeRoundIndex + 1 < roundStartTicks.length ? rawEndTick - 1 : rawEndTick;
+
+    const startSec = Math.max(0, (activeRoundStartTick - replayStartTick) / ticksPerSecond);
+    const endSec = Math.max(startSec, (activeRoundEndTick - replayStartTick) / ticksPerSecond);
+    
+    // fleshed out concept of duration
+    const duration = endSec - startSec;
     const elapsed = Math.min(duration, Math.max(0, currentTimeSec - startSec));
 
     return {

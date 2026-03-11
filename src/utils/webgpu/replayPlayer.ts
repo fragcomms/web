@@ -160,15 +160,32 @@ export class ReplayPlayer {
         });
         continue;
       }
+      const dx = b.x - a.x; 
+      const dy = b.y - a.y; 
+      const distSq = dx * dx + dy * dy; // (b.x-a.x)^2 + (b.y-a.y)^2
+      const TELEPORT_THRESHOLD_SQ = 6000; // found that this was the perfect threshold to find when the user teleported back to spawn
 
-      out.push({
-        steamid,
-        team,
-        alive: a.hp > 0,
-        x: a.x + (b.x - a.x) * alpha,
-        y: a.y + (b.y - a.y) * alpha,
-        rot: lerpAngleDeg(a.rot, b.rot, alpha),
-      });
+      if (distSq > TELEPORT_THRESHOLD_SQ) {
+        // snap
+        out.push({
+          steamid,
+          team,
+          alive: a.hp > 0,
+          x: a.x,
+          y: a.y,
+          rot: a.rot,
+        });
+      } else {
+        // interpolate
+        out.push({
+          steamid,
+          team,
+          alive: a.hp > 0,
+          x: a.x + dx * alpha,
+          y: a.y + dy * alpha,
+          rot: lerpAngleDeg(a.rot, b.rot, alpha),
+        });
+      }
     }
 
     const { tracers } = this.buildTracersForTick(targetTick, out);

@@ -8,10 +8,10 @@ import InviteBot from "./pages/invite-bot";
 import { LoginForm } from "./pages/login-form";
 import { Pricing } from "./pages/Pricing";
 import { useAuth } from "./utils/context/context";
-// import { ReplayDetails } from "./pages/replays/replay-details";
+// import { ReplayPage } from "./pages/replays/ReplayPage";
 import { AudioLibrary } from "./pages/replays/ReplayImport";
 import { ReplayLibrary } from "./pages/replays/ReplayLibrary";
-import GPUTest from "./pages/replays/ReplayPage";
+import ReplayPage from "./pages/replays/ReplayPage";
 import Settings from "./pages/Settings";
 
 export default function Router() {
@@ -71,7 +71,7 @@ export default function Router() {
               element={
                 <ProtectedRoute>
                   <div className="w-full min-h-[calc(100vh-80px)] pt-4 px-4 flex flex-col items-center">
-                    <GPUTest />
+                    <ReplayPage />
                   </div>
                 </ProtectedRoute>
               }
