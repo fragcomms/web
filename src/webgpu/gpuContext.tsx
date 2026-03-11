@@ -40,6 +40,7 @@ export async function initWebGPU(canvas: HTMLCanvasElement): Promise<GPUContext>
     throw new Error("WebGPU not supported in this browser.");
   }
 
+  // compatibility checks
   const adapter = await navigator.gpu.requestAdapter({
     featureLevel: "compatibility",
     compatibilityMode: true,

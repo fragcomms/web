@@ -95,6 +95,7 @@ router.get("/:id/transcriptions", ensureAuth, async (req, res) => {
 
     const masterTranscript: Record<string, any> = {};
 
+    // combining it all into a master transcript for easier manipulation
     for (const item of yoinkedTranscripts) {
       if (item && item.discord_id) {
         masterTranscript[item.discord_id] = item.segments;
