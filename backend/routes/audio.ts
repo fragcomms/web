@@ -1,5 +1,5 @@
-import { Router } from "express";
 import { spawn } from "child_process";
+import { Router } from "express";
 import pool from "../config/db.js";
 import { ensureAuth } from "../middleware/authentication.js";
 import { DiscordProfile as User } from "../types/user.js";
@@ -38,40 +38,43 @@ router.get("/:id/track/:identifier", ensureAuth, async (req, res) => {
       FROM audios a
       JOIN media_access ma ON a.audio_id = ma.audio_id
       WHERE a.audio_id = $1 AND ma.discord_id = $2
-    `
+    `;
     const result = await pool.query(query, [req.params.id, user.discord_id]);
 
     if (result.rows.length === 0) return res.status(404).send("Audio not found");
 
     const remotePath = result.rows[0].file_path;
-    const remoteAudioUrl = `${REPLAY_PIPELINE_URL}/get_audio?filepath=${encodeURIComponent(remotePath)}`
+    const remoteAudioUrl = `${REPLAY_PIPELINE_URL}/get_audio?filepath=${encodeURIComponent(remotePath)}`;
     const identifier = req.params.identifier;
 
     // instead of mka, we use webm for serving it to users
     // because webm is more compatible than mka for websites
-    res.setHeader("Content-Type", "audio/webm")
+    res.setHeader("Content-Type", "audio/webm");
 
     const ffmpeg = spawn("ffmpeg", [
-      "-i", remoteAudioUrl,
-      "-map", `0:m:title:${identifier}`,
-      "-c:a", "libopus",
-      "-b:a", "20k",
-      "-f", "webm",
-      "pipe:1"
-    ])
+      "-i",
+      remoteAudioUrl,
+      "-map",
+      `0:m:title:${identifier}`,
+      "-c:a",
+      "libopus",
+      "-b:a",
+      "20k",
+      "-f",
+      "webm",
+      "pipe:1",
+    ]);
 
     ffmpeg.stdout.pipe(res);
 
     req.on("close", () => {
       ffmpeg.kill("SIGKILL");
-    })
-
-    
+    });
   } catch (e) {
-    console.error("Audio track extraction error: ", e)
+    console.error("Audio track extraction error: ", e);
     res.status(500).send("Server error");
   }
-})
+});
 
 // // /api/audio/id/stream
 // router.get("/:id/stream", ensureAuth, async (req, res) => {
@@ -81,7 +84,7 @@ router.get("/:id/track/:identifier", ensureAuth, async (req, res) => {
 //   try {
 //     // fetching data from db
 //     const query = `
-//       SELECT a.file_path 
+//       SELECT a.file_path
 //       FROM audios a
 //       JOIN media_access ma ON a.audio_id = ma.audio_id
 //       WHERE a.audio_id = $1 AND ma.discord_id = $2`;

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { DiscordProfile as User } from "../types/user";
 import { AuthContext, type AuthContextType } from "./context";

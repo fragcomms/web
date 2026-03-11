@@ -23,12 +23,12 @@ export class AudioSyncPlayer {
         const res = await fetch(`${apiUrl}/audio/${audioId}/track/${id}`, {
           credentials: "include",
         });
-        
+
         if (!res.ok) throw new Error(`Failed to fetch track ${id}`);
-        
+
         const arrayBuffer = await res.arrayBuffer();
         const decodedData = await this.ctx.decodeAudioData(arrayBuffer);
-        
+
         this.buffers.set(id, decodedData);
         console.log(`[Audio] Successfully decoded track for ${id}`);
       } catch (e) {
@@ -44,13 +44,13 @@ export class AudioSyncPlayer {
    */
   play(seekSeconds: number = 0) {
     if (this.isPlaying) this.stop();
-    
+
     // Browsers suspend audio contexts until the user interacts with the page.
     if (this.ctx.state === "suspended") this.ctx.resume();
 
     this.sources.clear();
 
-    // Schedule playback 50ms in the future so the CPU has time to queue all 
+    // Schedule playback 50ms in the future so the CPU has time to queue all
     // tracks and hit the hardware DAC at the exact same millisecond.
     const startTime = this.ctx.currentTime + 0.05;
 
@@ -81,17 +81,17 @@ export class AudioSyncPlayer {
    */
   stop() {
     if (!this.isPlaying) return;
-    
+
     for (const source of this.sources.values()) {
       try {
         source.stop();
         source.disconnect();
       } catch (e) {
         // Ignore nodes that might have already finished playing
-        console.log(e)
+        console.log(e);
       }
     }
-    
+
     this.sources.clear();
     this.isPlaying = false;
   }

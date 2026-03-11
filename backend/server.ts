@@ -10,8 +10,8 @@ import { UserWithToken as User } from "./types/user.js";
 
 import audioRoutes from "./routes/audio.js";
 import loginRoutes from "./routes/auth.js";
-import profileRoutes from "./routes/user-info.js";
 import replayRoutes from "./routes/replay.js";
+import profileRoutes from "./routes/user-info.js";
 
 import dotenv from "dotenv";
 

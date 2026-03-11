@@ -1,8 +1,8 @@
 import { Router } from "express";
 import fetch from "node-fetch";
+import pool from "../config/db.js";
 import { ensureAuth } from "../middleware/authentication.js";
 import { UserWithToken as User } from "../types/user.js";
-import pool from "../config/db.js";
 
 const router = Router();
 
@@ -44,48 +44,52 @@ router.get("/:id", ensureAuth, async (req, res) => {
     // we first hit database to see if the user is already in our database, otherwise
     // we hit the official discord api.
     // if we hit discord api too much, we might get rate limited
-    const dbResult = await pool.query(`
+    const dbResult = await pool.query(
+      `
       SELECT discord_username
       FROM users
       WHERE discord_id = $1
-      `
-    , [discordId])
+      `,
+      [discordId],
+    );
 
     if (dbResult.rows.length > 0) {
       return res.json({
         username: dbResult.rows[0].discord_username,
-        source: "database" // not used but good to know for logistics
-      })
+        source: "database", // not used but good to know for logistics
+      });
     }
 
     const discordRes = await fetch(`https://discord.com/api/v10/users/${discordId}`, {
       headers: {
-        Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`
-      }
-    })
+        Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
+      },
+    });
     if (!discordRes.ok) {
       if (discordRes.status === 404) return res.status(404).send("Unknown User");
-      throw new Error(`Discord API error: ${discordRes.statusText}`)
+      throw new Error(`Discord API error: ${discordRes.statusText}`);
     }
-    const discordUser = (await discordRes.json() as {
-      id: string,
+    const discordUser = await discordRes.json() as {
+      id: string;
       username: string;
-    });
+    };
 
-    await pool.query(`
+    await pool.query(
+      `
       INSERT INTO users (discord_id, created_at, discord_username)
       VALUES ($1, $2, $3) ON CONFLICT DO NOTHING
-      `, [discordUser.id, Date.now(), discordUser.username])
+      `,
+      [discordUser.id, Date.now(), discordUser.username],
+    );
 
     res.json({
       username: discordUser.username,
-      source: "discord_api" // not used but good to know for logistics
-    })
-    
+      source: "discord_api", // not used but good to know for logistics
+    });
   } catch (e) {
-    console.error(`Failed to resolve Discord ID ${discordId}`, e)
-    res.status(500).send("Server error")
+    console.error(`Failed to resolve Discord ID ${discordId}`, e);
+    res.status(500).send("Server error");
   }
-})
+});
 
 export default router;

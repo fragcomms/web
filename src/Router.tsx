@@ -2,16 +2,16 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Navbar as LoggedNavbar } from "./components/AuthNavBar";
 import { Navbar as PublicNavbar } from "./components/PublicNavBar";
 import { ProtectedRoute } from "./components/RouteProtector";
-import { useAuth } from "./utils/context/context";
 import About from "./pages/About";
 import Home from "./pages/Home";
 import InviteBot from "./pages/invite-bot";
 import { LoginForm } from "./pages/login-form";
 import { Pricing } from "./pages/Pricing";
+import { useAuth } from "./utils/context/context";
 // import { ReplayDetails } from "./pages/replays/replay-details";
-import GPUTest from "./pages/replays/ReplayPage";
 import { AudioLibrary } from "./pages/replays/ReplayImport";
 import { ReplayLibrary } from "./pages/replays/ReplayLibrary";
+import GPUTest from "./pages/replays/ReplayPage";
 import Settings from "./pages/Settings";
 
 export default function Router() {
