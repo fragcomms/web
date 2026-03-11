@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
 
 export interface TranscriptSegment {
@@ -84,13 +84,13 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
     };
   }, [id, audioPlayerRef]);
 
-  const toggleMute = (discordId: string) => {
+  const toggleMute = useCallback((discordId: string) => {
     setMutedUsers(prev => {
       const muted = !prev[discordId];
       if (audioPlayerRef.current) audioPlayerRef.current.setTrackMute(discordId, muted);
       return { ...prev, [discordId]: muted };
     });
-  };
+  }, [audioPlayerRef]);
 
   return { transcriptText, transcripts, discordUsers, discordNames, mutedUsers, toggleMute };
 }

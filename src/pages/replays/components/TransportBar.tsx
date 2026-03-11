@@ -1,4 +1,5 @@
 import { ArrowLeftRight, Clock3 } from "lucide-react";
+import { memo } from "react";
 
 interface TransportBarProps {
   isPlaying: boolean;
@@ -14,7 +15,7 @@ interface TransportBarProps {
   formatTime: (sec: number) => string;
 }
 
-export function TransportBar({
+export const TransportBar = memo(function TransportBar({
   isPlaying,
   setIsPlaying,
   isFetching,
@@ -85,4 +86,4 @@ export function TransportBar({
       </div>
     </div>
   );
-}
+});

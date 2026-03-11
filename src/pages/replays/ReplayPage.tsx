@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
 import { useReplayEngine } from "./ReplayEngine";
@@ -65,26 +65,33 @@ export default function ReplayPage() {
 
   // Handle round selection from the transport bar
   // TODO: logic is kinda screwed, should pause once round is finished
-  const handleRoundSelect = (roundIndex: number) => {
+  const handleRoundSelect = useCallback((roundIndex: number) => {
     const seekSec = Math.max(0, (roundStartTicks[roundIndex] - replayStartTick) / ticksPerSecond);
     setIsPlaying(true);
     handleSeek(seekSec);
-  };
+  }, [roundStartTicks, replayStartTick, ticksPerSecond, setIsPlaying, handleSeek]);
 
   // Calculate active round and its timing info based on the current replay time
-  const activeRound = roundStartTicks.length > 0 ? getRoundFromTick(roundStartTicks, replayStartTick + currentTimeSec * ticksPerSecond) : 1;
+  const { activeRound, activeRoundStartSec, activeRoundDurationSec, activeRoundElapsedSec } = useMemo(() => {
+    const currentActiveRound = roundStartTicks.length > 0
+      ? getRoundFromTick(roundStartTicks, replayStartTick + currentTimeSec * ticksPerSecond)
+      : 1;
 
-  const activeRoundIndex = Math.max(0, activeRound - 1);
-  const activeRoundStartTick = roundStartTicks[activeRoundIndex] ?? replayStartTick;
-  const activeRoundEndTick = roundStartTicks[activeRoundIndex + 1] ?? (replayStartTick + durationSec * ticksPerSecond);
+    const activeRoundIndex = Math.max(0, currentActiveRound - 1);
+    const startTick = roundStartTicks[activeRoundIndex] ?? replayStartTick;
+    const endTick = roundStartTicks[activeRoundIndex + 1] ?? (replayStartTick + durationSec * ticksPerSecond);
 
-  // convert all that tick info into seconds for easier handling in the transport bar
-  const activeRoundStartSec = Math.max(0, (activeRoundStartTick - replayStartTick) / ticksPerSecond);
-  const activeRoundDurationSec = Math.max(
-    0,
-    Math.max(activeRoundStartSec, (activeRoundEndTick - replayStartTick) / ticksPerSecond) - activeRoundStartSec,
-  );
-  const activeRoundElapsedSec = Math.min(activeRoundDurationSec, Math.max(0, currentTimeSec - activeRoundStartSec));
+    const startSec = Math.max(0, (startTick - replayStartTick) / ticksPerSecond);
+    const duration = Math.max(0, Math.max(startSec, (endTick - replayStartTick) / ticksPerSecond) - startSec);
+    const elapsed = Math.min(duration, Math.max(0, currentTimeSec - startSec));
+
+    return {
+      activeRound: currentActiveRound,
+      activeRoundStartSec: startSec,
+      activeRoundDurationSec: duration,
+      activeRoundElapsedSec: elapsed,
+    };
+  }, [currentTimeSec, roundStartTicks, replayStartTick, ticksPerSecond, durationSec]);
 
   if (fetchError) {
     return (
@@ -99,7 +106,7 @@ export default function ReplayPage() {
       <h1 className="text-center text-2xl font-semibold text-slate-100">Team 1 vs. Team 2</h1>
 
       <div className="flex w-full items-start justify-center gap-4">
-        { /* Left Discord User Mute Sidebar */}
+        {/* Left Discord User Mute Sidebar */}
         <MuteSidebar
           discordUsers={discordUsers}
           mutedUsers={mutedUsers}

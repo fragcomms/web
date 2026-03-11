@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { TranscriptSegment } from "../ReplayMedia";
 
 interface TranscriptPanelProps {
@@ -8,7 +9,7 @@ interface TranscriptPanelProps {
   formatTime: (sec: number) => string;
 }
 
-export function TranscriptPanel(
+export const TranscriptPanel = memo(function TranscriptPanel(
   { transcripts, mutedUsers, discordNames, transcriptText, formatTime }: TranscriptPanelProps,
 ) {
   return (
@@ -42,4 +43,4 @@ export function TranscriptPanel(
       </div>
     </aside>
   );
-}
+});
