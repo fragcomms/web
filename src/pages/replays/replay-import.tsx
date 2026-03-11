@@ -264,7 +264,7 @@ export function AudioLibrary() {
         {!selectedAudioId && (
           <>
             {/* Search and Filters */}
-            <div className="mb-6 flex items-center gap-4">
+            <div className="mx-auto mb-6 flex w-2/3 items-center gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input
@@ -305,9 +305,9 @@ export function AudioLibrary() {
         )}
 
         {selectedAudioId && (
-          <div className="mt-8 space-y-3 rounded-lg border border-[#1e2936] bg-[#151d2b] p-4">
+          <div className="mx-auto mt-8 w-2/3 space-y-3 rounded-lg border border-[#1e2936] bg-[#151d2b] p-4">
             {selectedAudio && (
-              <div className="mx-auto w-2/3">
+              <div className="w-full">
                 <AudioItem audio={selectedAudio} isSelected />
               </div>
             )}
@@ -316,13 +316,15 @@ export function AudioLibrary() {
                 Choose Different Audio
               </Button>
             </div>
-            <h2 className="text-lg">Enter Match Sharecode</h2>
-            <Input
-              value={sharecode}
-              onChange={(event) => setSharecode(event.target.value)}
-              placeholder="CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx"
-              className="bg-[#0e1622] border-[#1e2936] text-white placeholder:text-gray-500"
-            />
+            <div className="w-full space-y-2">
+              <h2 className="text-lg">Enter Match Sharecode:</h2>
+              <Input
+                value={sharecode}
+                onChange={(event) => setSharecode(event.target.value)}
+                placeholder="CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx"
+                className="w-full bg-[#0e1622] border-[#1e2936] text-white placeholder:text-gray-500"
+              />
+            </div>
             <div className="flex justify-center">
               <div className="rounded-xl border border-[#253144] bg-[#0e1622] p-2">
                 <Button
