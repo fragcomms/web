@@ -353,6 +353,7 @@ export default function ReplayPage() {
       </h1>
 
       <div className="flex w-full items-start justify-center gap-4">
+        {/* Left Rail: Discord user tiles + per-user mute controls */}
         <div className="flex h-[720px] w-28 shrink-0 flex-col gap-2">
           {discordUsers.map((discordId) => {
             const isMuted = mutedUsers[discordId] || false;
@@ -388,10 +389,12 @@ export default function ReplayPage() {
           })}
         </div>
 
+        {/* Center Stage: WebGPU replay canvas */}
         <div className="w-full max-w-[720px] aspect-square border border-slate-700 rounded-xl overflow-hidden shrink-0">
           <canvas ref={canvasRef} className="block w-full h-full" />
         </div>
 
+        {/* Right Rail: Transcript panel for match comms */}
         <aside className="w-full max-w-[320px] h-[720px] rounded-xl border border-slate-700 bg-slate-900/90 p-3 flex flex-col">
           <div className="mb-2 shrink-0 text-sm font-semibold text-slate-200">Match Comms</div>
           <div
@@ -402,6 +405,7 @@ export default function ReplayPage() {
               ? (
                 <div className="flex flex-col gap-3">
                   {transcripts.map((t, i) => (
+                    // Transcript item: timestamp + speaker id + spoken text
                     <div key={i} className={`flex flex-col ${mutedUsers[t.discordId] ? "opacity-30" : ""}`}>
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-xs text-slate-500 font-mono">[{formatTime(t.start)}]</span>
@@ -426,6 +430,7 @@ export default function ReplayPage() {
       </div>
 
       <div className="w-full flex flex-col items-center gap-3 self-center">
+        {/* Transport controls: play/pause + round-local seek slider + elapsed/duration */}
         <div className="flex items-center gap-3 w-full max-w-[800px]">
           <button
             onClick={() => setIsPlaying((p) => !p)}
@@ -456,6 +461,7 @@ export default function ReplayPage() {
           </span>
         </div>
 
+        {/* Round navigator: click a round bubble to jump to that round */}
         <div className="flex w-full max-w-[600px] flex-wrap self-center justify-center gap-1.5 pb-1">
           {roundStartTicks.map((_, index) => {
             const roundNumber = index + 1;

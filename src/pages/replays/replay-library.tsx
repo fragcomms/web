@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Play, Plus, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
@@ -53,6 +53,23 @@ export function ReplayLibrary() {
     navigate("/replays/import");
   }
 
+  async function handleDeleteReplay(replayId: number) {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/${replayId}/delete`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        setReplays((current) => current.filter((replay) => replay.replay_id !== replayId));
+      } else {
+        console.error(`Failed to delete replay ${replayId}`);
+      }
+    } catch (error) {
+      console.error("Failed to delete replay", error);
+    }
+  }
+
   if (isLoading) {
     return <div className="text-white text-center mt-10">Loading replays...</div>;
   }
@@ -90,7 +107,13 @@ export function ReplayLibrary() {
           <div className="flex flex-col gap-3">
             {[...replays]
               .sort((a, b) => b.replay_id - a.replay_id)
-              .map((replay) => <ReplayCard key={replay.replay_id} replay={replay} />)}
+              .map((replay) => (
+                <ReplayCard
+                  key={replay.replay_id}
+                  replay={replay}
+                  onDelete={handleDeleteReplay}
+                />
+              ))}
           </div>
         )}
 
@@ -125,7 +148,7 @@ export function ReplayLibrary() {
   );
 }
 
-function ReplayCard({ replay }: { replay: Replay; }) {
+function ReplayCard({ replay, onDelete }: { replay: Replay; onDelete: (replayId: number) => void; }) {
   return (
     <Link to={`/replays/${replay.replay_id}`} className="block group">
       <Card className="bg-slate-800/50 border-slate-700 transition-all duration-200 group-hover:bg-slate-800 group-hover:border-slate-600 group-hover:shadow-lg border-l-4 border-l-blue-500">
@@ -139,17 +162,23 @@ function ReplayCard({ replay }: { replay: Replay; }) {
             </span>
           </div>
 
-          {
-            /* <button
-            className="z-10 text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded transition-colors"
-            onClick={(e) => {
-              e.preventDefault();
-              console.log("Downloading replay...", replay.replay_id);
-            }}
-          >
-            Download .dem
-          </button> */
-          }
+          <div className="z-10 flex items-center gap-2">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded bg-blue-600/20 text-blue-300">
+              <Play className="h-4 w-4" />
+            </span>
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded bg-red-600/20 text-red-300 hover:bg-red-600/30"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete(replay.replay_id);
+              }}
+              aria-label={`Delete replay ${replay.replay_id}`}
+            >
+              <Trash className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </Card>
     </Link>
