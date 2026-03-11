@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Readable } from "stream";
+import { spawn } from "child_process";
 import pool from "../config/db.js";
 import { ensureAuth } from "../middleware/authentication.js";
 import { DiscordProfile as User } from "../types/user.js";
@@ -27,37 +27,83 @@ router.get("/", ensureAuth, async (req, res) => {
   }
 });
 
-// /api/audio/id/stream
-router.get("/:id/stream", ensureAuth, async (req, res) => {
+// /api/audio/id/track/identifier
+router.get("/:id/track/:identifier", ensureAuth, async (req, res) => {
   const user = req.user as User;
   if (!user) return res.status(401).send("Unauthorized");
 
   try {
-    // fetching data from db
     const query = `
-      SELECT a.file_path 
+      SELECT a.file_path
       FROM audios a
       JOIN media_access ma ON a.audio_id = ma.audio_id
-      WHERE a.audio_id = $1 AND ma.discord_id = $2`;
+      WHERE a.audio_id = $1 AND ma.discord_id = $2
+    `
     const result = await pool.query(query, [req.params.id, user.discord_id]);
+
     if (result.rows.length === 0) return res.status(404).send("Audio not found");
 
-    // fetching binary data from backend machine
     const remotePath = result.rows[0].file_path;
-    const remoteResponse = await fetch(`${REPLAY_PIPELINE_URL}/get_audio?filepath=${encodeURIComponent(remotePath)}`);
+    const remoteAudioUrl = `${REPLAY_PIPELINE_URL}/get_audio?filepath=${encodeURIComponent(remotePath)}`
+    const identifier = req.params.identifier;
 
-    if (!remoteResponse.ok || !remoteResponse.body) {
-      console.error("FastAPI Error:", await remoteResponse.text());
-      return res.status(remoteResponse.status).send("Failed to stream audio from processing server");
-    }
+    // instead of mka, we use webm for serving it to users
+    // because webm is more compatible than mka for websites
+    res.setHeader("Content-Type", "audio/webm")
 
-    res.setHeader("Content-Type", "audio/mka");
-    Readable.fromWeb(remoteResponse.body as any).pipe(res);
+    const ffmpeg = spawn("ffmpeg", [
+      "-i", remoteAudioUrl,
+      "-map", `0:m:title:${identifier}`,
+      "-c:a", "libopus",
+      "-b:a", "20k",
+      "-f", "webm",
+      "pipe:1"
+    ])
+
+    ffmpeg.stdout.pipe(res);
+
+    req.on("close", () => {
+      ffmpeg.kill("SIGKILL");
+    })
+
+    
   } catch (e) {
-    console.error("Audio stream error: ", e);
-    res.status(500).send("Server Error");
+    console.error("Audio track extraction error: ", e)
+    res.status(500).send("Server error");
   }
-});
+})
+
+// // /api/audio/id/stream
+// router.get("/:id/stream", ensureAuth, async (req, res) => {
+//   const user = req.user as User;
+//   if (!user) return res.status(401).send("Unauthorized");
+
+//   try {
+//     // fetching data from db
+//     const query = `
+//       SELECT a.file_path 
+//       FROM audios a
+//       JOIN media_access ma ON a.audio_id = ma.audio_id
+//       WHERE a.audio_id = $1 AND ma.discord_id = $2`;
+//     const result = await pool.query(query, [req.params.id, user.discord_id]);
+//     if (result.rows.length === 0) return res.status(404).send("Audio not found");
+
+//     // fetching binary data from backend machine
+//     const remotePath = result.rows[0].file_path;
+//     const remoteResponse = await fetch(`${REPLAY_PIPELINE_URL}/get_audio?filepath=${encodeURIComponent(remotePath)}`);
+
+//     if (!remoteResponse.ok || !remoteResponse.body) {
+//       console.error("FastAPI Error:", await remoteResponse.text());
+//       return res.status(remoteResponse.status).send("Failed to stream audio from processing server");
+//     }
+
+//     res.setHeader("Content-Type", "audio/mka");
+//     Readable.fromWeb(remoteResponse.body as any).pipe(res);
+//   } catch (e) {
+//     console.error("Audio stream error: ", e);
+//     res.status(500).send("Server Error");
+//   }
+// });
 
 // the implementation of doing multiple requests for transcripts
 // and merging it into a master transcript

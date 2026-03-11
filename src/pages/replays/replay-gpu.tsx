@@ -6,6 +6,7 @@ import { useParams } from "react-router-dom";
 import { Renderer } from "../../webgpu/renderer";
 import { ReplayPlayer } from "../../webgpu/replayPlayer";
 import type { ReplayJSON } from "../../webgpu/types";
+import { AudioSyncPlayer } from "../../media/audiosyncplayer";
 
 interface TranscriptSegment {
   discordId: string;
@@ -24,12 +25,13 @@ export default function ReplayPage() {
   const playerRef = useRef<ReplayPlayer | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
+  const audioPlayerRef = useRef<AudioSyncPlayer | null>(null);
 
   // Mirror of play state used by requestAnimationFrame to avoid stale closures.
-  const isPlayingRef = useRef(true);
+  const isPlayingRef = useRef(false);
 
   // UI state for transport controls.
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
   const [durationSec, setDurationSec] = useState(0);
   const [replayStartTick, setReplayStartTick] = useState(0);
@@ -38,14 +40,35 @@ export default function ReplayPage() {
   const [transcriptText, setTranscriptText] = useState("Loading transcript...");
   const [transcripts, setTranscripts] = useState<TranscriptSegment[]>([]);
 
+  const [discordUsers, setDiscordUsers] = useState<string[]>([]);
+  const [mutedUsers, setMutedUsers] = useState<Record<string, boolean>>({});
+
+
   // adding fetch/error states so we know when it is fetching and when
   // the fetch errored out
   const [isFetching, setIsFetching] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  // Initialize audio player on mount
+  useEffect(() => {
+    audioPlayerRef.current = new AudioSyncPlayer();
+    return () => {
+      audioPlayerRef.current?.destroy();
+    }
+  }, [])
+
   // Keep imperative ref synchronized with React state.
   useEffect(() => {
     isPlayingRef.current = isPlaying;
+    // audio portion
+    if (audioPlayerRef.current) {
+      if (isPlaying) {
+        audioPlayerRef.current.play(currentTimeSec);
+      } else {
+        audioPlayerRef.current.stop();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying]);
 
   useEffect(() => {
@@ -167,20 +190,71 @@ export default function ReplayPage() {
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchTranscript() {
-      if (!id) {
-        setTranscriptText("No replay ID provided for transcript.");
-        return;
+    async function fetchTranscript(audioId: string): Promise<string[]> {
+      try {
+        const transcriptRes = await fetch(`${import.meta.env.VITE_API_URL}/audio/${audioId}/transcriptions`, {
+          credentials: "include",
+        });
+
+        if (!transcriptRes.ok) throw new Error(`Transcript fetch failed: ${transcriptRes.status}`);
+        const json = await transcriptRes.json();
+        const uniqueIds = Object.keys(json)
+
+        if (uniqueIds.length === 0) {
+          if (!cancelled) setTranscriptText("No transcripts generated yet.");
+          return [];
+        }
+
+        const combined: TranscriptSegment[] = [];
+        for (const [discordId, segments] of Object.entries(json)) {
+          for (const seg of (segments as any[])) {
+            combined.push({ discordId, start: seg.start, end: seg.end, text: seg.text })
+          }
+        }
+        combined.sort((a, b) => a.start - b.start);
+
+        if (!cancelled) {
+          setTranscripts(combined);
+          setTranscriptText("");
+          setDiscordUsers(uniqueIds);
+
+          const initialMutes: Record<string, boolean> = {};
+          uniqueIds.forEach(uid => (initialMutes[uid] = false))
+          setMutedUsers(initialMutes)
+        }
+
+        return uniqueIds;
+      } catch (e) {
+        if (!cancelled) {
+          setTranscriptText("Failed to load transcript. Check console.");
+          console.error(e);
+          return [];
+        }
       }
+    }
+
+    async function fetchAudioTracks(audioId: string, uniqueIds: string[]) {
+      if (uniqueIds.length === 0 || !audioPlayerRef.current || cancelled) return;
+      try {
+        setTranscriptText("Loading audio tracks...");
+        await audioPlayerRef.current.loadTracks(audioId, uniqueIds, import.meta.env.VITE_API_URL);
+        if (!cancelled) setTranscriptText("");
+      } catch (e) {
+        if (!cancelled) setTranscriptText("Failed to load audio tracks.");
+        console.error(e)
+      }
+    }
+
+    async function initializeMedia() {
+      if (!id) return;
 
       try {
         const replayRes = await fetch(`${import.meta.env.VITE_API_URL}/replays/${id}`, {
           credentials: "include",
-        });
+        })
 
         if (!replayRes.ok) throw new Error(`Metadata fetch failed: ${replayRes.status}`);
         const replayData = await replayRes.json();
-
         const audioId = replayData.audio_id;
 
         if (!audioId) {
@@ -188,49 +262,29 @@ export default function ReplayPage() {
           return;
         }
 
-        const transcriptRes = await fetch(`${import.meta.env.VITE_API_URL}/audio/${audioId}/transcriptions`, {
-          credentials: "include",
-        });
-
-        if (!transcriptRes.ok) throw new Error(`Transcript fetch failed: ${transcriptRes.status}`);
-        const masterJson = await transcriptRes.json();
-
-        if (Object.keys(masterJson).length === 0) {
-          if (!cancelled) setTranscriptText("No transcripts generated yet.");
-          return;
-        }
-
-        const combined: TranscriptSegment[] = [];
-        for (const [discordId, segments] of Object.entries(masterJson)) {
-          for (const seg of (segments as any[])) {
-            combined.push({
-              discordId,
-              start: seg.start,
-              end: seg.end,
-              text: seg.text,
-            });
-          }
-        }
-
-        combined.sort((a, b) => a.start - b.start);
-
-        if (!cancelled) {
-          setTranscripts(combined);
-          setTranscriptText("");
-        }
+        const uniqueIds = await fetchTranscript(audioId);
+        await fetchAudioTracks(audioId, uniqueIds);
       } catch (e) {
-        if (!cancelled) {
-          setTranscriptText("Failed to load transcript. Check console.");
-        }
+        console.error("Pipeline initialization failed: ", e);
       }
     }
 
-    void fetchTranscript();
+    void initializeMedia();
 
     return () => {
       cancelled = true;
     };
   }, [id]);
+
+  const toggleMute = (discordId: string) => {
+    setMutedUsers((prev) => {
+      const muted = !prev[discordId];
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.setTrackMute(discordId, muted);
+      }
+      return { ...prev, [discordId]: muted }
+    })
+  }
 
   // Random-access seek: jump timeline and immediately redraw target frame.
   const handleSeek = (sec: number) => {
@@ -243,6 +297,10 @@ export default function ReplayPage() {
 
     if (frame) {
       renderer.render(frame, sec);
+    }
+
+    if (isPlayingRef.current && audioPlayerRef.current) {
+      audioPlayerRef.current.play(sec);
     }
   };
 
@@ -291,43 +349,43 @@ export default function ReplayPage() {
     <div className="w-full overflow-x-hidden flex flex-col gap-4">
       {/* TODO(placeholder): Replace with real replay title (e.g., team names from replay metadata). */}
       <h1 className="text-center text-2xl font-semibold text-slate-100">
-        Team 1 vs. Team 2
+        Team 1 vs. Team 2 (PLACEHOLDER)
       </h1>
 
       <div className="flex w-full items-start justify-center gap-4">
         <div className="flex h-[720px] w-28 shrink-0 flex-col gap-2">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div
-              key={`player-icon-${index}`}
-              className={`flex w-full flex-col items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 p-2 ${
-                index === 5 ? "mt-auto border-t border-slate-600 pt-3" : ""
-              }`}
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700">
-                <User className="h-5 w-5 text-slate-300" />
+          {discordUsers.map((discordId) => {
+            const isMuted = mutedUsers[discordId] || false;
+            return (
+              <div
+                key={`player-icon-${discordId}`}
+                className={`flex w-full flex-col items-center gap-1.5 rounded-md border p-2 transition-colors ${isMuted ? "border-red-900/50 bg-red-950/20" : "border-slate-700 bg-slate-800"
+                  }`}
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700">
+                  <User className="h-5 w-5 text-slate-300" />
+                </div>
+
+                <div className="rounded border border-slate-600 bg-slate-900 px-2 py-0.5 text-[9px] uppercase tracking-wide text-slate-300 truncate w-full text-center">
+                  {discordId}
+                </div>
+
+                <div className="flex items-center gap-1.5 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => toggleMute(discordId)}
+                    className={`flex h-8 w-16 items-center justify-center rounded border transition-colors ${isMuted
+                      ? "border-red-500 bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                      : "border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400 hover:text-white"
+                      }`}
+                    title={isMuted ? "Unmute player" : "Mute player"}
+                  >
+                    {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
-              {/* TODO(placeholder): Replace with mapped Discord display names per speaker/channel. */}
-              <div className="rounded border border-slate-600 bg-slate-900 px-2 py-0.5 text-[9px] uppercase tracking-wide text-slate-300">
-                {index === 5 ? "Discord Coach" : "Discord Player"}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  className="flex h-7 w-7 items-center justify-center rounded border border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400"
-                  aria-label={`Mute player ${index + 1}`}
-                >
-                  <MicOff className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  className="flex h-7 w-7 items-center justify-center rounded border border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400"
-                  aria-label={`Unmute player ${index + 1}`}
-                >
-                  <Mic className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="w-full max-w-[720px] aspect-square border border-slate-700 rounded-xl overflow-hidden shrink-0">
@@ -344,7 +402,7 @@ export default function ReplayPage() {
               ? (
                 <div className="flex flex-col gap-3">
                   {transcripts.map((t, i) => (
-                    <div key={i} className="flex flex-col">
+                    <div key={i} className={`flex flex-col ${mutedUsers[t.discordId] ? "opacity-30" : ""}`}>
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-xs text-slate-500 font-mono">[{formatTime(t.start)}]</span>
                         <span className="font-semibold text-blue-400 text-xs truncate max-w-[150px]">
@@ -408,11 +466,10 @@ export default function ReplayPage() {
                 <button
                   type="button"
                   onClick={() => handleRoundSelect(index)}
-                  className={`h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center transition-colors ${
-                    isCurrent
-                      ? "bg-blue-500 border-blue-400 text-white"
-                      : "bg-slate-900 border-slate-600 text-slate-200 hover:border-slate-400 hover:text-white"
-                  }`}
+                  className={`h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center transition-colors ${isCurrent
+                    ? "bg-blue-500 border-blue-400 text-white"
+                    : "bg-slate-900 border-slate-600 text-slate-200 hover:border-slate-400 hover:text-white"
+                    }`}
                   title={`Jump to round ${roundNumber}`}
                   disabled={isFetching}
                 >
