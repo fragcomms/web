@@ -354,35 +354,35 @@ export default function ReplayPage() {
 
       <div className="flex w-full items-start justify-center gap-4">
         {/* Left Rail: Discord user tiles + per-user mute controls */}
-        <div className="flex h-[720px] w-28 shrink-0 flex-col gap-2">
+        <div className="flex h-[720px] w-36 shrink-0 flex-col gap-2.5">
           {discordUsers.map((discordId) => {
             const isMuted = mutedUsers[discordId] || false;
             return (
               <div
                 key={`player-icon-${discordId}`}
-                className={`flex w-full flex-col items-center gap-1.5 rounded-md border p-2 transition-colors ${isMuted ? "border-red-900/50 bg-red-950/20" : "border-slate-700 bg-slate-800"
+                className={`flex w-full flex-col items-center gap-2 rounded-md border p-2.5 transition-colors ${isMuted ? "border-red-900/50 bg-red-950/20" : "border-slate-700 bg-slate-800"
                   }`}
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-700">
-                  <User className="h-5 w-5 text-slate-300" />
-                </div>
+                <div className="flex w-full items-center justify-center gap-2">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-700">
+                    <User className="h-6 w-6 text-slate-300" />
+                  </div>
 
-                <div className="rounded border border-slate-600 bg-slate-900 px-2 py-0.5 text-[9px] uppercase tracking-wide text-slate-300 truncate w-full text-center">
-                  {discordId}
-                </div>
-
-                <div className="flex items-center gap-1.5 mt-1">
                   <button
                     type="button"
                     onClick={() => toggleMute(discordId)}
-                    className={`flex h-8 w-16 items-center justify-center rounded border transition-colors ${isMuted
+                    className={`flex h-10 w-10 items-center justify-center rounded border transition-colors ${isMuted
                       ? "border-red-500 bg-red-500/20 text-red-400 hover:bg-red-500/30"
                       : "border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400 hover:text-white"
                       }`}
                     title={isMuted ? "Unmute player" : "Mute player"}
                   >
-                    {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                   </button>
+                </div>
+
+                <div className="w-full truncate rounded border border-slate-600 bg-slate-900 px-2.5 py-0.5 text-center text-[11px] uppercase tracking-wide text-slate-300">
+                  {discordId}
                 </div>
               </div>
             );
@@ -396,7 +396,7 @@ export default function ReplayPage() {
 
         {/* Right Rail: Transcript panel for match comms */}
         <aside className="w-full max-w-[320px] h-[720px] rounded-xl border border-slate-700 bg-slate-900/90 p-3 flex flex-col">
-          <div className="mb-2 shrink-0 text-sm font-semibold text-slate-200">Match Comms</div>
+          <div className="mb-2 shrink-0 text-sm font-semibold text-slate-200">Match Communications:</div>
           <div
             className="min-h-0 flex-1 overflow-y-auto rounded-md border border-slate-800 bg-slate-950/50 p-2 text-sm text-slate-300"
             aria-live="polite"

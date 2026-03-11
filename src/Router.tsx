@@ -70,7 +70,7 @@ export default function Router() {
               path="/replays/:id"
               element={
                 <ProtectedRoute>
-                  <div className="w-full min-h-[calc(100vh-80px)] pt-8 px-4 flex flex-col items-center">
+                  <div className="w-full min-h-[calc(100vh-80px)] pt-4 px-4 flex flex-col items-center">
                     <GPUTest />
                   </div>
                 </ProtectedRoute>
@@ -101,7 +101,7 @@ export default function Router() {
             <Route
               path="/about"
               element={
-                <div className="w-full flex-1 flex flex-col p-4 items-center justify-center">
+                <div className="w-full flex-1 flex flex-col px-4 pb-4 items-center justify-start">
                   <About />
                 </div>
               }

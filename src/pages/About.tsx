@@ -5,7 +5,7 @@ export default function About() {
   return (
     <div>
       {/* ============ HERO SECTION ============ */}
-      <section id="hero" className="relative pt-20 md:pt-40 pb-24 px-6 overflow-hidden">
+      <section id="hero" className="relative pt-8 md:pt-16 pb-24 px-6 overflow-hidden">
         <div className="max-w-5xl mx-auto text-center relative z-10">
           {/* Title */}
           <div className="mb-4">
