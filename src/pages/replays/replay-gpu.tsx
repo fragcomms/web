@@ -42,6 +42,7 @@ export default function ReplayPage() {
 
   const [discordUsers, setDiscordUsers] = useState<string[]>([]);
   const [mutedUsers, setMutedUsers] = useState<Record<string, boolean>>({});
+  const [discordNames, setDiscordNames] = useState<Record<string, string>>({});
 
 
   // adding fetch/error states so we know when it is fetching and when
@@ -245,6 +246,33 @@ export default function ReplayPage() {
       }
     }
 
+    async function fetchDiscordNames(uniqueIds: string[]) {
+      if (uniqueIds.length === 0 || cancelled) return;
+      const mapping: Record<string, string> = {};
+      uniqueIds.forEach(id => mapping[id] = id)
+
+      try {
+        const promises = uniqueIds.map(async (uid) => {
+          try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/user/${uid}`, {
+              credentials: "include"
+            })
+            if (res.ok) {
+              const userData = await res.json();
+              mapping[uid] = userData.username;
+            }
+          } catch (e) {
+            // fallback to raw id
+          }
+        })
+
+        await Promise.all(promises);
+        if (!cancelled) setDiscordNames(mapping);
+      } catch (e) {
+        console.error("Failed to map Discord names", e)
+      }
+    }
+
     async function initializeMedia() {
       if (!id) return;
 
@@ -263,7 +291,10 @@ export default function ReplayPage() {
         }
 
         const uniqueIds = await fetchTranscript(audioId);
-        await fetchAudioTracks(audioId, uniqueIds);
+        await Promise.all([
+          fetchAudioTracks(audioId, uniqueIds),
+          fetchDiscordNames(uniqueIds)
+        ])
       } catch (e) {
         console.error("Pipeline initialization failed: ", e);
       }
@@ -382,7 +413,7 @@ export default function ReplayPage() {
                   </div>
 
                   <div className="w-full truncate rounded border border-slate-600 bg-slate-900 px-2.5 py-0.5 text-center text-[11px] uppercase tracking-wide text-slate-300">
-                    {discordId}
+                    {discordNames[discordId] || discordId}
                   </div>
                 </div>
 
@@ -415,7 +446,7 @@ export default function ReplayPage() {
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-xs text-slate-500 font-mono">[{formatTime(t.start)}]</span>
                         <span className="font-semibold text-blue-400 text-xs truncate max-w-[150px]">
-                          {t.discordId}
+                          {discordNames[t.discordId] || t.discordId}
                         </span>
                       </div>
                       <span className="text-slate-200 leading-snug">{t.text}</span>
