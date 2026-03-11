@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as AuthContext from "../context/AuthContext";
+import * as AuthContext from "../utils/context/AuthContext";
 import { LoginForm } from "./login-form";
 import "@testing-library/jest-dom";
 

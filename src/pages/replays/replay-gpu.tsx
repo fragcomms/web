@@ -3,10 +3,10 @@
 import { ArrowLeftRight, Clock3, Mic, MicOff, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Renderer } from "../../webgpu/renderer";
-import { ReplayPlayer } from "../../webgpu/replayPlayer";
-import type { ReplayJSON } from "../../webgpu/types";
-import { AudioSyncPlayer } from "../../media/audiosyncplayer";
+import { Renderer } from "../../utils/webgpu/renderer";
+import { ReplayPlayer } from "../../utils/webgpu/replayPlayer";
+import type { ReplayJSON } from "../../utils/webgpu/types";
+import { AudioSyncPlayer } from "../../utils/media/audiosyncplayer";
 
 interface TranscriptSegment {
   discordId: string;
