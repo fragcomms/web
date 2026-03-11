@@ -1,34 +1,19 @@
 import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as AuthContext from "../utils/context/AuthContext";
+import { AuthProvider } from "../utils/context/AuthContext";
 import { LoginForm } from "./login-form";
 import "@testing-library/jest-dom";
-
-// MOCK DEPENDENCIES
-vi.mock("../context/AuthContext");
 
 // mock user data
 const mockUser = {
   id: "123123321",
   username: "testuser",
+  discriminator: "1234",
   global_name: "myglobalname",
   email: "test@test.com",
   avatar: null,
 };
-
-// mock useAuth from AuthContext
-vi.mock("../context/AuthContext", async (importOriginal) => {
-  const actual: any = await importOriginal();
-  return {
-    ...actual,
-    useAuth: vi.fn(() => ({
-      user: null,
-      isLoading: false,
-      checkAuthStatus: vi.fn(),
-      logout: vi.fn(),
-    })),
-  };
-});
 
 // mock discord logo
 vi.mock("../assets/discord-logo.svg?react", () => ({
@@ -50,6 +35,21 @@ vi.mock("../components/ui/card", () => ({
   CardTitle: (props: any) => <h2 {...props} />,
 }));
 
+const renderWithAuth = (ui: ReactNode, user: typeof mockUser | null = null) => {
+  return render(
+    <AuthProvider
+      value={{
+        user,
+        isLoading: false,
+        checkAuthStatus: vi.fn(),
+        logout: vi.fn(),
+      }}
+    >
+      {ui}
+    </AuthProvider>,
+  );
+};
+
 describe("LoginForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -57,7 +57,7 @@ describe("LoginForm", () => {
 
   // #1 TEST LOGIN BUTTON APPEARS WHEN NOT LOGGED IN
   it("shows 'Continue with Discord' button when user not logged in", () => {
-    render(<LoginForm />);
+    renderWithAuth(<LoginForm />);
 
     // expected discord login button
     const button = screen.getByRole("button", { name: /continue with Discord/i });
@@ -68,7 +68,7 @@ describe("LoginForm", () => {
 
   // #2 TEST LOGIN BUTTON DISABLED WHEN CLICKED
   it("shows disabled button that says 'Connecting...' state when testLoading is true", () => {
-    render(<LoginForm testLoading={true} />);
+    renderWithAuth(<LoginForm testLoading={true} />);
 
     // expected button disabled
     const button = screen.getByRole("button");
@@ -79,13 +79,7 @@ describe("LoginForm", () => {
 
   // #3 TEST LOGGED IN UI
   it("renders logged-in UI when user exists", () => {
-    vi.spyOn(AuthContext, "useAuth").mockReturnValue({
-      user: mockUser,
-      checkAuthStatus: vi.fn(),
-      logout: vi.fn(),
-    } as any);
-
-    render(<LoginForm />);
+    renderWithAuth(<LoginForm />, mockUser);
 
     // user info
     expect(screen.getByText(/testuser/i)).toBeInTheDocument();
