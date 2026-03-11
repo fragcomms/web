@@ -10,7 +10,7 @@ import { UserWithToken as User } from "./types/user.js";
 
 import audioRoutes from "./routes/audio.js";
 import loginRoutes from "./routes/auth.js";
-import profileRoutes from "./routes/profile.js";
+import profileRoutes from "./routes/user-info.js";
 import replayRoutes from "./routes/replay.js";
 
 import dotenv from "dotenv";
@@ -111,7 +111,7 @@ app.get("/api", (_req, res) => res.send("API is up"));
 app.use("/api/auth", loginRoutes);
 app.use("/api/replays", replayRoutes);
 app.use("/api/audio", audioRoutes);
-app.use("/api", profileRoutes);
+app.use("/api/user", profileRoutes);
 
 // very niche
 app.get("/api/getBotInviteLink", (_req, res) => {

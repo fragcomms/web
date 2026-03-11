@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import DiscordLogo from "../assets/discord-logo.svg?react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
-import { useAuth } from "../utils/context/AuthContext";
+import { useAuth } from "../utils/context/context";
 
 interface LoginFormProps {
   testLoading?: boolean; // for unit testing
@@ -37,11 +37,11 @@ export function LoginForm({ testLoading }: LoginFormProps) {
   };
 
   const handleFetchUserData = () => {
-    window.open(`${import.meta.env.VITE_API_URL}/profile`, "_blank", "width=600,height=700");
+    window.open(`${import.meta.env.VITE_API_URL}/user/profile`, "_blank", "width=600,height=700");
   };
 
   const handleFetchConnections = () => {
-    window.open(`${import.meta.env.VITE_API_URL}/connections`, "_blank", "width=600,height=700");
+    window.open(`${import.meta.env.VITE_API_URL}/user/connections`, "_blank", "width=600,height=700");
   };
 
   // Determine button disabled state for testing

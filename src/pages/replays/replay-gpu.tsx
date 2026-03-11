@@ -6,7 +6,7 @@ import { useParams } from "react-router-dom";
 import { Renderer } from "../../utils/webgpu/renderer";
 import { ReplayPlayer } from "../../utils/webgpu/replayPlayer";
 import type { ReplayJSON } from "../../utils/webgpu/types";
-import { AudioSyncPlayer } from "../../utils/media/audiosyncplayer";
+import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
 
 interface TranscriptSegment {
   discordId: string;

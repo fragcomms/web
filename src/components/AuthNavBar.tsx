@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useAuth } from "../utils/context/AuthContext";
+import { useAuth } from "../utils/context/context";
 import { NavLogo } from "./NavBar/logo";
 
 const navLinkClassName = "text-lg text-slate-300 transition-colors hover:text-white";
