@@ -41,6 +41,9 @@ router.get("/:id", ensureAuth, async (req, res) => {
   const discordId = req.params.id;
 
   try {
+    // we first hit database to see if the user is already in our database, otherwise
+    // we hit the official discord api.
+    // if we hit discord api too much, we might get rate limited
     const dbResult = await pool.query(`
       SELECT discord_username
       FROM users
@@ -51,7 +54,7 @@ router.get("/:id", ensureAuth, async (req, res) => {
     if (dbResult.rows.length > 0) {
       return res.json({
         username: dbResult.rows[0].discord_username,
-        source: "database"
+        source: "database" // not used but good to know for logistics
       })
     }
 
@@ -76,7 +79,7 @@ router.get("/:id", ensureAuth, async (req, res) => {
 
     res.json({
       username: discordUser.username,
-      source: "discord_api"
+      source: "discord_api" // not used but good to know for logistics
     })
     
   } catch (e) {
