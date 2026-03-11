@@ -1,372 +1,90 @@
 "use client";
 
-import { ArrowLeftRight, Clock3, Mic, MicOff, User } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { Renderer } from "../../utils/webgpu/renderer";
-import { ReplayPlayer } from "../../utils/webgpu/replayPlayer";
-import type { ReplayJSON } from "../../utils/webgpu/types";
 import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
+import { useReplayEngine } from "./ReplayEngine";
+import { useReplayMedia } from "./ReplayMedia";
 
-interface TranscriptSegment {
-  discordId: string;
-  start: number;
-  end: number;
-  text: string;
+import { MuteSidebar } from "./components/MuteSidebar";
+import { TranscriptPanel } from "./components/TranscriptPanel";
+import { TransportBar } from "./components/TransportBar";
+
+function getRoundFromTick(roundStartTicks: number[], currentTick: number): number {
+  if (roundStartTicks.length === 0) return 1;
+  let round = 1;
+  for (let i = 0; i < roundStartTicks.length; i++) {
+    if (currentTick >= roundStartTicks[i]) round = i + 1;
+    else break;
+  }
+  return round;
+}
+
+function formatTime(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 export default function ReplayPage() {
+  // Get replay ID from URL params
   const { id } = useParams<{ id: string; }>();
-  // Canvas target where WebGPU renders each replay frame.
+  // Canvas target where WebGPU renders each replay frame
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  // Long-lived runtime objects kept outside React render cycles.
-  const rendererRef = useRef<Renderer | null>(null);
-  const playerRef = useRef<ReplayPlayer | null>(null);
-  const rafRef = useRef<number | null>(null);
-  const lastTimeRef = useRef<number | null>(null);
   const audioPlayerRef = useRef<AudioSyncPlayer | null>(null);
 
-  // Mirror of play state used by requestAnimationFrame to avoid stale closures.
-  const isPlayingRef = useRef(false);
-
-  // UI state for transport controls.
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTimeSec, setCurrentTimeSec] = useState(0);
-  const [durationSec, setDurationSec] = useState(0);
-  const [replayStartTick, setReplayStartTick] = useState(0);
-  const [roundStartTicks, setRoundStartTicks] = useState<number[]>([]);
-  const [ticksPerSecond, setTicksPerSecond] = useState(64);
-  const [transcriptText, setTranscriptText] = useState("Loading transcript...");
-  const [transcripts, setTranscripts] = useState<TranscriptSegment[]>([]);
-
-  const [discordUsers, setDiscordUsers] = useState<string[]>([]);
-  const [mutedUsers, setMutedUsers] = useState<Record<string, boolean>>({});
-  const [discordNames, setDiscordNames] = useState<Record<string, string>>({});
-
-
-  // adding fetch/error states so we know when it is fetching and when
-  // the fetch errored out
-  const [isFetching, setIsFetching] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-
-  // Initialize audio player on mount
+  // initialize the AudioSyncPlayer once on mount and clean up on unmount
   useEffect(() => {
     audioPlayerRef.current = new AudioSyncPlayer();
-    return () => {
-      audioPlayerRef.current?.destroy();
-    }
-  }, [])
+    return () => audioPlayerRef.current?.destroy();
+  }, []);
 
-  // Keep imperative ref synchronized with React state.
-  useEffect(() => {
-    isPlayingRef.current = isPlaying;
-    // audio portion
-    if (audioPlayerRef.current) {
-      if (isPlaying) {
-        audioPlayerRef.current.play(currentTimeSec);
-      } else {
-        audioPlayerRef.current.stop();
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying]);
+  // initialize the replay engine and media (transcripts + audio) using the replay ID from URL
+  const {
+    isPlaying,
+    setIsPlaying,
+    currentTimeSec,
+    durationSec,
+    replayStartTick,
+    roundStartTicks,
+    ticksPerSecond,
+    isFetching,
+    fetchError,
+    handleSeek,
+  } = useReplayEngine(id, canvasRef, audioPlayerRef);
 
-  useEffect(() => {
-    // Guard to stop async/RAF work after unmount.
-    let cancelled = false;
+  // master hook to handle all media related
+  const {
+    transcriptText,
+    transcripts,
+    discordUsers,
+    discordNames,
+    mutedUsers,
+    toggleMute,
+  } = useReplayMedia(id, audioPlayerRef);
 
-    (async () => {
-      if (!id) {
-        setFetchError("No replay ID provided in the URL.");
-        setIsFetching(false);
-        return;
-      }
-
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      try {
-        const targetUrl = `${import.meta.env.VITE_API_URL}/replays/${id}/json`;
-
-        const res = await fetch(targetUrl, {
-          cache: "no-store",
-          credentials: "include",
-        });
-
-        if (!res.ok) {
-          throw new Error(`Server Error ${res.status}: ${res.statusText}`);
-        }
-
-        // Initialize WebGPU renderer once.
-        const renderer = await Renderer.create(canvas);
-        if (cancelled) return;
-        rendererRef.current = renderer;
-
-        // Load replay JSON and seed the player timeline.
-        const data: ReplayJSON = JSON.parse(await res.text());
-        const player = new ReplayPlayer();
-        player.setReplay(data);
-        playerRef.current = player;
-        setTicksPerSecond(player.ticksPerSecond);
-
-        const firstTimelineTick = data.timeline[0]?.tick ?? 0;
-        setReplayStartTick(firstTimelineTick);
-
-        const starts = (data.events?.round_start ?? [])
-          .map((round) => round.tick)
-          .filter((tick) => Number.isFinite(tick))
-          .sort((a, b) => a - b);
-        setRoundStartTicks(starts);
-
-        const duration = player.getDurationSeconds();
-        setDurationSec(duration);
-        setCurrentTimeSec(0);
-
-        const firstFrame = player.seekToElapsedSeconds(0);
-        if (firstFrame && rendererRef.current) {
-          rendererRef.current.render(firstFrame, 0);
-        }
-
-        setIsFetching(false);
-
-        // Main playback loop: compute delta time, advance/seek frame, then render.
-        const loop = (nowMs: number) => {
-          if (cancelled) return;
-
-          const renderer = rendererRef.current;
-          const player = playerRef.current;
-
-          if (!renderer || !player) return;
-
-          if (lastTimeRef.current === null) {
-            lastTimeRef.current = nowMs;
-          }
-
-          const dtSec = (nowMs - lastTimeRef.current) / 1000;
-          lastTimeRef.current = nowMs;
-
-          let frame = null;
-
-          if (isPlayingRef.current) {
-            // Advance timeline in real-time while playing.
-            frame = player.advance(dtSec);
-            setCurrentTimeSec(player.getCurrentElapsedSeconds());
-          } else {
-            // While paused, render the current timeline position.
-            frame = player.getFrameAtElapsedSeconds(player.getCurrentElapsedSeconds());
-          }
-
-          if (frame) {
-            renderer.render(frame, player.getCurrentElapsedSeconds());
-          }
-
-          rafRef.current = requestAnimationFrame(loop);
-        };
-
-        rafRef.current = requestAnimationFrame(loop);
-      } catch (err: any) {
-        console.error(err);
-        if (!cancelled) {
-          setFetchError(err.message || "An unknown error occurred while loading the replay.");
-          setIsFetching(false);
-        }
-      }
-    })();
-
-    return () => {
-      // Cleanup animation and runtime refs on unmount.
-      cancelled = true;
-
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-      }
-
-      rendererRef.current = null;
-      playerRef.current = null;
-      lastTimeRef.current = null;
-    };
-  }, [id]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchTranscript(audioId: string): Promise<string[]> {
-      try {
-        const transcriptRes = await fetch(`${import.meta.env.VITE_API_URL}/audio/${audioId}/transcriptions`, {
-          credentials: "include",
-        });
-
-        if (!transcriptRes.ok) throw new Error(`Transcript fetch failed: ${transcriptRes.status}`);
-        const json = await transcriptRes.json();
-        const uniqueIds = Object.keys(json)
-
-        if (uniqueIds.length === 0) {
-          if (!cancelled) setTranscriptText("No transcripts generated yet.");
-          return [];
-        }
-
-        const combined: TranscriptSegment[] = [];
-        for (const [discordId, segments] of Object.entries(json)) {
-          for (const seg of (segments as any[])) {
-            combined.push({ discordId, start: seg.start, end: seg.end, text: seg.text })
-          }
-        }
-        combined.sort((a, b) => a.start - b.start);
-
-        if (!cancelled) {
-          setTranscripts(combined);
-          setTranscriptText("");
-          setDiscordUsers(uniqueIds);
-
-          const initialMutes: Record<string, boolean> = {};
-          uniqueIds.forEach(uid => (initialMutes[uid] = false))
-          setMutedUsers(initialMutes)
-        }
-
-        return uniqueIds;
-      } catch (e) {
-        if (!cancelled) {
-          setTranscriptText("Failed to load transcript. Check console.");
-          console.error(e);
-        }
-        return [];
-      }
-    }
-
-    async function fetchAudioTracks(audioId: string, uniqueIds: string[]) {
-      if (uniqueIds.length === 0 || !audioPlayerRef.current || cancelled) return;
-      try {
-        setTranscriptText("Loading audio tracks...");
-        await audioPlayerRef.current.loadTracks(audioId, uniqueIds, import.meta.env.VITE_API_URL);
-        if (!cancelled) setTranscriptText("");
-      } catch (e) {
-        if (!cancelled) setTranscriptText("Failed to load audio tracks.");
-        console.error(e)
-      }
-    }
-
-    async function fetchDiscordNames(uniqueIds: string[]) {
-      if (uniqueIds.length === 0 || cancelled) return;
-      const mapping: Record<string, string> = {};
-      uniqueIds.forEach(id => mapping[id] = id)
-
-      try {
-        const promises = uniqueIds.map(async (uid) => {
-          try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/user/${uid}`, {
-              credentials: "include"
-            })
-            if (res.ok) {
-              const userData = await res.json();
-              mapping[uid] = userData.username;
-            }
-          } catch (e) {
-            // fallback to raw id
-          }
-        })
-
-        await Promise.all(promises);
-        if (!cancelled) setDiscordNames(mapping);
-      } catch (e) {
-        console.error("Failed to map Discord names", e)
-      }
-    }
-
-    async function initializeMedia() {
-      if (!id) return;
-
-      try {
-        const replayRes = await fetch(`${import.meta.env.VITE_API_URL}/replays/${id}`, {
-          credentials: "include",
-        })
-
-        if (!replayRes.ok) throw new Error(`Metadata fetch failed: ${replayRes.status}`);
-        const replayData = await replayRes.json();
-        const audioId = replayData.audio_id;
-
-        if (!audioId) {
-          if (!cancelled) setTranscriptText("No audio linked to this replay.");
-          return;
-        }
-
-        const uniqueIds = await fetchTranscript(audioId);
-        await Promise.all([
-          fetchAudioTracks(audioId, uniqueIds),
-          fetchDiscordNames(uniqueIds)
-        ])
-      } catch (e) {
-        console.error("Pipeline initialization failed: ", e);
-      }
-    }
-
-    void initializeMedia();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
-
-  const toggleMute = (discordId: string) => {
-    setMutedUsers((prev) => {
-      const muted = !prev[discordId];
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.setTrackMute(discordId, muted);
-      }
-      return { ...prev, [discordId]: muted }
-    })
-  }
-
-  // Random-access seek: jump timeline and immediately redraw target frame.
-  const handleSeek = (sec: number) => {
-    const player = playerRef.current;
-    const renderer = rendererRef.current;
-    if (!player || !renderer) return;
-
-    const frame = player.seekToElapsedSeconds(sec);
-    setCurrentTimeSec(sec);
-
-    if (frame) {
-      renderer.render(frame, sec);
-    }
-
-    if (isPlayingRef.current && audioPlayerRef.current) {
-      audioPlayerRef.current.play(sec);
-    }
-  };
-
+  // Handle round selection from the transport bar
+  // TODO: logic is kinda screwed, should pause once round is finished
   const handleRoundSelect = (roundIndex: number) => {
-    const roundStartTick = roundStartTicks[roundIndex];
-    const seekSec = Math.max(0, (roundStartTick - replayStartTick) / ticksPerSecond);
-
+    const seekSec = Math.max(0, (roundStartTicks[roundIndex] - replayStartTick) / ticksPerSecond);
     setIsPlaying(true);
     handleSeek(seekSec);
   };
 
-  // Resolve the currently active round from the global replay clock.
-  const activeRound = roundStartTicks.length > 0
-    ? getRoundFromTick(
-      roundStartTicks,
-      replayStartTick + currentTimeSec * ticksPerSecond,
-    )
-    : 1;
+  // Calculate active round and its timing info based on the current replay time
+  const activeRound = roundStartTicks.length > 0 ? getRoundFromTick(roundStartTicks, replayStartTick + currentTimeSec * ticksPerSecond) : 1;
 
-  // Derive absolute replay bounds for the active round.
-  const replayEndTick = replayStartTick + durationSec * ticksPerSecond;
   const activeRoundIndex = Math.max(0, activeRound - 1);
   const activeRoundStartTick = roundStartTicks[activeRoundIndex] ?? replayStartTick;
-  const activeRoundEndTick = roundStartTicks[activeRoundIndex + 1] ?? replayEndTick;
+  const activeRoundEndTick = roundStartTicks[activeRoundIndex + 1] ?? (replayStartTick + durationSec * ticksPerSecond);
 
-  // Convert active round bounds into replay seconds.
+  // convert all that tick info into seconds for easier handling in the transport bar
   const activeRoundStartSec = Math.max(0, (activeRoundStartTick - replayStartTick) / ticksPerSecond);
-  const activeRoundEndSec = Math.max(activeRoundStartSec, (activeRoundEndTick - replayStartTick) / ticksPerSecond);
-
-  // Round-local values used by the transport UI (slider/time label).
-  const activeRoundDurationSec = Math.max(0, activeRoundEndSec - activeRoundStartSec);
-  const activeRoundElapsedSec = Math.min(
-    activeRoundDurationSec,
-    Math.max(0, currentTimeSec - activeRoundStartSec),
+  const activeRoundDurationSec = Math.max(
+    0,
+    Math.max(activeRoundStartSec, (activeRoundEndTick - replayStartTick) / ticksPerSecond) - activeRoundStartSec,
   );
+  const activeRoundElapsedSec = Math.min(activeRoundDurationSec, Math.max(0, currentTimeSec - activeRoundStartSec));
 
   if (fetchError) {
     return (
@@ -378,192 +96,46 @@ export default function ReplayPage() {
 
   return (
     <div className="w-full overflow-x-hidden flex flex-col gap-4">
-      {/* TODO(placeholder): Replace with real replay title (e.g., team names from replay metadata). */}
-      <h1 className="text-center text-2xl font-semibold text-slate-100">
-        Team 1 vs. Team 2 (PLACEHOLDER)
-      </h1>
+      <h1 className="text-center text-2xl font-semibold text-slate-100">Team 1 vs. Team 2</h1>
 
       <div className="flex w-full items-start justify-center gap-4">
-        {/* Left Rail: Discord user tiles + per-user mute controls */}
-        <div className="flex h-[720px] w-36 shrink-0 flex-col gap-2.5">
-          {discordUsers.map((discordId, index) => {
-            const isMuted = mutedUsers[discordId] || false;
-            return (
-              <div key={`player-icon-${discordId}`} className="contents">
-                <div
-                  className={`flex w-full flex-col items-center gap-2 rounded-md border p-2.5 transition-colors ${isMuted ? "border-red-900/50 bg-red-950/20" : "border-slate-700 bg-slate-800"
-                    }`}
-                >
-                  <div className="flex w-full items-center justify-center gap-2">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-700">
-                      <User className="h-6 w-6 text-slate-300" />
-                    </div>
+        { /* Left Discord User Mute Sidebar */}
+        <MuteSidebar
+          discordUsers={discordUsers}
+          mutedUsers={mutedUsers}
+          discordNames={discordNames}
+          toggleMute={toggleMute}
+        />
 
-                    <button
-                      type="button"
-                      onClick={() => toggleMute(discordId)}
-                      className={`flex h-10 w-10 items-center justify-center rounded border transition-colors ${isMuted
-                        ? "border-red-500 bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                        : "border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400 hover:text-white"
-                        }`}
-                      title={isMuted ? "Unmute player" : "Mute player"}
-                    >
-                      {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                    </button>
-                  </div>
-
-                  <div className="w-full truncate rounded border border-slate-600 bg-slate-900 px-2.5 py-0.5 text-center text-[11px] uppercase tracking-wide text-slate-300">
-                    {discordNames[discordId] || discordId}
-                  </div>
-                </div>
-
-                {index === 4 && discordUsers[5] && (
-                  <div className="my-0.5 h-px w-full bg-slate-600/70" />
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Center Stage: WebGPU replay canvas */}
+        {/* Center Canvas */}
         <div className="w-full max-w-[720px] aspect-square border border-slate-700 rounded-xl overflow-hidden shrink-0">
           <canvas ref={canvasRef} className="block w-full h-full" />
         </div>
 
-        {/* Right Rail: Transcript panel for match comms */}
-        <aside className="w-full max-w-[320px] h-[720px] rounded-xl border border-slate-700 bg-slate-900/90 p-3 flex flex-col">
-          <div className="mb-2 shrink-0 text-sm font-semibold text-slate-200">Match Communications:</div>
-          <div
-            className="min-h-0 flex-1 overflow-y-auto rounded-md border border-slate-800 bg-slate-950/50 p-2 text-sm text-slate-300"
-            aria-live="polite"
-          >
-            {transcripts.length > 0
-              ? (
-                <div className="flex flex-col gap-3">
-                  {transcripts.map((t, i) => (
-                    // Transcript item: timestamp + speaker id + spoken text
-                    <div key={i} className={`flex flex-col ${mutedUsers[t.discordId] ? "opacity-30" : ""}`}>
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-xs text-slate-500 font-mono">[{formatTime(t.start)}]</span>
-                        <span className="font-semibold text-blue-400 text-xs truncate max-w-[150px]">
-                          {discordNames[t.discordId] || t.discordId}
-                        </span>
-                      </div>
-                      <span className="text-slate-200 leading-snug">{t.text}</span>
-                    </div>
-                  ))}
-                </div>
-              )
-              : (
-                <div className="h-full flex items-center justify-center">
-                  <p className="whitespace-pre-wrap text-slate-400 italic text-center px-4">
-                    {transcriptText}
-                  </p>
-                </div>
-              )}
-          </div>
-        </aside>
+        {/* Right Transcript Panel */}
+        <TranscriptPanel
+          transcripts={transcripts}
+          mutedUsers={mutedUsers}
+          discordNames={discordNames}
+          transcriptText={transcriptText}
+          formatTime={formatTime}
+        />
       </div>
 
-      <div className="w-full flex flex-col items-center gap-3 self-center">
-        {/* Transport controls: play/pause + round-local seek slider + elapsed/duration */}
-        <div className="flex items-center gap-3 w-full max-w-[800px]">
-          <button
-            onClick={() => setIsPlaying((p) => !p)}
-            className="min-w-[80px] px-4 py-2 rounded bg-slate-700 text-white"
-            disabled={isFetching}
-          >
-            {isPlaying ? "Pause" : "Play"}
-          </button>
-
-          <input
-            type="range"
-            min={0}
-            max={activeRoundDurationSec}
-            step={0.01}
-            value={activeRoundElapsedSec}
-            onMouseDown={() => setIsPlaying(false)}
-            onChange={(e) => {
-              // Map round-local seek back into absolute replay seconds.
-              const sec = Number(e.target.value);
-              handleSeek(activeRoundStartSec + sec);
-            }}
-            className="flex-1 cursor-pointer"
-            disabled={isFetching}
-          />
-
-          <span className="text-white">
-            {formatTime(activeRoundElapsedSec)} / {formatTime(activeRoundDurationSec)}
-          </span>
-        </div>
-
-        {/* Round navigator: click a round bubble to jump to that round */}
-        <div className="flex w-full max-w-[1200px] flex-nowrap self-center justify-center gap-1 overflow-hidden pb-1">
-          {roundStartTicks.map((_, index) => {
-            const roundNumber = index + 1;
-            const isCurrent = roundNumber === activeRound;
-
-            return (
-              <div key={roundNumber} className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleRoundSelect(index)}
-                  className={`h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center transition-colors ${isCurrent
-                    ? "bg-blue-500 border-blue-400 text-white"
-                    : "bg-slate-900 border-slate-600 text-slate-200 hover:border-slate-400 hover:text-white"
-                    }`}
-                  title={`Jump to round ${roundNumber}`}
-                  disabled={isFetching}
-                >
-                  {roundNumber}
-                </button>
-
-                {roundNumber === 12 && roundStartTicks.length > 12 && (
-                  <div
-                    className="flex h-7 w-7 items-center justify-center text-slate-300"
-                    title="Side switch"
-                  >
-                    <ArrowLeftRight className="h-4 w-4" />
-                  </div>
-                )}
-
-                {roundNumber === 24 && roundStartTicks.length > 25 && (
-                  <div
-                    className="flex h-7 w-7 items-center justify-center text-slate-300"
-                    title="Overtime rounds"
-                  >
-                    <Clock3 className="h-4 w-4" />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* Bottom Transport Bar with round selection and seek controls */}
+      <TransportBar
+        isPlaying={isPlaying}
+        setIsPlaying={setIsPlaying}
+        isFetching={isFetching}
+        activeRoundDurationSec={activeRoundDurationSec}
+        activeRoundElapsedSec={activeRoundElapsedSec}
+        activeRoundStartSec={activeRoundStartSec}
+        handleSeek={handleSeek}
+        roundStartTicks={roundStartTicks}
+        activeRound={activeRound}
+        handleRoundSelect={handleRoundSelect}
+        formatTime={formatTime}
+      />
     </div>
   );
-}
-
-// Finds the current round number (1-indexed) from a replay tick.
-function getRoundFromTick(roundStartTicks: number[], currentTick: number): number {
-  if (roundStartTicks.length === 0) return 1;
-
-  let round = 1;
-  for (let i = 0; i < roundStartTicks.length; i += 1) {
-    if (currentTick >= roundStartTicks[i]) {
-      round = i + 1;
-      continue;
-    }
-    break;
-  }
-
-  return round;
-}
-
-// Formats seconds as mm:ss for transport UI.
-function formatTime(sec: number): string {
-  const total = Math.floor(sec);
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
 }

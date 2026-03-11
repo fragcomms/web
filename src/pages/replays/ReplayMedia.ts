@@ -1,0 +1,96 @@
+import { useEffect, useState } from "react";
+import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
+
+export interface TranscriptSegment {
+  discordId: string;
+  start: number;
+  end: number;
+  text: string;
+}
+
+export function useReplayMedia(id: string | undefined, audioPlayerRef: React.RefObject<AudioSyncPlayer | null>) {
+  const [transcriptText, setTranscriptText] = useState("Loading transcript...");
+  const [transcripts, setTranscripts] = useState<TranscriptSegment[]>([]);
+  const [discordUsers, setDiscordUsers] = useState<string[]>([]);
+  const [discordNames, setDiscordNames] = useState<Record<string, string>>({});
+  const [mutedUsers, setMutedUsers] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // master function to initialize audio and transcripts
+    async function initializeMedia() {
+      if (!id) return;
+      try {
+        const replayRes = await fetch(`${import.meta.env.VITE_API_URL}/replays/${id}`, { credentials: "include" });
+        if (!replayRes.ok) throw new Error("Metadata fetch failed");
+
+        const audioId = (await replayRes.json()).audio_id;
+        if (!audioId) return setTranscriptText("No audio linked to this replay.");
+
+        const transcriptRes = await fetch(`${import.meta.env.VITE_API_URL}/audio/${audioId}/transcriptions`, {
+          credentials: "include",
+        });
+        const transcriptJson = await transcriptRes.json();
+        const uniqueIds = Object.keys(transcriptJson);
+
+        if (uniqueIds.length === 0) return setTranscriptText("No transcripts generated yet.");
+
+        const combined: TranscriptSegment[] = [];
+        // Combine all transcripts into one array and sort by start time
+        // this makes it easier to display in the transcript panel and also ensures the audio tracks are properly loaded for all users mentioned in the transcripts
+        for (const [discordId, segments] of Object.entries(transcriptJson)) {
+          for (const seg of (segments as any[])) {
+            combined.push({ discordId, start: seg.start, end: seg.end, text: seg.text });
+          }
+        }
+
+        // If the component is still mounted, update state with transcripts and user info
+        if (!cancelled) {
+          setTranscripts(combined.sort((a, b) => a.start - b.start));
+          setDiscordUsers(uniqueIds);
+          setMutedUsers(uniqueIds.reduce((acc, uid) => ({ ...acc, [uid]: false }), {}));
+          setTranscriptText("");
+        }
+
+        const fetchAudio = async () => {
+          if (!audioPlayerRef.current) return;
+          await audioPlayerRef.current.loadTracks(audioId, uniqueIds, import.meta.env.VITE_API_URL);
+        };
+
+        const fetchNames = async () => {
+          const mapping: Record<string, string> = {};
+          await Promise.all(uniqueIds.map(async (uid) => {
+            try {
+              const res = await fetch(`${import.meta.env.VITE_API_URL}/user/${uid}`, { credentials: "include" });
+              if (res.ok) mapping[uid] = (await res.json()).username;
+            } catch (e) {
+              mapping[uid] = uid;
+            }
+          }));
+          if (!cancelled) setDiscordNames(mapping);
+        };
+
+        await Promise.all([fetchAudio(), fetchNames()]);
+      } catch (e) {
+        if (!cancelled) setTranscriptText("Failed to load media.");
+        console.log("Failed to load media: ", e);
+      }
+    }
+
+    void initializeMedia();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, audioPlayerRef]);
+
+  const toggleMute = (discordId: string) => {
+    setMutedUsers(prev => {
+      const muted = !prev[discordId];
+      if (audioPlayerRef.current) audioPlayerRef.current.setTrackMute(discordId, muted);
+      return { ...prev, [discordId]: muted };
+    });
+  };
+
+  return { transcriptText, transcripts, discordUsers, discordNames, mutedUsers, toggleMute };
+}

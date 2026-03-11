@@ -123,8 +123,8 @@ export function ReplayLibrary() {
             <Card className="w-full max-w-md border-slate-700 bg-slate-900 p-6">
               <h2 className="text-lg font-semibold text-white">Placeholder Warning Title</h2>
               <p className="mt-2 text-sm text-slate-300">
-                Placeholder warning copy: this is where you can describe what users should confirm
-                before continuing to the replay import page.
+                Placeholder warning copy: this is where you can describe what users should confirm before continuing to
+                the replay import page.
               </p>
               <div className="mt-6 flex justify-center gap-2">
                 <Button
