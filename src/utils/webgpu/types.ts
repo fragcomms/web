@@ -17,36 +17,38 @@ export type ReplayMeta = {
 export type ReplayRosterEntry = {
   name: string;
   team: Team;
+  sid: SteamID;
 };
 
 export type ReplayRoster = Record<SteamID, ReplayRosterEntry>;
 
-export type TimelinePlayer = {
-  sid: number;
-  hp: number;
-  x: number;
-  y: number;
-  rot: number;
-  p: number;
-};
+// changed from json parsing to tuples
+// id, hp, x, y, z, rot
+export type TimelinePlayer = [number, number, number, number, number, number]
+
+// changed from json parsing to tuples
+// eid, id, wep, x, y, z
+export type TimelineGrenade = [number, number, number, number, number, number]
 
 export type TimelineTick = {
-  tick: number;
+  t: number;
   p: TimelinePlayer[];
+  // g?: TimelineGrenade[];
 };
 
 export type WeaponFireEvent = {
-  tick: number;
-  sid: SteamID;
-  weapon: string;
+  t: number;
+  id: number; // steamid to number because shortened
+  wep: string;
 };
 
 export type RoundStartEvent = {
-  tick: number;
+  t: number;
+  time: string;
 };
 
 export type RoundEndEvent = {
-  tick: number;
+  t: number;
   winner?: string;
   reason?: string;
 };

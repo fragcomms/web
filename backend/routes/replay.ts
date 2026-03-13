@@ -154,4 +154,30 @@ router.post("/process", ensureAuth, async (req, res) => {
   }
 });
 
+// /api/replays/id/delete
+// router.post("/:id/delete", ensureAuth, async (req, res) => {
+//   const user = req.user as User;
+//   if (!user) return res.status(401).send("Unauthorized");
+
+//   const replayId = req.params.id
+
+//   try {
+//     const query = `
+//       SELECT r.replay_id, r.demo_id, d.file_path
+//       FROM replays r
+//       JOIN demos d ON r.demo_id = d.demo_id
+//       JOIN media_access ma ON ma.audio_id = r.audio_id
+//       WHERE r.replay_id = $1 AND ma.discord_id = $2
+//     `
+//     const result = await pool.query(query, [replayId, user.discord_id]);
+
+//     if (result.rows.length === 0) {
+//       res.status(404).json({ error: "Replay not found or unauthorized to delete." })
+//     }
+
+//     const demoFilePath = result.rows[0].file_path;
+    
+//   }
+// })
+
 export default router;

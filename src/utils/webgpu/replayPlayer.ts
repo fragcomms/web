@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type {
   RenderFrame,
   RenderPlayer,
@@ -40,9 +41,9 @@ export class ReplayPlayer {
     }
 
     this.timeline = tl;
-    this.tickNums = this.timeline.map((t) => t.tick);
-    this.startTick = this.timeline.length ? this.timeline[0].tick : 0;
-    this.endTick = this.timeline.length ? this.timeline[this.timeline.length - 1].tick : 0;
+    this.tickNums = this.timeline.map((t) => t.t);
+    this.startTick = this.timeline.length ? this.timeline[0].t : 0;
+    this.endTick = this.timeline.length ? this.timeline[this.timeline.length - 1].t : 0;
     this.elapsedSec = 0;
 
     this.rosterBySid.clear();
@@ -54,7 +55,7 @@ export class ReplayPlayer {
     }
 
     this.weaponFire = (data.events?.weapon_fire ?? []).slice();
-    this.weaponFire.sort((a, b) => a.tick - b.tick);
+    this.weaponFire.sort((a, b) => a.t - b.t);
   }
 
   getDurationSeconds(): number {
@@ -127,41 +128,52 @@ export class ReplayPlayer {
   }
 
   private makeRenderFrame(targetTick: number, prev: TimelineTick, next: TimelineTick): RenderFrame {
-    if (prev.tick === next.tick) {
+    if (prev.t === next.t) {
       const players = this.tickToRenderPlayers(prev);
-      const { tracers } = this.buildTracersForTick(prev.tick, players);
-      return { tick: prev.tick, players, tracers };
+      const { tracers } = this.buildTracersForTick(prev.t, players);
+      return { tick: prev.t, players, tracers };
     }
 
-    const denom = next.tick - prev.tick;
-    const alphaRaw = denom > 0 ? (targetTick - prev.tick) / denom : 0;
+    const denom = next.t - prev.t;
+    const alphaRaw = denom > 0 ? (targetTick - prev.t) / denom : 0;
     const alpha = Math.min(1, Math.max(0, alphaRaw));
 
     const nextBySid = new Map<number, TimelinePlayer>();
-    for (const p of next.p) nextBySid.set(p.sid, p);
+    for (const p of next.p) nextBySid.set(p[0], p);
 
     const out: RenderPlayer[] = [];
 
     for (const a of prev.p) {
-      const b = nextBySid.get(a.sid);
+      const sid = a[0];
+      const hp = a[1];
+      const aX = a[2];
+      const aY = a[3];
+      const aZ = a[4]
+      const aRot = a[5];
 
-      const roster = this.rosterBySid.get(a.sid);
+      const b = nextBySid.get(sid);
+
+      const roster = this.rosterBySid.get(sid);
       const team: Team = roster?.team ?? 2;
-      const steamid: SteamID = roster?.steamid ?? String(a.sid);
+      const steamid: SteamID = roster?.steamid ?? String(sid);
 
       if (!b) {
         out.push({
           steamid,
           team,
-          alive: a.hp > 0,
-          x: a.x,
-          y: a.y,
-          rot: a.rot,
+          alive: hp > 0,
+          x: aX,
+          y: aY,
+          rot: aRot,
         });
         continue;
       }
-      const dx = b.x - a.x; 
-      const dy = b.y - a.y; 
+      const bX = b[2];
+      const bY = b[3];
+      const bRot = b[5];
+
+      const dx = bX - aX; 
+      const dy = bY - aY; 
       const distSq = dx * dx + dy * dy; // (b.x-a.x)^2 + (b.y-a.y)^2
       const TELEPORT_THRESHOLD_SQ = 6000; // found that this was the perfect threshold to find when the user teleported back to spawn
 
@@ -170,20 +182,20 @@ export class ReplayPlayer {
         out.push({
           steamid,
           team,
-          alive: a.hp > 0,
-          x: a.x,
-          y: a.y,
-          rot: a.rot,
+          alive: hp > 0,
+          x: aX,
+          y: aY,
+          rot: aRot,
         });
       } else {
         // interpolate
         out.push({
           steamid,
           team,
-          alive: a.hp > 0,
-          x: a.x + dx * alpha,
-          y: a.y + dy * alpha,
-          rot: lerpAngleDeg(a.rot, b.rot, alpha),
+          alive: hp > 0,
+          x: aX + dx * alpha,
+          y: aY + dy * alpha,
+          rot: lerpAngleDeg(aRot, bRot, alpha),
         });
       }
     }
@@ -197,15 +209,21 @@ export class ReplayPlayer {
 
     for (let i = 0; i < tick.p.length; i++) {
       const tp = tick.p[i];
-      const roster = this.rosterBySid.get(tp.sid);
+      const sid = tp[0];
+      const hp = tp[1];
+      const x = tp[2];
+      const y = tp[3];
+      const z = tp[4];
+      const rot = tp[5];
+      const roster = this.rosterBySid.get(sid);
 
       out[i] = {
-        steamid: roster?.steamid ?? String(tp.sid),
+        steamid: roster?.steamid ?? String(sid),
         team: roster?.team ?? 2,
-        alive: tp.hp > 0,
-        x: tp.x,
-        y: tp.y,
-        rot: tp.rot,
+        alive: hp > 0,
+        x,
+        y,
+        rot,
       };
     }
 
@@ -228,16 +246,18 @@ export class ReplayPlayer {
     const tracers: RenderTracer[] = [];
     for (let i = startIdx; i < this.weaponFire.length; i++) {
       const e = this.weaponFire[i];
-      if (e.tick > targetTick) break;
+      if (e.t > targetTick) break;
 
-      const shooter = poseBySteamid.get(e.sid);
+      // change id back to steamid
+      const shooterInfo = this.rosterBySid.get(e.id);
+      const shooter = shooterInfo ? poseBySteamid.get(shooterInfo.steamid) : undefined;
       if (!shooter || !shooter.alive) continue;
 
-      const ageTicks = targetTick - e.tick;
+      const ageTicks = targetTick - e.t;
       const life = 1 - ageTicks / lifetimeTicks;
       if (life <= 0) continue;
 
-      const len = tracerLengthForWeapon(e.weapon);
+      const len = tracerLengthForWeapon(e.wep);
       const rotRad = shooter.rot * (Math.PI / 180);
 
       const dx = Math.cos(rotRad);
@@ -282,11 +302,11 @@ function wrapDeg(d: number): number {
   return x;
 }
 
-function lowerBoundWeaponFire(arr: { tick: number; }[], tick: number): number {
+function lowerBoundWeaponFire(arr: { t: number; }[], tick: number): number {
   let lo = 0, hi = arr.length;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
-    if (arr[mid].tick < tick) lo = mid + 1;
+    if (arr[mid].t < tick) lo = mid + 1;
     else hi = mid;
   }
   return lo;
