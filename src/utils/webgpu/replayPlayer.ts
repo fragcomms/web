@@ -48,10 +48,26 @@ export class ReplayPlayer {
 
     this.rosterBySid.clear();
     const roster = data.players ?? {};
-    for (const [steamidStr, info] of Object.entries(roster)) {
-      const sidNum = Number(steamidStr);
+    for (const [tinyIdStr, info] of Object.entries(roster)) {
+      const sidNum = Number(tinyIdStr);
       if (!Number.isFinite(sidNum)) continue;
-      this.rosterBySid.set(sidNum, { steamid: steamidStr, team: info.team, name: info.name });
+      this.rosterBySid.set(sidNum, { steamid: info.sid, team: info.team, name: info.name });
+    }
+
+    // to keep track of who died, and keep them rendered until next round
+    const lastKnownState = new Map<number, TimelinePlayer>();
+    for (const t of this.timeline) {
+      for (const p of t.p) {
+        lastKnownState.set(p[0], p) // 0 is id
+      }
+      if (t.p.length < lastKnownState.size) {
+        const currentSids = new Set(t.p.map((p) => p[0]))
+        for (const [sid, p] of lastKnownState.entries()) {
+          if (!currentSids.has(sid)) {
+            t.p.push([...p] as TimelinePlayer);
+          }
+        }
+      }
     }
 
     this.weaponFire = (data.events?.weapon_fire ?? []).slice();
@@ -148,7 +164,7 @@ export class ReplayPlayer {
       const hp = a[1];
       const aX = a[2];
       const aY = a[3];
-      const aZ = a[4]
+      const aZ = a[4];
       const aRot = a[5];
 
       const b = nextBySid.get(sid);

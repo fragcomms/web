@@ -20,7 +20,7 @@ export type ReplayRosterEntry = {
   sid: SteamID;
 };
 
-export type ReplayRoster = Record<SteamID, ReplayRosterEntry>;
+export type ReplayRoster = Record<string, ReplayRosterEntry>;
 
 // changed from json parsing to tuples
 // id, hp, x, y, z, rot

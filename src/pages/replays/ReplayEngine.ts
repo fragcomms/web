@@ -57,9 +57,9 @@ export function useReplayEngine(
 
         // setup initial state based on replay metadata
         setTicksPerSecond(player.ticksPerSecond);
-        setReplayStartTick(data.timeline[0]?.tick ?? 0);
+        setReplayStartTick(data.timeline[0]?.t ?? 0);
         setRoundStartTicks(
-          (data.events?.round_start ?? []).map(r => r.tick).filter(Number.isFinite).sort((a, b) => a - b),
+          (data.events?.round_start ?? []).map(r => r.t).filter(Number.isFinite).sort((a, b) => a - b),
         );
         setDurationSec(player.getDurationSeconds());
         setCurrentTimeSec(0);
