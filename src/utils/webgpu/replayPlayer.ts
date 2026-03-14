@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import type {
   RenderFrame,
   RenderPlayer,
@@ -164,7 +163,7 @@ export class ReplayPlayer {
       const hp = a[1];
       const aX = a[2];
       const aY = a[3];
-      const aZ = a[4];
+      // const aZ = a[4];
       const aRot = a[5];
 
       const b = nextBySid.get(sid);
@@ -229,7 +228,7 @@ export class ReplayPlayer {
       const hp = tp[1];
       const x = tp[2];
       const y = tp[3];
-      const z = tp[4];
+      // const z = tp[4];
       const rot = tp[5];
       const roster = this.rosterBySid.get(sid);
 
