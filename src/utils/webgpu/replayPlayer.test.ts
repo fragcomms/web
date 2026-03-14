@@ -17,8 +17,8 @@ function makeReplay(): ReplayJSON {
       final_score: "13:11",
     },
     players: {
-      "111": { name: "p1", team: 2, sid: "76561198000000001" },
-      "222": { name: "p2", team: 3, sid: "76561198000000002" },
+      "0": { name: "p1", team: 2, sid: "111" },
+      "1": { name: "p2", team: 3, sid: "222" },
     },
     timeline: [
       {
