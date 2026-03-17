@@ -1,5 +1,4 @@
-// @ts-expect-error user not req right now
-import { Github, User } from "lucide-react";
+import { Github } from "lucide-react";
 
 export default function About() {
   return (
@@ -78,7 +77,7 @@ export default function About() {
             <div className="bg-[#1e293b] rounded-lg p-6 border border-[#334155] text-center">
               <div className="w-24 h-24 rounded-full bg-[#334155] mx-auto mb-4 overflow-hidden">
                 <img
-                  src="ayayrom.png"
+                  src="https://avatars.githubusercontent.com/ayayrom"
                   alt="ayayrom, Team Leader - Sleep-deprived leader and CS player"
                   className="w-full h-full object-cover"
                 />
@@ -101,7 +100,7 @@ export default function About() {
             <div className="bg-[#1e293b] rounded-lg p-6 border border-[#334155] text-center">
               <div className="w-24 h-24 rounded-full bg-[#334155] mx-auto mb-4 overflow-hidden">
                 <img
-                  src="Complicated128.png"
+                  src="https://avatars.githubusercontent.com/Complicated128"
                   alt="Complicated128, Glutton - Balancing too many things at once"
                   className="w-full h-full object-cover"
                 />
@@ -124,7 +123,7 @@ export default function About() {
             <div className="bg-[#1e293b] rounded-lg p-6 border border-[#334155] text-center">
               <div className="w-24 h-24 rounded-full bg-[#334155] mx-auto mb-4 overflow-hidden">
                 <img
-                  src="atom-nash-775.png"
+                  src="https://avatars.githubusercontent.com/atom-nash-775"
                   alt="atom-nash-775, Bot Developer - Where did he go?"
                   className="w-full h-full object-cover"
                 />
@@ -147,7 +146,7 @@ export default function About() {
             <div className="bg-[#1e293b] rounded-lg p-6 border border-[#334155] text-center">
               <div className="w-24 h-24 rounded-full bg-[#334155] mx-auto mb-4 overflow-hidden">
                 <img
-                  src="jdarbyUNR.png"
+                  src="https://avatars.githubusercontent.com/jdarbyUNR"
                   alt="jdarbyUNR, Rockstar Coder - Part-time coder and singer of the band Etiquette"
                   className="w-full h-full object-cover"
                 />
@@ -200,7 +199,7 @@ export default function About() {
             <div className="bg-[#1e293b] rounded-lg p-6 border border-[#334155] text-center">
               <div className="w-24 h-24 rounded-full bg-[#334155] mx-auto mb-4 overflow-hidden">
                 <img
-                  src="David_Feil-Seifer.png"
+                  src="David_Feil-Seifer.svg"
                   alt="Dr. Dave Feil-Seifer, Instructor - Professor of Computer Science & Engineering at University of Nevada, Reno"
                   className="w-full h-full object-cover"
                 />
@@ -216,7 +215,7 @@ export default function About() {
             <div className="bg-[#1e293b] rounded-lg p-6 border border-[#334155] text-center">
               <div className="w-24 h-24 rounded-full bg-[#334155] mx-auto mb-4 overflow-hidden">
                 <img
-                  src="Vinh_Le.png"
+                  src="Vinh_Le.svg"
                   alt="Dr. Vinh Le, Instructor - OIT Administrator and Instructor at University of Nevada, Reno"
                   className="w-full h-full object-cover"
                 />
