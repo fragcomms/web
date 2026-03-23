@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { AudioItem } from "../../components/AudioItem";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { normalizeSharecode, validateSharecode } from "../../utils/sharecode";
 
 type AudioRow = {
   audio_id: string;
@@ -21,8 +22,6 @@ type ReplayRow = {
   name: string;
   fetch_time: string;
 };
-
-const SHARECODE_PATTERN = /^CSGO(?:-[A-Za-z0-9]{5}){5}$/;
 
 function parseDetailLines(value: unknown): string[] {
   if (typeof value === "string") {
@@ -168,9 +167,9 @@ export function AudioLibrary() {
   }, []);
 
   async function handleProcessReplay() {
-    const normalizedSharecode = sharecode.trim();
+    const sharecodeResult = validateSharecode(sharecode);
 
-    if (!selectedAudioId || !normalizedSharecode) {
+    if (!selectedAudioId) {
       setSubmitError({
         title: "Please select an audio file and enter a sharecode.",
         details: [],
@@ -178,10 +177,18 @@ export function AudioLibrary() {
       return;
     }
 
-    if (!SHARECODE_PATTERN.test(normalizedSharecode)) {
+    if (!sharecodeResult.ok) {
+      const details = sharecodeResult.error === "invalid_format"
+        ? ["Expected format: CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx (case-sensitive)"]
+        : [];
+
       setSubmitError({
-        title: "Invalid match sharecode format.",
-        details: ["Expected format: CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx (case-sensitive)"],
+        title: sharecodeResult.error === "too_long"
+          ? "Sharecode is too long."
+          : sharecodeResult.error === "missing"
+          ? "Please enter a match sharecode."
+          : "Invalid match sharecode format.",
+        details,
       });
       return;
     }
@@ -191,6 +198,7 @@ export function AudioLibrary() {
     setIsWaitingForReplay(false);
 
     try {
+      const normalizedSharecode = sharecodeResult.value;
       const replayName = `Replay ${normalizedSharecode}`;
       const knownReplayIds = await snapshotReplayIds();
       const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/process`, {
@@ -321,6 +329,7 @@ export function AudioLibrary() {
               <Input
                 value={sharecode}
                 onChange={(event) => setSharecode(event.target.value)}
+                onBlur={() => setSharecode((current) => normalizeSharecode(current))}
                 placeholder="CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx"
                 className="w-full bg-[#0e1622] border-[#1e2936] text-white placeholder:text-gray-500"
               />

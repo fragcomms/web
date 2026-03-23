@@ -2,6 +2,7 @@ import { Router } from "express";
 import pool from "../config/db.js";
 import { ensureAuth } from "../middleware/authentication.js";
 import { DiscordProfile as User } from "../types/user.js";
+import { validateSharecode } from "../utils/sharecode.js";
 // import { pipeline } from "stream";
 
 const router = Router();
@@ -99,12 +100,31 @@ router.post("/process", ensureAuth, async (req, res) => {
     replay_name?: string;
   };
 
-  if (!audio_id || !sharecode || !sharecode.trim()) {
-    return res.status(400).json({ error: "audio_id and sharecode are required" });
+  if (!audio_id) {
+    return res.status(400).json({
+      error: "missing_audio_id",
+      details: ["audio_id is required"],
+    });
   }
 
+  const sharecodeResult = validateSharecode(typeof sharecode === "string" ? sharecode : "");
+  if (!sharecodeResult.ok) {
+    return res.status(400).json({
+      error: sharecodeResult.error === "too_long"
+        ? "sharecode_too_long"
+        : sharecodeResult.error === "missing"
+        ? "missing_sharecode"
+        : "invalid_sharecode_format",
+      details: sharecodeResult.error === "invalid_format"
+        ? ["Expected format: CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx (case-sensitive)"]
+        : [],
+    });
+  }
+
+  const normalizedSharecode = sharecodeResult.value;
+
   // fallback if empty
-  const finalReplayName = replay_name || `Replay ${sharecode}`;
+  const finalReplayName = replay_name || `Replay ${normalizedSharecode}`;
 
   try {
     const query = `
@@ -125,7 +145,7 @@ router.post("/process", ensureAuth, async (req, res) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        match_code: sharecode,
+        match_code: normalizedSharecode,
         audio_id: Number(audio_id),
         prompt: prompt ?? "",
         replay_name: finalReplayName,
