@@ -41,6 +41,7 @@ export default function ReplayPage() {
 
   // initialize the replay engine and media (transcripts + audio) using the replay ID from URL
   const {
+    frame,    // get current frame data to show player stats on page
     isPlaying,
     setIsPlaying,
     currentTimeSec,
@@ -138,6 +139,8 @@ export default function ReplayPage() {
         />
       </div>
 
+
+
       {/* Bottom Transport Bar with round selection and seek controls */}
       <TransportBar
         isPlaying={isPlaying}
@@ -152,6 +155,77 @@ export default function ReplayPage() {
         handleRoundSelect={handleRoundSelect}
         formatTime={formatTime}
       />
+
+      {/* Bottom Health Bars (Proto Scoreboard) */}
+      {frame && (
+        <div className="w-full border-t border-slate-700 mt-6 pt-4 text-white text-sm">
+          <div className="max-w-[1200px] mx-auto flex justify-between gap-10 px-6">
+
+            {/* CT Team */}
+            <div className="flex flex-col gap-2 w-full">
+              <div className="text-blue-400 font-semibold">
+                CT ({frame.players.filter(p => p.team === 3 && p.alive).length})
+              </div>
+
+              {frame.players
+                .filter(p => p.team === 3)
+                .sort((a, b) => a.steamid.localeCompare(b.steamid))
+                .map(p => (
+                  <div key={p.steamid} className={`flex items-center gap-2" ${p.alive ? "" : "opacity-40"}`}>
+
+                    <div className="w-12 text-right">
+                      {p.alive ? p.hp : "DEAD"}
+                    </div>
+
+                    <div className="flex-1 h-2 bg-slate-700 rounded overflow-hidden">
+                      <div
+                        className="bg-blue-500 h-full"
+                        style={{ width: `${Math.max(p.hp, 0)}%` }}
+                      />
+                    </div>
+
+                  </div>
+                ))}
+            </div>
+
+            {/* T Team */}
+            <div className="flex flex-col gap-2 w-full">
+              <div className="text-yellow-400 font-semibold">
+                T ({frame.players.filter(p => p.team === 2 && p.alive).length})
+              </div>
+
+              {frame.players
+                .filter(p => p.team === 2)
+                .sort((a, b) => a.steamid.localeCompare(b.steamid))
+                .map(p => (
+                  <div key={p.steamid} className={`flex items-center gap-2 ${p.alive ? "" : "opacity-40"}`}>
+
+                    <div className="w-12 text-right">
+                      {p.alive ? p.hp : "DEAD"}
+                    </div>
+
+                    <div className="flex-1 h-2 bg-slate-700 rounded overflow-hidden">
+                      <div
+                        className="bg-yellow-500 h-full"
+                        style={{ width: `${Math.max(p.hp, 0)}%` }}
+                      />
+                    </div>
+
+                  </div>
+                ))}
+            </div>
+
+          </div>
+
+        </div>
+      )}
     </div>
+
+
+    
+
+    
   );
+
+
 }
