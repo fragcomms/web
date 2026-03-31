@@ -74,6 +74,7 @@ export type RenderPlayer = {
   alive: boolean;
   team: Team;
   hp: number;
+  name: string;
 };
 
 export type RenderTracer = {
