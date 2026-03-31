@@ -181,6 +181,7 @@ export class ReplayPlayer {
           y: aY,
           rot: aRot,
           hp,
+          name: roster?.name ?? "",
         });
         continue;
       }
@@ -203,6 +204,7 @@ export class ReplayPlayer {
           y: aY,
           rot: aRot,
           hp,
+          name: roster?.name ?? "",
         });
       } else {
         // interpolate
@@ -214,6 +216,7 @@ export class ReplayPlayer {
           y: aY + dy * alpha,
           rot: lerpAngleDeg(aRot, bRot, alpha),
           hp,
+          name: roster?.name ?? "",
         });
       }
     }
@@ -243,6 +246,8 @@ export class ReplayPlayer {
         y,
         rot,
         hp,
+        name: roster?.name ?? "",
+
       };
     }
 
