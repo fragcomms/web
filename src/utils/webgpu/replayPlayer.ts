@@ -180,6 +180,7 @@ export class ReplayPlayer {
           x: aX,
           y: aY,
           rot: aRot,
+          hp,
         });
         continue;
       }
@@ -201,6 +202,7 @@ export class ReplayPlayer {
           x: aX,
           y: aY,
           rot: aRot,
+          hp,
         });
       } else {
         // interpolate
@@ -211,6 +213,7 @@ export class ReplayPlayer {
           x: aX + dx * alpha,
           y: aY + dy * alpha,
           rot: lerpAngleDeg(aRot, bRot, alpha),
+          hp,
         });
       }
     }
@@ -239,6 +242,7 @@ export class ReplayPlayer {
         x,
         y,
         rot,
+        hp,
       };
     }
 
