@@ -73,6 +73,30 @@ export default function ReplayPage() {
     handleSeek(seekSec);
   }, [roundStartTicks, replayStartTick, ticksPerSecond, setIsPlaying, handleSeek]);
 
+  useEffect(() => {
+    function handleSpacebarToggle(event: KeyboardEvent) {
+      if (event.code !== "Space") return;
+
+      const target = event.target as HTMLElement | null;
+      if (
+        target
+        && (
+          target.tagName === "INPUT"
+          || target.tagName === "TEXTAREA"
+          || target.isContentEditable
+        )
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      setIsPlaying((playing) => !playing);
+    }
+
+    window.addEventListener("keydown", handleSpacebarToggle);
+    return () => window.removeEventListener("keydown", handleSpacebarToggle);
+  }, [setIsPlaying]);
+
   // Calculate active round and its timing info based on the current replay time
   const { activeRound, activeRoundStartSec, activeRoundDurationSec, activeRoundElapsedSec } = useMemo(() => {
     const currentActiveRound = roundStartTicks.length > 0

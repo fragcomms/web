@@ -52,7 +52,9 @@ export const TransportBar = memo(function TransportBar({
         <span className="text-white">{formatTime(activeRoundElapsedSec)} / {formatTime(activeRoundDurationSec)}</span>
       </div>
 
-      <div className="flex w-full max-w-[1200px] flex-nowrap self-center justify-center gap-1 overflow-hidden pb-1">
+      <div className="w-full max-w-[1200px] self-center">
+        <p className="mb-1 text-center text-xs font-semibold uppercase tracking-wide text-slate-300">Match Rounds</p>
+        <div className="flex w-full flex-nowrap justify-center gap-1 overflow-hidden pb-1">
         {roundStartTicks.map((_, index) => {
           const roundNumber = index + 1;
           const isCurrent = roundNumber === activeRound;
@@ -83,6 +85,7 @@ export const TransportBar = memo(function TransportBar({
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );

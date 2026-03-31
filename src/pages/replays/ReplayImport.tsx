@@ -13,14 +13,20 @@ type AudioRow = {
 };
 
 type SubmitErrorState = {
+  code?: string;
   title: string;
   details: string[];
 };
 
-type ReplayRow = {
-  replay_id: string;
-  name: string;
-  fetch_time: string;
+type ReplayJobStatus = "processing" | "completed" | "failed";
+
+type ReplayJobStatusResponse = {
+  job_id: string;
+  status: ReplayJobStatus;
+  error?: {
+    code?: string;
+    message?: string;
+  } | null;
 };
 
 function parseDetailLines(value: unknown): string[] {
@@ -104,21 +110,12 @@ export function AudioLibrary() {
   const [isWaitingForReplay, setIsWaitingForReplay] = useState(false);
   const [search, setSearch] = useState("");
 
-  async function snapshotReplayIds(): Promise<Set<string>> {
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/replays`, {
-      credentials: "include",
-    });
-    if (!res.ok) return new Set();
-    const library: ReplayRow[] = await res.json();
-    return new Set(library.map((r) => r.replay_id));
-  }
-
-  async function waitForNewReplay(knownIds: Set<string>) {
+  async function waitForReplayJob(jobId: string) {
     const maxAttempts = 120;
     const pollIntervalMs = 2000;
 
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/replays`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/jobs/${encodeURIComponent(jobId)}`, {
         credentials: "include",
       });
 
@@ -126,11 +123,21 @@ export function AudioLibrary() {
         throw new Error(`Failed to check replay status (${res.status} ${res.statusText})`);
       }
 
-      const library: ReplayRow[] = await res.json();
-      const isNew = library.some((replay) => !knownIds.has(replay.replay_id));
+      const statusData = await res.json() as ReplayJobStatusResponse;
 
-      if (isNew) {
+      if (statusData.status === "completed") {
         return;
+      }
+
+      if (statusData.status === "failed") {
+        const message = statusData.error?.message ?? "Replay processing failed";
+        const code = statusData.error?.code;
+
+        throw new Error(
+          code === "sharecode_not_resolvable"
+            ? "This match sharecode appears too old for Steam to resolve. Please try a newer match."
+            : message,
+        );
       }
 
       await new Promise<void>((resolve) => {
@@ -183,6 +190,7 @@ export function AudioLibrary() {
         : [];
 
       setSubmitError({
+        code: sharecodeResult.error,
         title: sharecodeResult.error === "too_long"
           ? "Sharecode is too long."
           : sharecodeResult.error === "missing"
@@ -200,7 +208,6 @@ export function AudioLibrary() {
     try {
       const normalizedSharecode = sharecodeResult.value;
       const replayName = `Replay ${normalizedSharecode}`;
-      const knownReplayIds = await snapshotReplayIds();
       const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/process`, {
         method: "POST",
         headers: {
@@ -220,8 +227,17 @@ export function AudioLibrary() {
         return;
       }
 
+      const data = await res.json() as { job_id?: string; };
+      if (!data.job_id) {
+        setSubmitError({
+          title: "Replay pipeline returned no job ID.",
+          details: ["Please try again in a few moments."],
+        });
+        return;
+      }
+
       setIsWaitingForReplay(true);
-      await waitForNewReplay(knownReplayIds);
+      await waitForReplayJob(data.job_id);
       navigate("/replays");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to process replay";

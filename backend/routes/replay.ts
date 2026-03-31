@@ -110,11 +110,12 @@ router.post("/process", ensureAuth, async (req, res) => {
   const sharecodeResult = validateSharecode(typeof sharecode === "string" ? sharecode : "");
   if (!sharecodeResult.ok) {
     return res.status(400).json({
+      code: sharecodeResult.error,
       error: sharecodeResult.error === "too_long"
-        ? "sharecode_too_long"
+        ? "Sharecode is too long."
         : sharecodeResult.error === "missing"
-        ? "missing_sharecode"
-        : "invalid_sharecode_format",
+        ? "Please enter a match sharecode."
+        : "Invalid match sharecode format.",
       details: sharecodeResult.error === "invalid_format"
         ? ["Expected format: CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx (case-sensitive)"]
         : [],
@@ -171,6 +172,35 @@ router.post("/process", ensureAuth, async (req, res) => {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: "Server error during replay processing" });
+  }
+});
+
+// /api/replays/jobs/:jobId
+router.get("/jobs/:jobId", ensureAuth, async (_req, res) => {
+  const jobId = String(_req.params.jobId);
+
+  try {
+    console.log(`[job_status] Fetching status for job: ${jobId} from ${REPLAY_PIPELINE_URL}`);
+    const pipelineResponse = await fetch(`${REPLAY_PIPELINE_URL}/job_status/${encodeURIComponent(jobId)}`);
+
+    if (!pipelineResponse.ok) {
+      const payload = await pipelineResponse.text().catch(() => "(no response body)");
+      console.error(
+        `[job_status] Pipeline call failed for ${jobId}: status=${pipelineResponse.status}, response=${payload}`,
+      );
+      return res.status(pipelineResponse.status).json({
+        error: "Failed to fetch replay job status",
+        pipeline_status: pipelineResponse.status,
+        details: payload,
+      });
+    }
+
+    const data = await pipelineResponse.json();
+    console.log(`[job_status] Retrieved status for ${jobId}:`, data);
+    return res.json(data);
+  } catch (e) {
+    console.error(`[job_status] Error contacting pipeline for job ${jobId}:`, e);
+    return res.status(500).json({ error: "Server error while fetching replay job status" });
   }
 });
 
