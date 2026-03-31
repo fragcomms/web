@@ -119,13 +119,23 @@ export default function ReplayPage() {
     const duration = endSec - startSec;
     const elapsed = Math.min(duration, Math.max(0, currentTimeSec - startSec));
 
+    
+
     return {
       activeRound: currentActiveRound,
       activeRoundStartSec: startSec,
       activeRoundDurationSec: duration,
       activeRoundElapsedSec: elapsed,
+      isSecondHalf: currentActiveRound > 12,     // find halftime based on round number, needed to switch sides
+
     };
   }, [currentTimeSec, roundStartTicks, replayStartTick, ticksPerSecond, durationSec]);
+
+  const isSecondHalf = activeRound > 12; // needs to be declared after activeRound
+  const leftTeamID = isSecondHalf ? 2 : 3; // team IDs are switched in second half
+  const rightTeamID = isSecondHalf ? 3 : 2;
+  const leftTeamName = "CT";
+  const rightTeamName = "T";
 
   if (fetchError) {
     return (
@@ -178,6 +188,7 @@ export default function ReplayPage() {
         activeRound={activeRound}
         handleRoundSelect={handleRoundSelect}
         formatTime={formatTime}
+        
       />
 
       {/* Bottom Health Bars (Proto Scoreboard) */}
@@ -185,23 +196,26 @@ export default function ReplayPage() {
         <div className="w-full border-t border-slate-700 mt-6 pt-4 text-white text-sm">
           <div className="max-w-[1200px] mx-auto flex justify-between gap-10 px-6">
 
-            {/* CT Team */}
-            <div className="flex flex-col gap-2 w-full">
+            {/* CT Team (Left) */}
+            <div className="flex flex-col gap-2 w-full text-right">
               <div className="text-blue-400 font-semibold">
-                CT ({frame.players.filter(p => p.team === 3 && p.alive).length})
+                {leftTeamName} ({frame.players.filter(p => p.team === leftTeamID && p.alive).length})
               </div>
 
               {frame.players
-                .filter(p => p.team === 3)
+                .filter(p => p.team === leftTeamID)
                 .sort((a, b) => a.steamid.localeCompare(b.steamid))
                 .map(p => (
-                  <div key={p.steamid} className={`flex items-center gap-2" ${p.alive ? "" : "opacity-40"}`}>
+                  <div key={p.steamid} className={`grid grid-cols-[300px_200px_35px] items-center gap-4" ${p.alive ? "" : "opacity-40"}`}>
 
                     {/*Steam ID on outside (soon to be steam name) */}
-                    <div className="text-left whitespace-nowrap"> steam id: {p.steamid} </div>
+                    <div 
+                      className="text-right whitespace-nowrap overflow-hidden pr-4"> 
+                      {p.name || "steamid: " + p.steamid} 
+                    </div>
 
                     {/* Health bar (middle) */}
-                    <div className="w-1/2 h-2 bg-slate-700 rounded overflow-hidden">
+                    <div className="w-full h-2 bg-slate-700 rounded overflow-hidden ">
                       <div
                         className="bg-blue-500 h-full"
                         style={{ width: `${Math.max(p.hp, 0)}%` }}
@@ -209,7 +223,7 @@ export default function ReplayPage() {
                     </div>
 
                     {/* HP (number) on inside */}
-                    <div className="w-12 text-right">
+                    <div className="text-left pl-5">
                       {p.alive ? p.hp : "DEAD"}
                     </div>
 
@@ -217,33 +231,36 @@ export default function ReplayPage() {
                 ))}
             </div>
 
-            {/* T Team */}
-            <div className="flex flex-col gap-2 w-full">
+            {/* T Team (Right) */}
+            <div className="flex flex-col gap-2 w-full text-left">
               <div className="text-yellow-400 font-semibold">
-                T ({frame.players.filter(p => p.team === 2 && p.alive).length})
+                {rightTeamName} ({frame.players.filter(p => p.team === rightTeamID && p.alive).length})
               </div>
 
               {frame.players
-                .filter(p => p.team === 2)
+                .filter(p => p.team === rightTeamID)
                 .sort((a, b) => a.steamid.localeCompare(b.steamid))
                 .map(p => (
-                  <div key={p.steamid} className={`flex items-center gap-2 ${p.alive ? "" : "opacity-40"}`}>
+                  <div key={p.steamid} className={`grid grid-cols-[35px_200px_300px] items-center gap-4 ${p.alive ? "" : "opacity-40"}`}>
 
                     {/* Health (number) on inside */}
-                    <div className="w-12 text-right">
+                    <div className="text-right pr-1">
                       {p.alive ? p.hp : "DEAD"}
                     </div>
 
                     {/* Health bar (middle) */}
-                    <div className="w-1/2 h-2 bg-slate-700 rounded overflow-hidden">
+                    <div className="w-full h-2 bg-slate-700 rounded overflow-hidden">
                       <div
                         className="bg-yellow-500 h-full"
                         style={{ width: `${Math.max(p.hp, 0)}%` }}
                       />
                     </div>
 
-                    {/*Steam ID on outside (soon to be steam name) */}
-                    <div className="text-right whitespace-nowrap"> steam id: {p.steamid}</div>
+                    {/*Steam name */}
+                    <div 
+                      className="text-left whitespace-nowrap overflow-hidden pl-4"> 
+                      {p.name || "steamid: " + p.steamid} 
+                    </div>
 
                     
 
@@ -255,8 +272,11 @@ export default function ReplayPage() {
 
         </div>
       )}
+
+      <div className="w-full mt-6 pb-6 pt-4 text-white text-sm"></div>
     </div>
 
+  
 
     
 
