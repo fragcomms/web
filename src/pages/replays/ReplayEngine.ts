@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
 import { Renderer } from "../../utils/webgpu/renderer";
 import { ReplayPlayer } from "../../utils/webgpu/replayPlayer";
-import type { ReplayJSON } from "../../utils/webgpu/types";
+import type { ReplayJSON, RenderFrame } from "../../utils/webgpu/types";
 
 export function useReplayEngine(
   id: string | undefined,
@@ -23,6 +23,7 @@ export function useReplayEngine(
   const [ticksPerSecond, setTicksPerSecond] = useState(64);
   const [isFetching, setIsFetching] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [frame, setFrame] = useState<RenderFrame | null>(null);
 
   // Sync state to refs for the RAF loop & handle Audio transport
   useEffect(() => {
@@ -65,7 +66,10 @@ export function useReplayEngine(
         setCurrentTimeSec(0);
 
         const firstFrame = player.seekToElapsedSeconds(0);
-        if (firstFrame) renderer.render(firstFrame, 0);
+        if (firstFrame) {
+          renderer.render(firstFrame, 0);
+          setFrame(firstFrame);
+        }
         setIsFetching(false);
 
         // main loop to advance replay frames and sync audio
@@ -84,7 +88,10 @@ export function useReplayEngine(
             frame = playerRef.current.getFrameAtElapsedSeconds(playerRef.current.getCurrentElapsedSeconds());
           }
 
-          if (frame) rendererRef.current.render(frame, playerRef.current.getCurrentElapsedSeconds());
+          if (frame)  {
+            rendererRef.current.render(frame, playerRef.current.getCurrentElapsedSeconds());
+            setFrame(frame);
+          }
           rafRef.current = requestAnimationFrame(loop);
         };
 
@@ -107,11 +114,15 @@ export function useReplayEngine(
     if (!playerRef.current || !rendererRef.current) return;
     const frame = playerRef.current.seekToElapsedSeconds(sec);
     setCurrentTimeSec(sec);
-    if (frame) rendererRef.current.render(frame, sec);
+    if (frame) {
+      rendererRef.current.render(frame, sec);
+      setFrame(frame);
+    }
     if (isPlayingRef.current && audioPlayerRef.current) audioPlayerRef.current.play(sec);
   }, [canvasRef, audioPlayerRef]);
 
   return {
+    frame,
     isPlaying,
     setIsPlaying,
     currentTimeSec,
