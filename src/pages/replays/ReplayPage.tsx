@@ -173,15 +173,20 @@ export default function ReplayPage() {
                 .map(p => (
                   <div key={p.steamid} className={`flex items-center gap-2" ${p.alive ? "" : "opacity-40"}`}>
 
-                    <div className="w-12 text-right">
-                      {p.alive ? p.hp : "DEAD"}
-                    </div>
+                    {/*Steam ID on outside (soon to be steam name) */}
+                    <div className="text-left whitespace-nowrap"> steam id: {p.steamid} </div>
 
-                    <div className="flex-1 h-2 bg-slate-700 rounded overflow-hidden">
+                    {/* Health bar (middle) */}
+                    <div className="w-1/2 h-2 bg-slate-700 rounded overflow-hidden">
                       <div
                         className="bg-blue-500 h-full"
                         style={{ width: `${Math.max(p.hp, 0)}%` }}
                       />
+                    </div>
+
+                    {/* HP (number) on inside */}
+                    <div className="w-12 text-right">
+                      {p.alive ? p.hp : "DEAD"}
                     </div>
 
                   </div>
@@ -200,16 +205,23 @@ export default function ReplayPage() {
                 .map(p => (
                   <div key={p.steamid} className={`flex items-center gap-2 ${p.alive ? "" : "opacity-40"}`}>
 
+                    {/* Health (number) on inside */}
                     <div className="w-12 text-right">
                       {p.alive ? p.hp : "DEAD"}
                     </div>
 
-                    <div className="flex-1 h-2 bg-slate-700 rounded overflow-hidden">
+                    {/* Health bar (middle) */}
+                    <div className="w-1/2 h-2 bg-slate-700 rounded overflow-hidden">
                       <div
                         className="bg-yellow-500 h-full"
                         style={{ width: `${Math.max(p.hp, 0)}%` }}
                       />
                     </div>
+
+                    {/*Steam ID on outside (soon to be steam name) */}
+                    <div className="text-right whitespace-nowrap"> steam id: {p.steamid}</div>
+
+                    
 
                   </div>
                 ))}
