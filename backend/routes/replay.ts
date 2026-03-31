@@ -14,12 +14,32 @@ router.get("/", ensureAuth, async (req, res) => {
   if (!user) return res.status(401).send("Unauthorized");
   try {
     const query = `
-      SELECT r.replay_id, r.name, d.fetch_time
+      SELECT
+        r.replay_id,
+        r.name,
+        d.map,
+        d.length_ticks,
+        d.score_t,
+        d.score_ct,
+        COALESCE(linked.linked_recording_users, ARRAY[]::text[]) AS linked_recording_users
       FROM replays r
-      JOIN demos d ON d.demo_id = r.demo_id
-      JOIN media_access ma ON r.audio_id = ma.audio_id
-      WHERE ma.discord_id = $1
-      ORDER BY d.fetch_time DESC`;
+      LEFT JOIN demos d ON d.demo_id = r.demo_id
+      LEFT JOIN LATERAL (
+        SELECT
+          array_agg(
+            DISTINCT COALESCE(u.discord_username, ma.discord_id)
+            ORDER BY COALESCE(u.discord_username, ma.discord_id)
+          ) AS linked_recording_users
+        FROM media_access ma
+        LEFT JOIN users u ON u.discord_id::text = ma.discord_id::text
+        WHERE ma.audio_id = r.audio_id
+      ) linked ON TRUE
+      WHERE EXISTS (
+        SELECT 1
+        FROM media_access ma
+        WHERE ma.audio_id = r.audio_id AND ma.discord_id = $1
+      )
+      ORDER BY r.replay_id DESC`;
 
     const result = await pool.query(query, [user.discord_id]);
     res.json(result.rows);
