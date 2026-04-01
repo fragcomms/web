@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AudioItem } from "../../components/AudioItem";
 import { Button } from "../../components/ui/button";
+import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { normalizeSharecode, validateSharecode } from "../../utils/sharecode";
 
@@ -109,6 +110,7 @@ export function AudioLibrary() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWaitingForReplay, setIsWaitingForReplay] = useState(false);
   const [search, setSearch] = useState("");
+  const [showProcessConfirm, setShowProcessConfirm] = useState(false);
 
   async function waitForReplayJob(jobId: string) {
     const maxAttempts = 120;
@@ -202,6 +204,7 @@ export function AudioLibrary() {
     }
 
     setSubmitError(null);
+    setShowProcessConfirm(false);
     setIsSubmitting(true);
     setIsWaitingForReplay(false);
 
@@ -263,6 +266,39 @@ export function AudioLibrary() {
     setSelectedAudioId(null);
     setSharecode("");
     setSubmitError(null);
+    setShowProcessConfirm(false);
+  }
+
+  function openProcessConfirm() {
+    const sharecodeResult = validateSharecode(sharecode);
+
+    if (!selectedAudioId) {
+      setSubmitError({
+        title: "Please select an audio file and enter a sharecode.",
+        details: [],
+      });
+      return;
+    }
+
+    if (!sharecodeResult.ok) {
+      const details = sharecodeResult.error === "invalid_format"
+        ? ["Expected format: CSGO-xxxxx-xxxxx-xxxxx-xxxxx-xxxxx (case-sensitive)"]
+        : [];
+
+      setSubmitError({
+        code: sharecodeResult.error,
+        title: sharecodeResult.error === "too_long"
+          ? "Sharecode is too long."
+          : sharecodeResult.error === "missing"
+          ? "Please enter a match sharecode."
+          : "Invalid match sharecode format.",
+        details,
+      });
+      return;
+    }
+
+    setSubmitError(null);
+    setShowProcessConfirm(true);
   }
 
   return (
@@ -353,7 +389,7 @@ export function AudioLibrary() {
             <div className="flex justify-center">
               <div className="rounded-xl border border-[#253144] bg-[#0e1622] p-2">
                 <Button
-                  onClick={handleProcessReplay}
+                  onClick={openProcessConfirm}
                   disabled={isSubmitting || isWaitingForReplay || !sharecode.trim()}
                 >
                   {isWaitingForReplay ? "Waiting for replay..." : isSubmitting ? "Creating replay..." : "Create Replay"}
@@ -379,6 +415,33 @@ export function AudioLibrary() {
                     )}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {showProcessConfirm && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+                <Card className="w-full max-w-md border-slate-700 bg-slate-900 p-6">
+                  <h2 className="text-lg font-semibold text-white">Confirm Replay Processing</h2>
+                  <p className="mt-2 text-sm text-slate-300">
+                    Starting replay processing can take a few minutes. Confirm to begin processing this selected audio
+                    with the provided match sharecode.
+                  </p>
+                  <div className="mt-6 flex justify-center gap-2">
+                    <Button
+                      className="h-10 w-28 border border-transparent bg-white text-slate-900 hover:bg-slate-200"
+                      onClick={() => setShowProcessConfirm(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className="h-10 w-28 border border-transparent bg-[#5865F2] hover:bg-[#4752C4]"
+                      onClick={handleProcessReplay}
+                      disabled={isSubmitting || isWaitingForReplay}
+                    >
+                      Confirm
+                    </Button>
+                  </div>
+                </Card>
               </div>
             )}
           </div>
