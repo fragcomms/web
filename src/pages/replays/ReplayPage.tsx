@@ -145,8 +145,8 @@ export default function ReplayPage() {
   const rightTeamID = isSecondHalf ? 3 : 2;
 
   // might be reworked so that pro team names follow the players
-  const leftTeamName = "CT";
-  const rightTeamName = "T";
+  const leftTeamName = "Counter-Terrorists";
+  const rightTeamName = "Terrorists";
 
   // scores
   const score_CT = scoreCT;
@@ -165,7 +165,7 @@ export default function ReplayPage() {
 
   return (
     <div className="w-full overflow-x-hidden flex flex-col gap-4">
-      <h1 className="text-center text-2xl font-semibold text-slate-100">Team 1 vs. Team 2</h1>
+      <h1 className="text-center text-2xl font-semibold text-slate-100">Replay #{id ?? "Unknown"}</h1>
 
       <div className="flex w-full items-start justify-center gap-4">
         {/* Left Discord User Mute Sidebar */}
@@ -216,15 +216,20 @@ export default function ReplayPage() {
 
             {/* CT Team (Left) */}
             <div className="flex flex-col gap-2 w-full text-right">
-              <div className="text-blue-400 font-semibold">
-                {leftTeamName} ({isSecondHalf ? score_T : score_CT})
+              <div className="grid grid-cols-[300px_200px_35px] items-center gap-4">
+                <div />
+                <div className="text-center leading-tight">
+                  <div className="text-blue-400 font-semibold">{leftTeamName}</div>
+                  <div className="text-blue-300 font-semibold">{isSecondHalf ? score_T : score_CT}</div>
+                </div>
+                <div />
               </div>
 
               {frame.players
                 .filter(p => p.team === leftTeamID)
                 .sort((a, b) => a.steamid.localeCompare(b.steamid))
                 .map(p => (
-                  <div key={p.steamid} className={`grid grid-cols-[300px_200px_35px] items-center gap-4" ${p.alive ? "" : "opacity-40"}`}>
+                  <div key={p.steamid} className={`grid grid-cols-[300px_200px_35px] items-center gap-4 ${p.alive ? "" : "opacity-40"}`}>
 
                     {/*Steam ID on outside (soon to be steam name) */}
                     <div 
@@ -251,8 +256,13 @@ export default function ReplayPage() {
 
             {/* T Team (Right) */}
             <div className="flex flex-col gap-2 w-full text-left">
-              <div className="text-yellow-400 font-semibold">
-                {rightTeamName} ({isSecondHalf? score_CT : score_T})
+              <div className="grid grid-cols-[35px_200px_300px] items-center gap-4">
+                <div />
+                <div className="text-center leading-tight">
+                  <div className="text-yellow-400 font-semibold">{rightTeamName}</div>
+                  <div className="text-yellow-300 font-semibold">{isSecondHalf ? score_CT : score_T}</div>
+                </div>
+                <div />
               </div>
 
               {frame.players
@@ -279,8 +289,6 @@ export default function ReplayPage() {
                       className="text-left whitespace-nowrap overflow-hidden pl-4"> 
                       {p.name || "steamid: " + p.steamid} 
                     </div>
-
-                    
 
                   </div>
                 ))}
