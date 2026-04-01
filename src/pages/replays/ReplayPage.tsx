@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { data, useParams } from "react-router-dom";
 import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
 import { useReplayEngine } from "./ReplayEngine";
 import { useReplayMedia } from "./ReplayMedia";
@@ -52,6 +52,9 @@ export default function ReplayPage() {
     isFetching,
     fetchError,
     handleSeek,
+    scoreCT,
+    scoreT,
+    //replayMeta, // check final score (testing)
   } = useReplayEngine(id, canvasRef, audioPlayerRef);
 
   // master hook to handle all media related
@@ -63,6 +66,9 @@ export default function ReplayPage() {
     mutedUsers,
     toggleMute,
   } = useReplayMedia(id, audioPlayerRef);
+
+  // check final score in logs
+  //console.log("Final Score should be ", replayMeta?.final_score);
 
   // Handle round selection from the transport bar
   // TODO: logic is kinda screwed, should pause once round is finished
@@ -130,12 +136,24 @@ export default function ReplayPage() {
 
     };
   }, [currentTimeSec, roundStartTicks, replayStartTick, ticksPerSecond, durationSec]);
-
+  
+  // halftime
   const isSecondHalf = activeRound > 12; // needs to be declared after activeRound
+
+  // Team IDs (needed for switch after halftime)
   const leftTeamID = isSecondHalf ? 2 : 3; // team IDs are switched in second half
   const rightTeamID = isSecondHalf ? 3 : 2;
+
+  // might be reworked so that pro team names follow the players
   const leftTeamName = "CT";
   const rightTeamName = "T";
+
+  // scores
+  const score_CT = scoreCT;
+  const score_T = scoreT;
+
+
+  
 
   if (fetchError) {
     return (
@@ -199,7 +217,7 @@ export default function ReplayPage() {
             {/* CT Team (Left) */}
             <div className="flex flex-col gap-2 w-full text-right">
               <div className="text-blue-400 font-semibold">
-                {leftTeamName} ({frame.players.filter(p => p.team === leftTeamID && p.alive).length})
+                {leftTeamName} ({isSecondHalf ? score_T : score_CT})
               </div>
 
               {frame.players
@@ -234,7 +252,7 @@ export default function ReplayPage() {
             {/* T Team (Right) */}
             <div className="flex flex-col gap-2 w-full text-left">
               <div className="text-yellow-400 font-semibold">
-                {rightTeamName} ({frame.players.filter(p => p.team === rightTeamID && p.alive).length})
+                {rightTeamName} ({isSecondHalf? score_CT : score_T})
               </div>
 
               {frame.players
