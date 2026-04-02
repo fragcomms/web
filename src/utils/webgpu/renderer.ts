@@ -1,9 +1,10 @@
 import { initWebGPU } from "./gpuContext";
-import { createGlobalLayout, createPlayerPipeline, createTracerPipeline, createVisionPipeline } from "./pipelines";
+import { createGlobalLayout, createPlayerPipeline, createTracerPipeline, createVisionPipeline, createMapPipeline } from "./pipelines";
 import { PlayerRenderer } from "./playerRenderer";
 import { TracerRenderer } from "./tracerRenderer";
-import type { RenderFrame } from "./types";
+import type { MapGeometry, RenderFrame } from "./types";
 import { VisionRenderer } from "./visionRenderer";
+import { MapRenderer } from "./mapRenderer";
 
 export class Renderer {
   private device: GPUDevice;
@@ -15,6 +16,7 @@ export class Renderer {
   private playerRenderer: PlayerRenderer;
   private visionRenderer: VisionRenderer;
   private tracerRenderer: TracerRenderer;
+  private mapRenderer: MapRenderer;
 
   private timeVec4 = new Float32Array(4);
 
@@ -26,6 +28,7 @@ export class Renderer {
     playerRenderer: PlayerRenderer,
     visionRenderer: VisionRenderer,
     tracerRenderer: TracerRenderer,
+    mapRenderer: MapRenderer,
   ) {
     this.device = device;
     this.queue = queue;
@@ -34,6 +37,7 @@ export class Renderer {
     this.playerRenderer = playerRenderer;
     this.visionRenderer = visionRenderer;
     this.tracerRenderer = tracerRenderer;
+    this.mapRenderer = mapRenderer;
   }
 
   static async create(canvas: HTMLCanvasElement): Promise<Renderer> {
@@ -44,6 +48,7 @@ export class Renderer {
     const { pipeline: playerPipeline } = createPlayerPipeline(device, format, globalLayout);
     const { pipeline: visionPipeline } = createVisionPipeline(device, format, globalLayout);
     const { pipeline: tracerPipeline } = createTracerPipeline(device, format, globalLayout);
+    const mapPipeline = createMapPipeline(device, format, globalLayout);
 
     // simple orthographic viewProj (map 0..mapSize to clip)
     const half = 3000;
@@ -184,6 +189,11 @@ export class Renderer {
       maxTracerInstances,
     );
 
+    const mapRenderer = new MapRenderer(
+      device,
+      mapPipeline,
+    );
+
     return new Renderer(
       device,
       queue,
@@ -192,7 +202,12 @@ export class Renderer {
       playerRenderer,
       visionRenderer,
       tracerRenderer,
+      mapRenderer,
     );
+  }
+
+  setMapGeometry(geometry: MapGeometry){
+    this.mapRenderer.setMapGeometry(geometry);
   }
 
   render(frame: RenderFrame, timeSec: number) {
@@ -218,6 +233,7 @@ export class Renderer {
       }],
     });
 
+    this.mapRenderer.render(pass, this.playerRenderer["globalBindGroup"]);
     this.visionRenderer.draw(pass, visionCount);
     this.tracerRenderer.draw(pass, tracerCount);
     this.playerRenderer.draw(pass, playerCount);

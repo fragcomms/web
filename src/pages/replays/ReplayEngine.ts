@@ -82,10 +82,26 @@ export function useReplayEngine(
         if (!res.ok) throw new Error(`Server Error ${res.status}`);
 
         const renderer = await Renderer.create(canvasRef.current);
+
         if (cancelled) return;
         rendererRef.current = renderer;
 
         const data: ReplayJSON = JSON.parse(await res.text());
+
+        //map loading
+         if (data.meta?.map) {
+          try {
+            const mapRes = await fetch(`/maps/${data.meta.map}.geometry.json`);
+            if (mapRes.ok) {
+              renderer.setMapGeometry(await mapRes.json());
+            } else {
+              console.warn(`No map geometry found for ${data.meta.map}`);
+            }
+          } catch (err) {
+            console.warn("Failed to load map geometry:", err);
+          }
+        }       
+
         const player = new ReplayPlayer();
         player.setReplay(data);
         playerRef.current = player;

@@ -1,6 +1,8 @@
 import playerShaderWGSL from "./shaders/player.wgsl?raw";
 import tracerShaderWGSL from "./shaders/tracer.wgsl?raw";
 import visionShaderWGSL from "./shaders/vision.wgsl?raw";
+import mapShaderWGSL from "./shaders/map.wgsl?raw";
+
 // console.log("WGSL source:\n---\n" + playerShaderWGSL + "\n---");
 
 export function createGlobalLayout(device: GPUDevice) {
@@ -190,4 +192,46 @@ export function createTracerPipeline(device: GPUDevice, format: GPUTextureFormat
   });
 
   return { pipeline };
+}
+
+export function createMapPipeline(
+  device: GPUDevice,
+  format: GPUTextureFormat,
+  globalLayout: GPUBindGroupLayout
+): GPURenderPipeline {
+  const module = device.createShaderModule({ code: mapShaderWGSL });
+
+  return device.createRenderPipeline({
+    layout: device.createPipelineLayout({
+      bindGroupLayouts: [globalLayout],
+    }),
+    vertex: {
+      module,
+      entryPoint: "vs_main",
+      buffers: [
+        {
+          arrayStride: 8,
+          attributes: [
+            {
+              shaderLocation: 0,
+              offset: 0,
+              format: "float32x2",
+            },
+          ],
+        },
+      ],
+    },
+    fragment: {
+      module,
+      entryPoint: "fs_main",
+      targets: [
+        {
+          format,
+        },
+      ],
+    },
+    primitive: {
+      topology: "line-list",
+    },
+  });
 }
