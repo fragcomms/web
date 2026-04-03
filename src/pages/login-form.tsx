@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import DiscordLogo from "../assets/discord-logo.svg?react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
@@ -10,6 +11,7 @@ interface LoginFormProps {
 
 export function LoginForm({ testLoading }: LoginFormProps) {
   const { user, checkAuthStatus, logout } = useAuth();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleDiscordLogin = async () => {
@@ -27,6 +29,7 @@ export function LoginForm({ testLoading }: LoginFormProps) {
           clearInterval(checkClosed);
           setIsLoading(false);
           checkAuthStatus();
+          navigate("/settings");
         }
       }, 1000);
     } catch (e) {

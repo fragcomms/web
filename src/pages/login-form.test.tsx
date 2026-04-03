@@ -1,9 +1,20 @@
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { BrowserRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "../utils/context/AuthContext";
 import { LoginForm } from "./login-form";
 import "@testing-library/jest-dom";
+
+// mock useNavigate
+const mockNavigate = vi.fn();
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 // mock user data
 const mockUser = {
@@ -37,16 +48,18 @@ vi.mock("../components/ui/card", () => ({
 
 const renderWithAuth = (ui: ReactNode, user: typeof mockUser | null = null) => {
   return render(
-    <AuthProvider
-      value={{
-        user,
-        isLoading: false,
-        checkAuthStatus: vi.fn(),
-        logout: vi.fn(),
-      }}
-    >
-      {ui}
-    </AuthProvider>,
+    <BrowserRouter>
+      <AuthProvider
+        value={{
+          user,
+          isLoading: false,
+          checkAuthStatus: vi.fn(),
+          logout: vi.fn(),
+        }}
+      >
+        {ui}
+      </AuthProvider>
+    </BrowserRouter>,
   );
 };
 
