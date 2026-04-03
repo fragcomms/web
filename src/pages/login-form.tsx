@@ -98,9 +98,9 @@ export function LoginForm({ testLoading }: LoginFormProps) {
   return (
     <Card className="w-full max-w-md bg-slate-800 border-slate-700">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-white">Welcome back</CardTitle>
+        <CardTitle className="text-white">Welcome back!</CardTitle>
         <CardDescription className="text-slate-400">
-          Sign in with your Discord account to continue
+          Sign in with your Discord account to continue.
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -1,4 +1,5 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { useState } from "react";
 import { Navbar as LoggedNavbar } from "./components/AuthNavBar";
 import { Navbar as PublicNavbar } from "./components/PublicNavBar";
 import { ProtectedRoute } from "./components/RouteProtector";
@@ -16,6 +17,7 @@ import Settings from "./pages/Settings";
 
 export default function Router() {
   const { user, isLoading } = useAuth();
+  const [navOffsetPx, setNavOffsetPx] = useState(80);
 
   if (isLoading) {
     return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading...</div>;
@@ -25,10 +27,10 @@ export default function Router() {
     <BrowserRouter>
       <div className="min-h-screen flex flex-col bg-slate-800">
         {/* Fixed Navbar */}
-        {user ? <LoggedNavbar /> : <PublicNavbar />}
+        {user ? <LoggedNavbar onNavOffsetChange={setNavOffsetPx} /> : <PublicNavbar />}
 
         {/* Page Content with top padding to account for fixed navbar */}
-        <div className="flex-1 flex flex-col pt-20">
+        <div className="flex-1 flex flex-col transition-[padding] duration-300 ease-out" style={{ paddingTop: `${navOffsetPx}px` }}>
           {/* Add padding-top for fixed navbar height */}
           <Routes>
             {/* Default Page - Home */}
