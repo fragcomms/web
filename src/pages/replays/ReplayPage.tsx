@@ -26,6 +26,14 @@ function formatTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+interface ReplayPlayer {
+  team: number;
+  steamid: string;
+  name?: string;
+  hp: number;
+  alive: boolean;
+}
+
 export default function ReplayPage() {
   // Get replay ID from URL params
   const { id } = useParams<{ id: string; }>();
@@ -81,7 +89,7 @@ export default function ReplayPage() {
   // TODO: logic is kinda screwed, should pause once round is finished
   // +12 is decided by the tick interval in our parser
   const handleRoundSelect = useCallback((roundIndex: number) => {
-    const seekSec = Math.max(0, ((roundStartTicks[roundIndex]+12) - replayStartTick) / ticksPerSecond);
+    const seekSec = Math.max(0, ((roundStartTicks[roundIndex] + 12) - replayStartTick) / ticksPerSecond);
     setIsPlaying(true);
     handleSeek(seekSec);
   }, [roundStartTicks, replayStartTick, ticksPerSecond, setIsPlaying, handleSeek]);
@@ -139,8 +147,6 @@ export default function ReplayPage() {
       activeRoundStartSec: startSec,
       activeRoundDurationSec: duration,
       activeRoundElapsedSec: elapsed,
-      isSecondHalf: currentActiveRound > 12,     // find halftime based on round number, needed to switch sides
-
     };
   }, [currentTimeSec, roundStartTicks, replayStartTick, ticksPerSecond, durationSec]);
   
@@ -159,6 +165,46 @@ export default function ReplayPage() {
   const score_CT = scoreCT;
   const score_T = scoreT;
 
+  const getTeamPlayers = (teamId: number): ReplayPlayer[] =>
+    (frame?.players ?? [])
+      .filter((player) => player.team === teamId)
+      .sort((a, b) => a.steamid.localeCompare(b.steamid));
+
+  const renderPlayerCard = (
+    player: ReplayPlayer,
+    ringColor: string,
+    centerTextColorClass: string,
+  ) => {
+    const hpPercent = Math.max(0, Math.min(100, player.hp));
+
+    return (
+      <div
+        key={player.steamid}
+        className={`flex items-center justify-between gap-2 rounded-md border border-slate-300 bg-white/90 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800/70 ${player.alive ? "" : "opacity-55"}`}
+      >
+        <div
+          className="min-w-0 truncate pr-2 text-sm font-mono font-medium text-slate-700 dark:text-slate-200"
+          style={{ maxWidth: "32ch" }}
+          title={player.name || player.steamid}
+        >
+          {player.name || player.steamid}
+        </div>
+        <div className="flex items-center">
+          <div
+            className="relative h-9 w-9 shrink-0 rounded-full"
+            style={{
+              background: `conic-gradient(${ringColor} ${hpPercent}%, rgb(148 163 184) ${hpPercent}% 100%)`,
+            }}
+          >
+            <div className={`absolute inset-0.75 flex items-center justify-center rounded-full bg-white text-[10px] font-semibold dark:bg-slate-900 ${centerTextColorClass}`}>
+              {player.alive ? player.hp : "D"}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
 
   
 
@@ -172,24 +218,69 @@ export default function ReplayPage() {
 
   return (
     <div className="w-full overflow-x-hidden flex flex-col gap-4">
-      <h1 className="text-center text-2xl font-semibold text-slate-100">Replay #{id ?? "Unknown"}</h1>
       {audioSyncWarning && (
         <div className="mx-auto w-full max-w-300 rounded-md border border-amber-600/60 bg-amber-900/20 px-4 py-2 text-sm text-amber-200">
           {audioSyncWarning}
         </div>
       )}
 
-      <div className="flex w-full items-start justify-center gap-4">
-        {/* Left Discord User Mute Sidebar */}
+      {/* Top Audio Controls Bar */}
+      <div className="w-full">
         <MuteSidebar
           discordUsers={discordUsers}
           mutedUsers={mutedUsers}
           discordNames={discordNames}
           toggleMute={toggleMute}
+          isHorizontal={true}
         />
+      </div>
+
+      <div className="flex w-full items-start justify-center gap-4">
+
+        {/* Left Health Bars */}
+        {frame && (
+          <div className="flex h-180 w-80 shrink-0 flex-col gap-3">
+            {/* CT Team Container (Top Half) */}
+            <div className="flex min-h-0 flex-1 flex-col justify-center rounded-lg border border-blue-300 bg-blue-50/90 p-2 dark:border-blue-900/40 dark:bg-blue-950/15">
+              <div className="mb-2 text-center text-sm leading-tight">
+                <div className="font-semibold text-blue-700 dark:text-blue-400">
+                  {leftTeamName}
+                  <span className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-sm bg-blue-600 text-xs font-bold text-white dark:bg-blue-900/70 dark:text-blue-100">
+                    {isSecondHalf ? score_T : score_CT}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {getTeamPlayers(leftTeamID).map((player) =>
+                  renderPlayerCard(player, "rgb(59 130 246)", "text-blue-700 dark:text-blue-100"),
+                )}
+              </div>
+            </div>
+
+            {/* T Team Container (Bottom Half) */}
+            <div className="flex min-h-0 flex-1 flex-col justify-center rounded-lg border border-amber-300 bg-amber-50/90 p-2 dark:border-yellow-900/40 dark:bg-yellow-950/10">
+              <div className="mb-2 text-center text-sm leading-tight">
+                <div className="font-semibold text-amber-700 dark:text-yellow-400">
+                  {rightTeamName}
+                  <span className="ml-2 inline-flex h-6 w-6 items-center justify-center rounded-sm bg-amber-600 text-xs font-bold text-white dark:bg-yellow-900/70 dark:text-yellow-100">
+                    {isSecondHalf ? score_CT : score_T}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {getTeamPlayers(rightTeamID).map((player) =>
+                  renderPlayerCard(player, "rgb(234 179 8)", "text-amber-700 dark:text-yellow-100"),
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Center Canvas */}
-        <div className="w-full max-w-180 aspect-square border border-slate-700 rounded-xl overflow-hidden shrink-0">
+        <div className="relative w-full max-w-180 aspect-square overflow-hidden rounded-xl border border-slate-300 shrink-0 dark:border-slate-700">
+          <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-md border border-slate-300 bg-white/90 px-2.5 py-1 text-xs font-semibold tracking-wide text-slate-700 dark:border-slate-600/80 dark:bg-slate-900/75 dark:text-slate-100">
+            Replay #{id ?? "Unknown"}
+          </div>
           <canvas ref={canvasRef} className="block w-full h-full" />
         </div>
 
@@ -221,105 +312,21 @@ export default function ReplayPage() {
         
       />
 
-      {/* Bottom Health Bars (Proto Scoreboard) */}
+      {/* Bottom Score Display */}
       {frame && (
-        <div className="w-full border-t border-slate-700 mt-6 pt-4 text-white text-sm">
-          <div className="max-w-300 mx-auto flex justify-between gap-10 px-6">
-
-            {/* CT Team (Left) */}
-            <div className="flex flex-col gap-2 w-full text-right">
-              <div className="grid grid-cols-[300px_200px_35px] items-center gap-4">
-                <div />
-                <div className="text-center leading-tight">
-                  <div className="text-blue-400 font-semibold">{leftTeamName}</div>
-                  <div className="text-blue-300 font-semibold">{isSecondHalf ? score_T : score_CT}</div>
-                </div>
-                <div />
-              </div>
-
-              {frame.players
-                .filter(p => p.team === leftTeamID)
-                .sort((a, b) => a.steamid.localeCompare(b.steamid))
-                .map(p => (
-                  <div key={p.steamid} className={`grid grid-cols-[300px_200px_35px] items-center gap-4 ${p.alive ? "" : "opacity-40"}`}>
-
-                    {/*Steam ID on outside (soon to be steam name) */}
-                    <div 
-                      className="text-right whitespace-nowrap overflow-hidden pr-4"> 
-                      {p.name || "steamid: " + p.steamid} 
-                    </div>
-
-                    {/* Health bar (middle) */}
-                    <div className="w-full h-2 bg-slate-700 rounded overflow-hidden ">
-                      <div
-                        className="bg-blue-500 h-full"
-                        style={{ width: `${Math.max(p.hp, 0)}%` }}
-                      />
-                    </div>
-
-                    {/* HP (number) on inside */}
-                    <div className="text-left pl-5">
-                      {p.alive ? p.hp : "DEAD"}
-                    </div>
-
-                  </div>
-                ))}
+        <div className="w-full border-t border-slate-700 mt-6 pt-4 pb-6 text-white text-sm">
+          <div className="max-w-300 mx-auto flex justify-center gap-16 px-6">
+            <div className="text-center">
+              <div className="text-blue-400 font-semibold">{leftTeamName}</div>
+              <div className="text-blue-300 text-2xl font-semibold">{isSecondHalf ? score_T : score_CT}</div>
             </div>
-
-            {/* T Team (Right) */}
-            <div className="flex flex-col gap-2 w-full text-left">
-              <div className="grid grid-cols-[35px_200px_300px] items-center gap-4">
-                <div />
-                <div className="text-center leading-tight">
-                  <div className="text-yellow-400 font-semibold">{rightTeamName}</div>
-                  <div className="text-yellow-300 font-semibold">{isSecondHalf ? score_CT : score_T}</div>
-                </div>
-                <div />
-              </div>
-
-              {frame.players
-                .filter(p => p.team === rightTeamID)
-                .sort((a, b) => a.steamid.localeCompare(b.steamid))
-                .map(p => (
-                  <div key={p.steamid} className={`grid grid-cols-[35px_200px_300px] items-center gap-4 ${p.alive ? "" : "opacity-40"}`}>
-
-                    {/* Health (number) on inside */}
-                    <div className="text-right pr-1">
-                      {p.alive ? p.hp : "DEAD"}
-                    </div>
-
-                    {/* Health bar (middle) */}
-                    <div className="w-full h-2 bg-slate-700 rounded overflow-hidden">
-                      <div
-                        className="bg-yellow-500 h-full"
-                        style={{ width: `${Math.max(p.hp, 0)}%` }}
-                      />
-                    </div>
-
-                    {/*Steam name */}
-                    <div 
-                      className="text-left whitespace-nowrap overflow-hidden pl-4"> 
-                      {p.name || "steamid: " + p.steamid} 
-                    </div>
-
-                  </div>
-                ))}
+            <div className="text-center">
+              <div className="text-yellow-400 font-semibold">{rightTeamName}</div>
+              <div className="text-yellow-300 text-2xl font-semibold">{isSecondHalf ? score_CT : score_T}</div>
             </div>
-
           </div>
-
         </div>
       )}
-
-      <div className="w-full mt-6 pb-6 pt-4 text-white text-sm"></div>
     </div>
-
-  
-
-    
-
-    
   );
-
-
 }

@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Clock3 } from "lucide-react";
+import { ArrowLeftRight, Clock3, Pause, Play } from "lucide-react";
 import { memo } from "react";
 
 interface TransportBarProps {
@@ -29,14 +29,17 @@ export const TransportBar = memo(function TransportBar({
   formatTime,
 }: TransportBarProps) {
   return (
-    <div className="w-full flex flex-col items-center gap-3 self-center">
-      <div className="flex items-center gap-3 w-full max-w-[800px]">
+    <div className="w-full flex flex-col items-center gap-1.5 self-center">
+      <div className="flex items-center gap-2 w-full max-w-200">
         <button
+          type="button"
           onClick={() => setIsPlaying((p) => !p)}
-          className="min-w-[80px] px-4 py-2 rounded bg-slate-700 text-white"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
           disabled={isFetching}
+          title={isPlaying ? "Pause" : "Play"}
+          aria-label={isPlaying ? "Pause replay" : "Play replay"}
         >
-          {isPlaying ? "Pause" : "Play"}
+          {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
         </button>
         <input
           type="range"
@@ -49,16 +52,11 @@ export const TransportBar = memo(function TransportBar({
           className="flex-1 cursor-pointer"
           disabled={isFetching}
         />
-        <span className="text-white">{formatTime(activeRoundElapsedSec)} / {formatTime(activeRoundDurationSec)}</span>
+        <span className="text-slate-700 dark:text-white">{formatTime(activeRoundElapsedSec)} / {formatTime(activeRoundDurationSec)}</span>
       </div>
 
-      <div className="w-full max-w-[1200px] self-center">
-        <div className="mb-2 flex justify-center">
-          <p className="rounded-full border border-slate-700/80 bg-transparent px-3 py-1 text-center text-xs font-semibold uppercase tracking-wide text-slate-300">
-            Match Rounds
-          </p>
-        </div>
-        <div className="flex w-full flex-nowrap justify-center gap-2 overflow-hidden pb-1">
+      <div className="w-full max-w-300 self-center">
+        <div className="flex w-full flex-nowrap justify-center gap-2 overflow-hidden">
         {roundStartTicks.map((_, index) => {
           const roundNumber = index + 1;
           const isCurrent = roundNumber === activeRound;
@@ -70,19 +68,19 @@ export const TransportBar = memo(function TransportBar({
                 className={`h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center transition-colors ${
                   isCurrent
                     ? "bg-blue-500 border-blue-400 text-white"
-                    : "bg-slate-900 border-slate-600 text-slate-200 hover:border-slate-400 hover:text-white"
+                    : "bg-white border-slate-300 text-slate-700 hover:border-slate-500 dark:bg-slate-900 dark:border-slate-600 dark:text-slate-200 dark:hover:border-slate-400 dark:hover:text-white"
                 }`}
                 disabled={isFetching}
               >
                 {roundNumber}
               </button>
               {roundNumber === 12 && roundStartTicks.length > 12 && (
-                <div className="flex h-7 w-7 items-center justify-center text-slate-300">
+                <div className="flex h-7 w-7 items-center justify-center text-slate-500 dark:text-slate-300">
                   <ArrowLeftRight className="h-4 w-4" />
                 </div>
               )}
               {roundNumber === 24 && roundStartTicks.length > 25 && (
-                <div className="flex h-7 w-7 items-center justify-center text-slate-300">
+                <div className="flex h-7 w-7 items-center justify-center text-slate-500 dark:text-slate-300">
                   <Clock3 className="h-4 w-4" />
                 </div>
               )}
