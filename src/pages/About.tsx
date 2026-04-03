@@ -267,7 +267,7 @@ export default function About() {
                 WhisperX
               </a>
               <p className="text-[#cbd5e1]">
-                Advanced speech recognition model for accurate audio transcription and voice analysis.
+                Advanced speech recognition model for accurate audio transcription and voice analysis by OpenAI.
               </p>
             </div>
 
@@ -300,6 +300,38 @@ export default function About() {
               </a>
               <p className="text-[#cbd5e1]">
                 Protocol buffer definitions for Steam communications and game data structures.
+              </p>
+            </div>
+
+            {/* Resource Item 5 */}
+            <div className="bg-[#1e293b] rounded-lg p-6 border border-[#334155] hover:border-[#60a5fa] transition focus-within:ring-2 focus-within:ring-[#60a5fa]">
+              <a
+                href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#60a5fa] hover:text-white font-semibold text-lg mb-2 block underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#1e293b] focus:ring-[#60a5fa] rounded"
+                aria-label="NVIDIA Parakeet's Hugging Face Page (opens in new window)"
+              >
+                NVIDIA/Parakeet
+              </a>
+              <p className="text-[#cbd5e1]">
+                A 600-million-parameter multilingual automatic speech recognition (ASR) model by NVIDIA.
+              </p>
+            </div>
+
+            {/* Resource Item 6 */}
+            <div className="bg-[#1e293b] rounded-lg p-6 border border-[#334155] hover:border-[#60a5fa] transition focus-within:ring-2 focus-within:ring-[#60a5fa]">
+              <a
+                href="https://huggingface.co/collections/Qwen/qwen25"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#60a5fa] hover:text-white font-semibold text-lg mb-2 block underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#1e293b] focus:ring-[#60a5fa] rounded"
+                aria-label="Alibaba's Qwen2.5 Hugging Face Collection (opens in new window)"
+              >
+                Alibaba/Qwen2.5
+              </a>
+              <p className="text-[#cbd5e1]">
+                A series of open-source large language models (LLMs) by Alibaba.
               </p>
             </div>
           </div>

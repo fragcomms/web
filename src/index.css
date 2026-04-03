@@ -1,6 +1,28 @@
 @import "@radix-ui/themes/styles.css";
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+  --app-bg: #f1f5f9;
+  --app-surface: #ffffff;
+  --app-surface-strong: #e2e8f0;
+  --app-foreground: #0f172a;
+  --app-muted: #475569;
+  --app-border: #cbd5e1;
+}
+
+:root.dark {
+  color-scheme: dark;
+  --app-bg: #020617;
+  --app-surface: #0f172a;
+  --app-surface-strong: #1e293b;
+  --app-foreground: #f8fafc;
+  --app-muted: #cbd5e1;
+  --app-border: #334155;
+}
+
 /* @layer base {
   * {
     margin: 0;
@@ -22,6 +44,11 @@ body {
   min-height: 100vh;
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
+  background-color: var(--app-bg);
+  color: var(--app-foreground);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 html,
@@ -29,7 +56,8 @@ body,
 #root {
   width: 100%;
   min-height: 100%;
-  background-color: #0f172a;
+  background-color: var(--app-bg);
+  color: var(--app-foreground);
 }
 
 body,

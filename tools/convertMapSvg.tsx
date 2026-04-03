@@ -10,7 +10,7 @@ type SvgNode = {
 
 const MAP_NAME = "de_inferno";
 
-const SVG_INPUT = path.resolve(`tools/map-src/${MAP_NAME}_radar.svg`);
+const SVG_INPUT = path.resolve(`tools/map-src/${MAP_NAME}_radar.svg.svg`);
 const JSON_OUTPUT = path.resolve(`public/maps/${MAP_NAME}.geometry.json`);
 
 function toArray<T>(value: T | T[] | undefined): T[] {

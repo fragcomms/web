@@ -15,17 +15,32 @@ import { ReplayLibrary } from "./pages/replays/ReplayLibrary";
 import ReplayPage from "./pages/replays/ReplayPage";
 import Settings from "./pages/Settings";
 
+const shellThemeStyle = {
+  backgroundColor: "var(--app-bg)",
+  color: "var(--app-foreground)",
+};
+
 export default function Router() {
   const { user, isLoading } = useAuth();
   const [navOffsetPx, setNavOffsetPx] = useState(80);
 
   if (isLoading) {
-    return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading...</div>;
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={shellThemeStyle}
+      >
+        Loading...
+      </div>
+    );
   }
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen flex flex-col bg-slate-800">
+      <div
+        className="min-h-screen flex flex-col"
+        style={shellThemeStyle}
+      >
         {/* Fixed Navbar */}
         {user ? <LoggedNavbar onNavOffsetChange={setNavOffsetPx} /> : <PublicNavbar />}
 
