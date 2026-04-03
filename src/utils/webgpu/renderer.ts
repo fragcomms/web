@@ -1,16 +1,18 @@
 import { initWebGPU } from "./gpuContext";
 import {
   createGlobalLayout,
+  createMapPipeline,
   createPlayerPipeline,
+  createShardPipeline,
   createTracerPipeline,
   createVisionPipeline,
-  createMapPipeline,
 } from "./pipelines";
 import { PlayerRenderer } from "./playerRenderer";
 import { TracerRenderer } from "./tracerRenderer";
 import type { MapGeometry, RenderFrame } from "./types";
 import { VisionRenderer } from "./visionRenderer";
 import { MapRenderer } from "./mapRenderer";
+import { DeathShardRenderer } from "./deathShardRenderer";
 
 export class Renderer {
   private device: GPUDevice;
@@ -23,8 +25,10 @@ export class Renderer {
   private visionRenderer: VisionRenderer;
   private tracerRenderer: TracerRenderer;
   private mapRenderer: MapRenderer;
+  private deathShardRenderer: DeathShardRenderer;
 
   private timeVec4 = new Float32Array(4);
+  private lastRenderTimeSec: number | null = null;
 
   constructor(
     device: GPUDevice,
@@ -35,6 +39,7 @@ export class Renderer {
     visionRenderer: VisionRenderer,
     tracerRenderer: TracerRenderer,
     mapRenderer: MapRenderer,
+    deathShardRenderer: DeathShardRenderer,
   ) {
     this.device = device;
     this.queue = queue;
@@ -44,6 +49,7 @@ export class Renderer {
     this.visionRenderer = visionRenderer;
     this.tracerRenderer = tracerRenderer;
     this.mapRenderer = mapRenderer;
+    this.deathShardRenderer = deathShardRenderer;
   }
 
   static async create(canvas: HTMLCanvasElement): Promise<Renderer> {
@@ -54,6 +60,7 @@ export class Renderer {
     const { pipeline: playerPipeline } = createPlayerPipeline(device, format, globalLayout);
     const { pipeline: visionPipeline, visionWallsLayout } = createVisionPipeline(device, format, globalLayout);
     const { pipeline: tracerPipeline } = createTracerPipeline(device, format, globalLayout);
+    const { pipeline: shardPipeline } = createShardPipeline(device, format, globalLayout);
     const mapPipeline = createMapPipeline(device, format, globalLayout);
 
     const half = 4000;
@@ -190,6 +197,39 @@ export class Renderer {
       maxTracerInstances,
     );
 
+    const shardQuadVerts = new Float32Array([
+      -1, -1,
+       1, -1,
+      -1,  1,
+      -1,  1,
+       1, -1,
+       1,  1,
+    ]);
+
+    const shardQuadVertexBuffer = device.createBuffer({
+      size: shardQuadVerts.byteLength,
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+      mappedAtCreation: true,
+    });
+    new Float32Array(shardQuadVertexBuffer.getMappedRange()).set(shardQuadVerts);
+    shardQuadVertexBuffer.unmap();
+
+    const maxShards = 512;
+    const shardInstanceStrideBytes = 7 * 4;
+    const shardInstanceBuffer = device.createBuffer({
+      size: maxShards * shardInstanceStrideBytes,
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    });
+
+    const deathShardRenderer = new DeathShardRenderer(
+      queue,
+      shardPipeline,
+      globalBindGroup,
+      shardQuadVertexBuffer,
+      shardInstanceBuffer,
+      maxShards,
+    );
+
     const mapRenderer = new MapRenderer(device, mapPipeline);
 
     return new Renderer(
@@ -201,6 +241,7 @@ export class Renderer {
       visionRenderer,
       tracerRenderer,
       mapRenderer,
+      deathShardRenderer,
     );
   }
 
@@ -209,6 +250,7 @@ export class Renderer {
     const walls = this.mapRenderer.getBlockingSegments();
     this.visionRenderer.setWalls(walls);
     this.tracerRenderer.setWalls(walls);
+    this.deathShardRenderer.setWalls(walls);
   }
 
   render(frame: RenderFrame, timeSec: number) {
@@ -218,7 +260,14 @@ export class Renderer {
     this.timeVec4[3] = 0;
     this.queue.writeBuffer(this.globalUniformBuffer, 64, this.timeVec4);
 
+    const dtSec = this.lastRenderTimeSec == null ? 0 : Math.max(0, timeSec - this.lastRenderTimeSec);
+    this.lastRenderTimeSec = timeSec;
+
+    this.deathShardRenderer.syncDeaths(frame.players, frame.tracers);
+    this.deathShardRenderer.update(dtSec);
+
     const visionCount = this.visionRenderer.upload(frame.players);
+    const shardCount = this.deathShardRenderer.upload();
     const playerCount = this.playerRenderer.upload(frame.players);
     const tracerCount = this.tracerRenderer.upload(frame.tracers);
 
@@ -238,6 +287,7 @@ export class Renderer {
 
     this.mapRenderer.render(pass, this.playerRenderer["globalBindGroup"]);
     this.visionRenderer.draw(pass, visionCount);
+    this.deathShardRenderer.draw(pass, shardCount);
     this.tracerRenderer.draw(pass, tracerCount);
     this.playerRenderer.draw(pass, playerCount);
 
