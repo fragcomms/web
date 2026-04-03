@@ -1,4 +1,4 @@
-import { AlertTriangle, Filter, Loader2, Search } from "lucide-react";
+import { AlertTriangle, Filter, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AudioItem } from "../../components/AudioItem";
@@ -17,17 +17,6 @@ type SubmitErrorState = {
   code?: string;
   title: string;
   details: string[];
-};
-
-type ReplayJobStatus = "processing" | "completed" | "failed";
-
-type ReplayJobStatusResponse = {
-  job_id: string;
-  status: ReplayJobStatus;
-  error?: {
-    code?: string;
-    message?: string;
-  } | null;
 };
 
 function parseDetailLines(value: unknown): string[] {
@@ -108,47 +97,8 @@ export function AudioLibrary() {
   const [sharecode, setSharecode] = useState("");
   const [submitError, setSubmitError] = useState<SubmitErrorState | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isWaitingForReplay, setIsWaitingForReplay] = useState(false);
   const [search, setSearch] = useState("");
   const [showProcessConfirm, setShowProcessConfirm] = useState(false);
-
-  async function waitForReplayJob(jobId: string) {
-    const maxAttempts = 120;
-    const pollIntervalMs = 2000;
-
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/jobs/${encodeURIComponent(jobId)}`, {
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        throw new Error(`Failed to check replay status (${res.status} ${res.statusText})`);
-      }
-
-      const statusData = await res.json() as ReplayJobStatusResponse;
-
-      if (statusData.status === "completed") {
-        return;
-      }
-
-      if (statusData.status === "failed") {
-        const message = statusData.error?.message ?? "Replay processing failed";
-        const code = statusData.error?.code;
-
-        throw new Error(
-          code === "sharecode_not_resolvable"
-            ? "This match sharecode appears too old for Steam to resolve. Please try a newer match."
-            : message,
-        );
-      }
-
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, pollIntervalMs);
-      });
-    }
-
-    throw new Error("Replay processing is taking longer than expected. Please check your library shortly.");
-  }
 
   useEffect(() => {
     // Load user-visible audio options once on page load
@@ -206,7 +156,6 @@ export function AudioLibrary() {
     setSubmitError(null);
     setShowProcessConfirm(false);
     setIsSubmitting(true);
-    setIsWaitingForReplay(false);
 
     try {
       const normalizedSharecode = sharecodeResult.value;
@@ -239,15 +188,12 @@ export function AudioLibrary() {
         return;
       }
 
-      setIsWaitingForReplay(true);
-      await waitForReplayJob(data.job_id);
       navigate("/replays");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to process replay";
       setSubmitError({ title: message, details: [] });
     } finally {
       setIsSubmitting(false);
-      setIsWaitingForReplay(false);
     }
   }
 
@@ -390,18 +336,12 @@ export function AudioLibrary() {
               <div className="rounded-xl border border-[#253144] bg-[#0e1622] p-2">
                 <Button
                   onClick={openProcessConfirm}
-                  disabled={isSubmitting || isWaitingForReplay || !sharecode.trim()}
+                  disabled={isSubmitting || !sharecode.trim()}
                 >
-                  {isWaitingForReplay ? "Waiting for replay..." : isSubmitting ? "Creating replay..." : "Create Replay"}
+                  {isSubmitting ? "Creating replay..." : "Create Replay"}
                 </Button>
               </div>
             </div>
-            {isWaitingForReplay && (
-              <div className="flex items-center justify-center gap-2 text-sm text-slate-300">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Processing replay. You&apos;ll be redirected once it appears in your library.</span>
-              </div>
-            )}
             {submitError && (
               <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm">
                 <div className="flex items-start gap-2">
@@ -436,7 +376,7 @@ export function AudioLibrary() {
                     <Button
                       className="h-10 w-28 border border-transparent bg-[#5865F2] hover:bg-[#4752C4]"
                       onClick={handleProcessReplay}
-                      disabled={isSubmitting || isWaitingForReplay}
+                      disabled={isSubmitting}
                     >
                       Confirm
                     </Button>

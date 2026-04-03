@@ -4,16 +4,24 @@ import { Renderer } from "../../utils/webgpu/renderer";
 import { ReplayPlayer } from "../../utils/webgpu/replayPlayer";
 import type { ReplayJSON, RenderFrame, RoundEndEvent, ReplayMeta } from "../../utils/webgpu/types";
 
+type ReplayAudioSyncConfig = {
+  audioStartOffsetSec: number;
+  audioDurationSec: number | null;
+  audioSyncDisabled: boolean;
+};
+
 export function useReplayEngine(
   id: string | undefined,
   canvasRef: React.RefObject<HTMLCanvasElement | null>, // can be null if unsupported browser or not yet mounted
   audioPlayerRef: React.RefObject<AudioSyncPlayer | null>, // can be null if not yet initialized
+  audioSyncConfig: ReplayAudioSyncConfig,
 ) {
   const rendererRef = useRef<Renderer | null>(null);
   const playerRef = useRef<ReplayPlayer | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
   const isPlayingRef = useRef(false);
+  const currentTimeRef = useRef(0);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
@@ -26,6 +34,37 @@ export function useReplayEngine(
   const [frame, setFrame] = useState<RenderFrame | null>(null); // catch each frame for hp
   const [replayMeta, setReplayMeta] = useState<ReplayMeta | null>(null); // to check final score
   const [roundEndEvents, setRoundEndEvents] = useState<RoundEndEvent[]>([]); // calculate live score based on end round events
+
+  const effectiveDurationSec = useMemo(() => {
+    if (audioSyncConfig.audioSyncDisabled || audioSyncConfig.audioDurationSec === null) {
+      return durationSec;
+    }
+
+    const audioEndSec = audioSyncConfig.audioStartOffsetSec + audioSyncConfig.audioDurationSec;
+    return Math.max(0, Math.min(durationSec, audioEndSec));
+  }, [audioSyncConfig, durationSec]);
+
+  const syncAudioForReplayTime = useCallback((replaySec: number) => {
+    if (!audioPlayerRef.current) return;
+
+    if (audioSyncConfig.audioSyncDisabled) {
+      audioPlayerRef.current.stop();
+      return;
+    }
+
+    const audioSeekSec = replaySec - audioSyncConfig.audioStartOffsetSec;
+    if (audioSeekSec < 0) {
+      audioPlayerRef.current.stop();
+      return;
+    }
+
+    if (audioSyncConfig.audioDurationSec !== null && audioSeekSec >= audioSyncConfig.audioDurationSec) {
+      audioPlayerRef.current.stop();
+      return;
+    }
+
+    audioPlayerRef.current.play(audioSeekSec);
+  }, [audioPlayerRef, audioSyncConfig]);
 
   // compute live score
   const { scoreCT, scoreT } = useMemo(() => {
@@ -64,12 +103,16 @@ export function useReplayEngine(
     isPlayingRef.current = isPlaying;
     if (audioPlayerRef.current) {
       if (isPlaying) {
-        audioPlayerRef.current.play(currentTimeSec);
+        syncAudioForReplayTime(currentTimeRef.current);
       } else {
         audioPlayerRef.current.stop();
       }
     }
-  }, [isPlaying]);
+  }, [isPlaying, audioPlayerRef, syncAudioForReplayTime]);
+
+  useEffect(() => {
+    currentTimeRef.current = currentTimeSec;
+  }, [currentTimeSec]);
 
   // Main WebGPU Initialization
   useEffect(() => {
@@ -142,7 +185,14 @@ export function useReplayEngine(
           let frame = null;
           if (isPlayingRef.current) {
             frame = playerRef.current.advance(dtSec);
-            setCurrentTimeSec(playerRef.current.getCurrentElapsedSeconds());
+            const nextSec = Math.min(playerRef.current.getCurrentElapsedSeconds(), effectiveDurationSec);
+            if (nextSec >= effectiveDurationSec) {
+              playerRef.current.seekToElapsedSeconds(effectiveDurationSec);
+              setCurrentTimeSec(effectiveDurationSec);
+              setIsPlaying(false);
+            } else {
+              setCurrentTimeSec(nextSec);
+            }
           } else {
             frame = playerRef.current.getFrameAtElapsedSeconds(playerRef.current.getCurrentElapsedSeconds());
           }
@@ -167,25 +217,28 @@ export function useReplayEngine(
       cancelled = true;
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [id, canvasRef]);
+  }, [id, canvasRef, effectiveDurationSec]);
 
   const handleSeek = useCallback((sec: number) => {
     if (!playerRef.current || !rendererRef.current) return;
-    const frame = playerRef.current.seekToElapsedSeconds(sec);
-    setCurrentTimeSec(sec);
+    const clampedSec = Math.max(0, Math.min(sec, effectiveDurationSec));
+    const frame = playerRef.current.seekToElapsedSeconds(clampedSec);
+    setCurrentTimeSec(clampedSec);
     if (frame) {
-      rendererRef.current.render(frame, sec);
+      rendererRef.current.render(frame, clampedSec);
       setFrame(frame);
     }
-    if (isPlayingRef.current && audioPlayerRef.current) audioPlayerRef.current.play(sec);
-  }, [canvasRef, audioPlayerRef]);
+    if (isPlayingRef.current) {
+      syncAudioForReplayTime(clampedSec);
+    }
+  }, [effectiveDurationSec, syncAudioForReplayTime]);
 
   return {
     frame,
     isPlaying,
     setIsPlaying,
     currentTimeSec,
-    durationSec,
+    durationSec: effectiveDurationSec,
     replayStartTick,
     roundStartTicks,
     ticksPerSecond,

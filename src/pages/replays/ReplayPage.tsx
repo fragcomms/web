@@ -39,6 +39,19 @@ export default function ReplayPage() {
     return () => audioPlayerRef.current?.destroy();
   }, []);
 
+  // master hook to handle all media related
+  const {
+    transcriptText,
+    transcripts,
+    discordUsers,
+    discordNames,
+    mutedUsers,
+    toggleMute,
+    audioStartOffsetSec,
+    audioDurationSec,
+    audioSyncWarning,
+  } = useReplayMedia(id, audioPlayerRef);
+
   // initialize the replay engine and media (transcripts + audio) using the replay ID from URL
   const {
     frame,    // get current frame data to show player stats on page
@@ -55,17 +68,11 @@ export default function ReplayPage() {
     scoreCT,
     scoreT,
     //replayMeta, // check final score (testing)
-  } = useReplayEngine(id, canvasRef, audioPlayerRef);
-
-  // master hook to handle all media related
-  const {
-    transcriptText,
-    transcripts,
-    discordUsers,
-    discordNames,
-    mutedUsers,
-    toggleMute,
-  } = useReplayMedia(id, audioPlayerRef);
+  } = useReplayEngine(id, canvasRef, audioPlayerRef, {
+    audioStartOffsetSec,
+    audioDurationSec,
+    audioSyncDisabled: audioSyncWarning !== null,
+  });
 
   // check final score in logs
   //console.log("Final Score should be ", replayMeta?.final_score);
@@ -166,6 +173,11 @@ export default function ReplayPage() {
   return (
     <div className="w-full overflow-x-hidden flex flex-col gap-4">
       <h1 className="text-center text-2xl font-semibold text-slate-100">Replay #{id ?? "Unknown"}</h1>
+      {audioSyncWarning && (
+        <div className="mx-auto w-full max-w-300 rounded-md border border-amber-600/60 bg-amber-900/20 px-4 py-2 text-sm text-amber-200">
+          {audioSyncWarning}
+        </div>
+      )}
 
       <div className="flex w-full items-start justify-center gap-4">
         {/* Left Discord User Mute Sidebar */}
@@ -177,7 +189,7 @@ export default function ReplayPage() {
         />
 
         {/* Center Canvas */}
-        <div className="w-full max-w-[720px] aspect-square border border-slate-700 rounded-xl overflow-hidden shrink-0">
+        <div className="w-full max-w-180 aspect-square border border-slate-700 rounded-xl overflow-hidden shrink-0">
           <canvas ref={canvasRef} className="block w-full h-full" />
         </div>
 
@@ -212,7 +224,7 @@ export default function ReplayPage() {
       {/* Bottom Health Bars (Proto Scoreboard) */}
       {frame && (
         <div className="w-full border-t border-slate-700 mt-6 pt-4 text-white text-sm">
-          <div className="max-w-[1200px] mx-auto flex justify-between gap-10 px-6">
+          <div className="max-w-300 mx-auto flex justify-between gap-10 px-6">
 
             {/* CT Team (Left) */}
             <div className="flex flex-col gap-2 w-full text-right">

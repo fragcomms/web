@@ -55,7 +55,7 @@ router.get("/:id", ensureAuth, async (req, res) => {
   if (!user) return res.status(401).send("Unauthorized");
   try {
     const query = `
-      SELECT r.replay_id, r.name, d.fetch_time, d.file_path, r.audio_id
+      SELECT r.replay_id, r.name, d.fetch_time, d.file_path, r.audio_id, r.audio_offset, r.audio_starts_first
       FROM replays r
       JOIN demos d ON d.demo_id = r.demo_id
       JOIN media_access ma ON ma.audio_id = r.audio_id
