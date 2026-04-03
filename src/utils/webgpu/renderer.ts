@@ -59,7 +59,7 @@ export class Renderer {
       0,
       0,
       0,
-      -1 / half,
+      1 / half,
       0,
       0,
       0,
