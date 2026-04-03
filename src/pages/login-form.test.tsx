@@ -95,7 +95,7 @@ describe("LoginForm", () => {
     renderWithAuth(<LoginForm />, mockUser);
 
     // user info
-    expect(screen.getByText(/testuser/i)).toBeInTheDocument();
+    expect(screen.getByText(/myglobalname/i)).toBeInTheDocument();
     expect(screen.getByText(/test@test.com/i)).toBeInTheDocument();
 
     // buttons
