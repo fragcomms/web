@@ -1,4 +1,41 @@
 import type { RenderTracer } from "./types";
+import type { WallSegment } from "./mapRenderer";
+
+type Vec2 = {
+  x: number;
+  y: number;
+};
+
+function cross(a: Vec2, b: Vec2): number {
+  return a.x * b.y - a.y * b.x;
+}
+
+function intersectRaySegment(
+  rayOrigin: Vec2,
+  rayDir: Vec2,
+  maxDistance: number,
+  seg: WallSegment,
+): number | null {
+  const p = rayOrigin;
+  const r = rayDir;
+  const q = { x: seg.x1, y: seg.y1 };
+  const s = { x: seg.x2 - seg.x1, y: seg.y2 - seg.y1 };
+
+  const rxs = cross(r, s);
+  if (Math.abs(rxs) < 1e-8) {
+    return null;
+  }
+
+  const qp = { x: q.x - p.x, y: q.y - p.y };
+  const t = cross(qp, s) / rxs;
+  const u = cross(qp, r) / rxs;
+
+  if (t >= 0 && t <= maxDistance && u >= 0 && u <= 1) {
+    return t;
+  }
+
+  return null;
+}
 
 export class TracerRenderer {
   private queue: GPUQueue;
@@ -13,6 +50,7 @@ export class TracerRenderer {
   private instanceStrideFloats = 8;
 
   private instanceScratch: Float32Array;
+  private walls: WallSegment[] = [];
 
   constructor(
     queue: GPUQueue,
@@ -34,6 +72,10 @@ export class TracerRenderer {
     );
   }
 
+  setWalls(walls: WallSegment[]) {
+    this.walls = walls;
+  }
+
   upload(tracers: RenderTracer[]): number {
     const count = Math.min(tracers.length, this.maxTracerInstances);
     const data = this.instanceScratch;
@@ -45,6 +87,33 @@ export class TracerRenderer {
       const tr = tracers[i];
       const base = i * this.instanceStrideFloats;
 
+      const dx = tr.x1 - tr.x0;
+      const dy = tr.y1 - tr.y0;
+      const len = Math.hypot(dx, dy);
+
+      let clippedX1 = tr.x1;
+      let clippedY1 = tr.y1;
+
+      if (len > 0.0001) {
+        const dir = { x: dx / len, y: dy / len };
+        let hitDistance = len;
+
+        for (const wall of this.walls) {
+          const t = intersectRaySegment(
+            { x: tr.x0, y: tr.y0 },
+            dir,
+            len,
+            wall,
+          );
+          if (t != null && t < hitDistance) {
+            hitDistance = t;
+          }
+        }
+
+        clippedX1 = tr.x0 + dir.x * hitDistance;
+        clippedY1 = tr.y0 + dir.y * hitDistance;
+      }
+
       const isCT = tr.team === 3;
       const r = isCT ? ctR : tR;
       const g = isCT ? ctG : tG;
@@ -52,8 +121,8 @@ export class TracerRenderer {
 
       data[base + 0] = tr.x0;
       data[base + 1] = tr.y0;
-      data[base + 2] = tr.x1;
-      data[base + 3] = tr.y1;
+      data[base + 2] = clippedX1;
+      data[base + 3] = clippedY1;
       data[base + 4] = tr.life;
       data[base + 5] = r;
       data[base + 6] = g;

@@ -63,22 +63,6 @@ export class Renderer {
       0, 1 / half, 0, 0,
       0, 0, 1, 0,
       0, 0, 0, 1,
-      (1 / half) / aspect,
-      0,
-      0,
-      0,
-      0,
-      1 / half,
-      0,
-      0,
-      0,
-      0,
-      1,
-      0,
-      0,
-      0,
-      0,
-      1,
     ]);
 
     const globalUniformBuffer = device.createBuffer({
@@ -222,7 +206,9 @@ export class Renderer {
 
   setMapGeometry(geometry: MapGeometry) {
     this.mapRenderer.setMapGeometry(geometry);
-    this.visionRenderer.setWalls(this.mapRenderer.getBlockingSegments());
+    const walls = this.mapRenderer.getBlockingSegments();
+    this.visionRenderer.setWalls(walls);
+    this.tracerRenderer.setWalls(walls);
   }
 
   render(frame: RenderFrame, timeSec: number) {
