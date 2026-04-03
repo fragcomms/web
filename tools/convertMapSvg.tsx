@@ -8,9 +8,9 @@ type SvgNode = {
   ":@ "?: Record<string, string>;
 };
 
-const MAP_NAME = "de_nuke1";
+const MAP_NAME = "de_inferno";
 
-const SVG_INPUT = path.resolve(`tools/map-src/${MAP_NAME}_radar.svg.svg`);
+const SVG_INPUT = path.resolve(`tools/map-src/${MAP_NAME}_radar.svg`);
 const JSON_OUTPUT = path.resolve(`public/maps/${MAP_NAME}.geometry.json`);
 
 function toArray<T>(value: T | T[] | undefined): T[] {
@@ -347,38 +347,6 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
   return out;
 }
 
-function walkSvg(node: unknown, out: Segment[], groupPath: string[] = []) {
-  if (!node || typeof node !== "object") return;
-
-  const obj = node as Record<string, unknown>;
-
-  for (const child of toArray(obj.path as SvgNode | SvgNode[])) {
-    out.push(...pathNodeToSegments(child, groupPath));
-  }
-
-  for (const child of toArray(obj.rect as SvgNode | SvgNode[])) {
-    out.push(...rectNodeToSegments(child, groupPath));
-  }
-
-  for (const child of toArray(obj.polygon as SvgNode | SvgNode[])) {
-    out.push(...polylineNodeToSegments(child, true, groupPath));
-  }
-
-  for (const child of toArray(obj.polyline as SvgNode | SvgNode[])) {
-    out.push(...polylineNodeToSegments(child, false, groupPath));
-  }
-
-  for (const child of toArray(obj.line as SvgNode | SvgNode[])) {
-    out.push(...lineNodeToSegments(child, groupPath));
-  }
-
-  for (const child of toArray(obj.g as SvgNode | SvgNode[])) {
-    const childAttrs = getAttrs(child);
-    const id = childAttrs.id ?? "g";
-    walkSvg(child, out, [...groupPath, id]);
-  }
-}
-
 function flipY(segments: Segment[]): Segment[] {
   return segments.map((s) => ({
     ...s,
@@ -416,6 +384,42 @@ function dedupeSegments(segments: Segment[]): Segment[] {
   return out;
 }
 
+function findOutlinePathNode(node: unknown): SvgNode | null {
+  if (!node || typeof node !== "object") return null;
+
+  const obj = node as Record<string, unknown>;
+
+  // Check if the current node has an ID matching the outline convention
+  const attrs = obj[":@ "] as Record<string, string> | undefined;
+  if (attrs?.id && attrs.id.startsWith("path-") && attrs.id.includes("-inside-")) {
+    
+    // Figma usually wraps these paths inside a <mask...> or <g...> tag with the ID. 
+    // If this node contains a path tag, extract the actual path object.
+    if (obj.path) {
+      const pathNode = Array.isArray(obj.path) ? obj.path[0] : obj.path;
+      return pathNode as SvgNode;
+    }
+    
+    // Otherwise, this node IS the path itself
+    return obj as SvgNode;
+  }
+
+  // If not found here, recursively search children
+  for (const value of Object.values(obj)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = findOutlinePathNode(item);
+        if (found) return found;
+      }
+    } else if (value && typeof value === "object") {
+      const found = findOutlinePathNode(value);
+      if (found) return found;
+    }
+  }
+
+  return null;
+}
+
 function main() {
   const svgText = fs.readFileSync(SVG_INPUT, "utf8");
 
@@ -433,7 +437,18 @@ function main() {
   }
 
   const rawSegments: Segment[] = [];
-  walkSvg(svgRoot, rawSegments);
+
+  // Find specifically the path associated with the 'path-...-inside-...' ID
+  const outlinePathNode = findOutlinePathNode(svgRoot);
+  
+  if (!outlinePathNode) {
+    throw new Error(`Could not find the map outline vector matching the 'path-*-inside-*' ID pattern in ${MAP_NAME}.`);
+  }
+
+  console.log("Outline vector located successfully!");
+  
+  // Parse ONLY the target path
+  rawSegments.push(...pathNodeToSegments(outlinePathNode, ["map-outline"]));
 
   const segments = dedupeSegments(flipY(rawSegments));
   const bounds = computeBounds(segments);
@@ -446,7 +461,7 @@ function main() {
   fs.mkdirSync(path.dirname(JSON_OUTPUT), { recursive: true });
   fs.writeFileSync(JSON_OUTPUT, JSON.stringify(geometry, null, 2));
 
-  console.log(`Wrote ${segments.length} segments to ${JSON_OUTPUT}`);
+  console.log(`Wrote ${segments.length} boundary segments to ${JSON_OUTPUT}`);
   console.log(bounds);
 }
 

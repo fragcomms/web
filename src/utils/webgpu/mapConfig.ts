@@ -38,9 +38,9 @@ export const MapRegistry: Record<string, MapConfig> = {
   },
   "de_inferno": {
     name: "de_inferno",
-    scale: 7.179,
-    originX: -3451.4,
-    originY: 2884.5,
+    scale: 4.993,
+    originX: -2057.5,
+    originY: 3880.2,
   },
   "de_ancient": {
     name: "de_ancient",

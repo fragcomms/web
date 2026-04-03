@@ -1,7 +1,7 @@
 import fs from "node:fs";
 
 const data = JSON.parse(
-  fs.readFileSync("public/maps/de_nuke1.geometry.json", "utf8")
+  fs.readFileSync("public/maps/de_inferno.geometry.json", "utf8")
 );
 
 const strokeCounts = new Map();
