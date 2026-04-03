@@ -32,7 +32,7 @@ export class PlayerRenderer {
     this.instanceScratch = new Float32Array(this.maxPlayerInstances * this.instanceStrideFloats);
   }
 
-  upload(players: RenderPlayer[]): number {
+  upload(players: RenderPlayer[]) {
     const count = Math.min(players.length, this.maxPlayerInstances);
 
     const ctR = 0.2, ctG = 0.6, ctB = 1.0; // counterTerrorist RGB

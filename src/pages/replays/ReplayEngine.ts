@@ -93,7 +93,7 @@ export function useReplayEngine(
           try {
             const mapRes = await fetch(`/maps/${data.meta.map}.geometry.json`);
             if (mapRes.ok) {
-              renderer.setMapGeometry(await mapRes.json());
+              renderer.setMapGeometry(await mapRes.json(), data.meta.map);
             } else {
               console.warn(`No map geometry found for ${data.meta.map}`);
             }

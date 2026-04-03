@@ -13,6 +13,7 @@ import type { MapGeometry, RenderFrame } from "./types";
 import { VisionRenderer } from "./visionRenderer";
 import { MapRenderer } from "./mapRenderer";
 import { DeathShardRenderer } from "./deathShardRenderer";
+import { MapRegistry, DefaultMapConfig } from "./mapConfig";
 
 export class Renderer {
   private device: GPUDevice;
@@ -245,12 +246,37 @@ export class Renderer {
     );
   }
 
-  setMapGeometry(geometry: MapGeometry) {
-    this.mapRenderer.setMapGeometry(geometry);
+  setMapGeometry(geometry: MapGeometry, mapName: string) {
+    const config = MapRegistry[mapName] || DefaultMapConfig;
+    if (!MapRegistry[mapName]) {
+      console.warn(`Map config ${mapName} not found. Using de_nuke.`)
+    }
+
+    this.mapRenderer.setMapGeometry(geometry, config);
+
     const walls = this.mapRenderer.getBlockingSegments();
     this.visionRenderer.setWalls(walls);
     this.tracerRenderer.setWalls(walls);
     this.deathShardRenderer.setWalls(walls);
+
+    const center = this.mapRenderer.mapCenter;
+    const half = 4000;
+
+    const canvas = this.context.canvas as HTMLCanvasElement;
+    const aspect = canvas.width / canvas.height;
+
+    const sx = (1 / half) / aspect;
+    const sy = 1 / half;
+
+    const viewProj = new Float32Array([
+      sx, 0, 0, 0,
+      0, sy, 0, 0,
+      0, 0, 1, 0,
+      -center.x * sx, -center.y * sy, 0, 1,
+    ]);
+
+    // 3. Upload the new camera matrix to the GPU (Offset 0)
+    this.queue.writeBuffer(this.globalUniformBuffer, 0, viewProj);
   }
 
   render(frame: RenderFrame, timeSec: number) {
