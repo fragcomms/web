@@ -8,12 +8,21 @@ export interface TranscriptSegment {
   text: string;
 }
 
+type ReplayMediaMetadata = {
+  audio_id: string | null;
+  audio_offset: number | null;
+  audio_starts_first: boolean | null;
+};
+
 export function useReplayMedia(id: string | undefined, audioPlayerRef: React.RefObject<AudioSyncPlayer | null>) {
   const [transcriptText, setTranscriptText] = useState("Loading transcript...");
   const [transcripts, setTranscripts] = useState<TranscriptSegment[]>([]);
   const [discordUsers, setDiscordUsers] = useState<string[]>([]);
   const [discordNames, setDiscordNames] = useState<Record<string, string>>({});
   const [mutedUsers, setMutedUsers] = useState<Record<string, boolean>>({});
+  const [audioStartOffsetSec, setAudioStartOffsetSec] = useState(0);
+  const [audioDurationSec, setAudioDurationSec] = useState<number | null>(null);
+  const [audioSyncWarning, setAudioSyncWarning] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,8 +34,23 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
         const replayRes = await fetch(`${import.meta.env.VITE_API_URL}/replays/${id}`, { credentials: "include" });
         if (!replayRes.ok) throw new Error("Metadata fetch failed");
 
-        const audioId = (await replayRes.json()).audio_id;
+        const replayMetadata = (await replayRes.json()) as ReplayMediaMetadata;
+        const audioId = replayMetadata.audio_id;
         if (!audioId) return setTranscriptText("No audio linked to this replay.");
+
+        const offsetMs = replayMetadata.audio_offset;
+        if (typeof offsetMs === "number" && Number.isFinite(offsetMs)) {
+          if (offsetMs < 0) {
+            setAudioStartOffsetSec(0);
+            setAudioSyncWarning("Audio timestamp is after the demo window; playback sync is disabled for this replay.");
+          } else {
+            setAudioStartOffsetSec(offsetMs / 1000);
+            setAudioSyncWarning(null);
+          }
+        } else {
+          setAudioStartOffsetSec(0);
+          setAudioSyncWarning(null);
+        }
 
         const transcriptRes = await fetch(`${import.meta.env.VITE_API_URL}/audio/${audioId}/transcriptions`, {
           credentials: "include",
@@ -56,6 +80,9 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
         const fetchAudio = async () => {
           if (!audioPlayerRef.current) return;
           await audioPlayerRef.current.loadTracks(audioId, uniqueIds, import.meta.env.VITE_API_URL);
+          if (!cancelled) {
+            setAudioDurationSec(audioPlayerRef.current.getLongestTrackDurationSeconds());
+          }
         };
 
         const fetchNames = async () => {
@@ -92,5 +119,15 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
     });
   }, [audioPlayerRef]);
 
-  return { transcriptText, transcripts, discordUsers, discordNames, mutedUsers, toggleMute };
+  return {
+    transcriptText,
+    transcripts,
+    discordUsers,
+    discordNames,
+    mutedUsers,
+    toggleMute,
+    audioStartOffsetSec,
+    audioDurationSec,
+    audioSyncWarning,
+  };
 }

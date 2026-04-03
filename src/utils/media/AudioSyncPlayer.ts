@@ -3,6 +3,7 @@ export class AudioSyncPlayer {
   private sources: Map<string, AudioBufferSourceNode> = new Map();
   private gainNodes: Map<string, GainNode> = new Map();
   private buffers: Map<string, AudioBuffer> = new Map();
+  private loadedAudioId: string | null = null;
   public isPlaying: boolean = false;
 
   constructor() {
@@ -15,6 +16,14 @@ export class AudioSyncPlayer {
    * and decodes them into raw PCM memory buffers.
    */
   async loadTracks(audioId: string, discordIds: string[], apiUrl: string) {
+    if (this.loadedAudioId !== audioId) {
+      this.stop();
+      this.sources.clear();
+      this.gainNodes.clear();
+      this.buffers.clear();
+      this.loadedAudioId = audioId;
+    }
+
     // If we already loaded this specific match's audio, skip
     if (this.buffers.size > 0) return;
 
@@ -53,8 +62,13 @@ export class AudioSyncPlayer {
     // Schedule playback 50ms in the future so the CPU has time to queue all
     // tracks and hit the hardware DAC at the exact same millisecond.
     const startTime = this.ctx.currentTime + 0.05;
+    let startedSources = 0;
 
     for (const [id, buffer] of this.buffers.entries()) {
+      if (seekSeconds >= buffer.duration) {
+        continue;
+      }
+
       const source = this.ctx.createBufferSource();
 
       // Look up existing volume node, or create one if it doesn't exist yet
@@ -71,9 +85,20 @@ export class AudioSyncPlayer {
       // start(whenToStartHardwareClock, whereToStartInTheFile)
       source.start(startTime, seekSeconds);
       this.sources.set(id, source);
+      startedSources += 1;
     }
 
-    this.isPlaying = true;
+    this.isPlaying = startedSources > 0;
+  }
+
+  getLongestTrackDurationSeconds(): number {
+    let longest = 0;
+    for (const buffer of this.buffers.values()) {
+      if (buffer.duration > longest) {
+        longest = buffer.duration;
+      }
+    }
+    return longest;
   }
 
   /**
