@@ -4,84 +4,101 @@ struct Uniforms {
   _pad0 : vec3<f32>,
 };
 
+struct WallBuffer {
+  header : vec4<f32>,
+  segments : array<vec4<f32>>,
+};
+
 @group(0) @binding(0)
 var<uniform> uniforms : Uniforms;
 
+@group(1) @binding(0)
+var<storage, read> walls : WallBuffer;
+
 struct VSOut {
   @builtin(position) position : vec4<f32>,
-  @location(0) color : vec3<f32>,
-  @location(1) localPos : vec2<f32>,   // local (scaled) position in world units
-  @location(2) rotRad : f32,
-  @location(3) alive : f32,
+  @location(0) worldPos : vec2<f32>,
+  @location(1) origin : vec2<f32>,
+  @location(2) facingDir : vec2<f32>,
+  @location(3) color : vec3<f32>,
+  @location(4) alive : f32,
+  @location(5) radius : f32,
+  @location(6) cosHalfFov : f32,
 };
 
-fn wrapPi(a: f32) -> f32 {
-  // map angle to [-pi, pi]
-  let pi = 3.141592653589793;
-  var x = a;
-  // cheap wrap using mod-like behavior
-  x = x + pi;
-  x = x - floor(x / (2.0 * pi)) * (2.0 * pi);
-  return x - pi;
+fn cross2(a : vec2<f32>, b : vec2<f32>) -> f32 {
+  return a.x * b.y - a.y * b.x;
+}
+
+fn segmentBlocks(origin : vec2<f32>, fragPos : vec2<f32>, wall : vec4<f32>) -> bool {
+  let p = origin;
+  let r = fragPos - origin;
+  let q = wall.xy;
+  let s = wall.zw - wall.xy;
+  let rxs = cross2(r, s);
+
+  if (abs(rxs) < 0.0001) {
+    return false;
+  }
+
+  let qp = q - p;
+  let t = cross2(qp, s) / rxs;
+  let u = cross2(qp, r) / rxs;
+
+  return t >= 0.0 && t < 0.999 && u >= 0.0 && u <= 1.0;
 }
 
 @vertex
 fn vs_main(
-  @location(0) a_pos       : vec2<f32>, // unit quad in [-1,1]
-  @location(1) i_position  : vec2<f32>, // world position
-  @location(2) i_rotDeg    : f32,       // degrees
-  @location(3) i_color     : vec3<f32>, // rgb
-  @location(4) i_alive     : f32        // 1.0 or 0.0
+  @location(0) localPos : vec2<f32>,
+  @location(1) origin : vec2<f32>,
+  @location(2) facingDir : vec2<f32>,
+  @location(3) color : vec3<f32>,
+  @location(4) alive : f32
 ) -> VSOut {
   var out : VSOut;
-
-  // Cone parameters (tweak later)
   let radius = 800.0;
-
-  let local = a_pos * radius;           // scale unit quad into world-space square
-  let worldPos = i_position + local;
-
+  let worldPos = origin + localPos * radius;
   out.position = uniforms.viewProj * vec4<f32>(worldPos, 0.0, 1.0);
-  out.color = i_color;
-  out.localPos = local;
-
-  // degrees -> radians
-  let pi = 3.141592653589793;
-  out.rotRad = i_rotDeg * (pi / 180.0);
-
-  out.alive = i_alive;
-
+  out.worldPos = worldPos;
+  out.origin = origin;
+  out.facingDir = facingDir;
+  out.color = color;
+  out.alive = alive;
+  out.radius = radius;
+  out.cosHalfFov = cos(radians(45.0));
   return out;
 }
 
 @fragment
 fn fs_main(input: VSOut) -> @location(0) vec4<f32> {
-  // Cone parameters (tweak later)
-  let radius = 800.0;
-  let fovDeg = 90.0; // full cone angle
-  let pi = 3.141592653589793;
-  let halfAngle = (fovDeg * 0.5) * (pi / 180.0);
+  if (input.alive < 0.5) {
+    discard;
+  }
 
-  let p = input.localPos;
-  let dist = length(p);
+  let toFrag = input.worldPos - input.origin;
+  let dist = length(toFrag);
 
-  // Outside radius => transparent (with antialias edge)
+  if (dist < 0.001 || dist > input.radius) {
+    discard;
+  }
+
+  let dir = normalize(toFrag);
+  if (dot(dir, input.facingDir) < input.cosHalfFov) {
+    discard;
+  }
+
+  let wallCount = u32(walls.header.x);
+  for (var i = 0u; i < wallCount; i = i + 1u) {
+    if (segmentBlocks(input.origin, input.worldPos, walls.segments[i])) {
+      discard;
+    }
+  }
+
   let wDist = fwidth(dist);
-  let radialMask = 1.0 - smoothstep(radius - wDist, radius + wDist, dist);
+  let radialMask = 1.0 - smoothstep(input.radius - wDist, input.radius + wDist, dist);
+  let falloff = 1.0 - smoothstep(0.0, input.radius, dist);
 
-  // Angle mask
-  let ang = atan2(p.y, p.x);
-  let d = abs(wrapPi(ang - input.rotRad));
-
-  let wAng = fwidth(d);
-  let angMask = 1.0 - smoothstep(halfAngle - wAng, halfAngle + wAng, d);
-
-  let falloff = 1.0 - smoothstep(0.0, radius, dist);
-
-  let aliveMask = select(0.0, 1.0, input.alive >= 0.5);
-
-  let alpha = radialMask * angMask * falloff * 0.18 * aliveMask; // overall opacity
-
-  // premultiplied alpha
+  let alpha = radialMask * falloff * 0.18;
   return vec4<f32>(input.color * alpha, alpha);
 }

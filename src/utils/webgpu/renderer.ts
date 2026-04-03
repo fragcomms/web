@@ -1,5 +1,11 @@
 import { initWebGPU } from "./gpuContext";
-import { createGlobalLayout, createPlayerPipeline, createTracerPipeline, createVisionPipeline, createMapPipeline } from "./pipelines";
+import {
+  createGlobalLayout,
+  createPlayerPipeline,
+  createTracerPipeline,
+  createVisionPipeline,
+  createMapPipeline,
+} from "./pipelines";
 import { PlayerRenderer } from "./playerRenderer";
 import { TracerRenderer } from "./tracerRenderer";
 import type { MapGeometry, RenderFrame } from "./types";
@@ -46,30 +52,17 @@ export class Renderer {
     const globalLayout = createGlobalLayout(device);
 
     const { pipeline: playerPipeline } = createPlayerPipeline(device, format, globalLayout);
-    const { pipeline: visionPipeline } = createVisionPipeline(device, format, globalLayout);
+    const { pipeline: visionPipeline, visionWallsLayout } = createVisionPipeline(device, format, globalLayout);
     const { pipeline: tracerPipeline } = createTracerPipeline(device, format, globalLayout);
     const mapPipeline = createMapPipeline(device, format, globalLayout);
 
-    // simple orthographic viewProj (map 0..mapSize to clip)
-    const half = 3000;
+    const half = 4000;
     const aspect = canvas.width / canvas.height;
     const viewProj = new Float32Array([
-      (1 / half) / aspect,
-      0,
-      0,
-      0,
-      0,
-      -1 / half,
-      0,
-      0,
-      0,
-      0,
-      1,
-      0,
-      0,
-      0,
-      0,
-      1,
+      (1 / half) / aspect, 0, 0, 0,
+      0, 1 / half, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1,
     ]);
 
     const globalUniformBuffer = device.createBuffer({
@@ -80,25 +73,21 @@ export class Renderer {
 
     const globalBindGroup = device.createBindGroup({
       layout: globalLayout,
-      entries: [{
-        binding: 0,
-        resource: { buffer: globalUniformBuffer },
-      }],
+      entries: [
+        {
+          binding: 0,
+          resource: { buffer: globalUniformBuffer },
+        },
+      ],
     });
 
     const quadVerts = new Float32Array([
-      -32,
-      -32,
-      32,
-      -32,
-      -32,
-      32,
-      -32,
-      32,
-      32,
-      -32,
-      32,
-      32,
+      -32, -32,
+       32, -32,
+      -32,  32,
+      -32,  32,
+       32, -32,
+       32,  32,
     ]);
 
     const quadVertexBuffer = device.createBuffer({
@@ -125,20 +114,13 @@ export class Renderer {
       maxPlayerInstances,
     );
 
-    // for vision
     const unitQuadVerts = new Float32Array([
-      -1,
-      -1,
-      1,
-      -1,
-      -1,
-      1,
-      -1,
-      1,
-      1,
-      -1,
-      1,
-      1,
+      -1, -1,
+       1, -1,
+      -1,  1,
+      -1,  1,
+       1, -1,
+       1,  1,
     ]);
 
     const visionQuadVertexBuffer = device.createBuffer({
@@ -150,19 +132,38 @@ export class Renderer {
     visionQuadVertexBuffer.unmap();
 
     const maxVisionInstances = 64;
-    const visionInstanceStrideBytes = 7 * 4;
+    const visionInstanceStrideBytes = 8 * 4;
     const visionInstanceBuffer = device.createBuffer({
       size: maxVisionInstances * visionInstanceStrideBytes,
       usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    });
+
+    const maxVisionWalls = 4096;
+    const visionWallBuffer = device.createBuffer({
+      size: (4 + maxVisionWalls * 4) * 4,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+
+    const visionWallsBindGroup = device.createBindGroup({
+      layout: visionWallsLayout,
+      entries: [
+        {
+          binding: 0,
+          resource: { buffer: visionWallBuffer },
+        },
+      ],
     });
 
     const visionRenderer = new VisionRenderer(
       queue,
       visionPipeline,
       globalBindGroup,
+      visionWallsBindGroup,
       visionQuadVertexBuffer,
       visionInstanceBuffer,
+      visionWallBuffer,
       maxVisionInstances,
+      maxVisionWalls,
     );
 
     const tracerQuadVertexBuffer = device.createBuffer({
@@ -189,10 +190,7 @@ export class Renderer {
       maxTracerInstances,
     );
 
-    const mapRenderer = new MapRenderer(
-      device,
-      mapPipeline,
-    );
+    const mapRenderer = new MapRenderer(device, mapPipeline);
 
     return new Renderer(
       device,
@@ -206,8 +204,9 @@ export class Renderer {
     );
   }
 
-  setMapGeometry(geometry: MapGeometry){
+  setMapGeometry(geometry: MapGeometry) {
     this.mapRenderer.setMapGeometry(geometry);
+    this.visionRenderer.setWalls(this.mapRenderer.getBlockingSegments());
   }
 
   render(frame: RenderFrame, timeSec: number) {
@@ -225,12 +224,14 @@ export class Renderer {
     const textureView = this.context.getCurrentTexture().createView();
 
     const pass = encoder.beginRenderPass({
-      colorAttachments: [{
-        view: textureView,
-        clearValue: { r: 0.05, g: 0.05, b: 0.06, a: 1 },
-        loadOp: "clear",
-        storeOp: "store",
-      }],
+      colorAttachments: [
+        {
+          view: textureView,
+          clearValue: { r: 0.05, g: 0.05, b: 0.06, a: 1 },
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
     });
 
     this.mapRenderer.render(pass, this.playerRenderer["globalBindGroup"]);

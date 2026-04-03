@@ -33,8 +33,8 @@ export function createPlayerPipeline(device: GPUDevice, format: GPUTextureFormat
       arrayStride: (2 + 3) * 4,
       stepMode: "instance",
       attributes: [
-        { shaderLocation: 1, offset: 0, format: "float32x2" }, // position
-        { shaderLocation: 2, offset: 2 * 4, format: "float32x3" }, // color
+        { shaderLocation: 1, offset: 0, format: "float32x2" },
+        { shaderLocation: 2, offset: 2 * 4, format: "float32x3" },
       ],
     },
   ];
@@ -77,29 +77,45 @@ export function createPlayerPipeline(device: GPUDevice, format: GPUTextureFormat
   return { pipeline };
 }
 
-export function createVisionPipeline(device: GPUDevice, format: GPUTextureFormat, globalLayout: GPUBindGroupLayout) {
+export function createVisionPipeline(
+  device: GPUDevice,
+  format: GPUTextureFormat,
+  globalLayout: GPUBindGroupLayout
+) {
+  const visionWallsLayout = device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.FRAGMENT,
+        buffer: { type: "read-only-storage" },
+      },
+    ],
+  });
+
   const module = device.createShaderModule({ code: visionShaderWGSL });
 
   const vertexBuffers: GPUVertexBufferLayout[] = [
     {
       arrayStride: 2 * 4,
       stepMode: "vertex",
-      attributes: [{ shaderLocation: 0, offset: 0, format: "float32x2" }],
+      attributes: [
+        { shaderLocation: 0, offset: 0, format: "float32x2" },
+      ],
     },
     {
-      arrayStride: 7 * 4,
+      arrayStride: 8 * 4,
       stepMode: "instance",
       attributes: [
-        { shaderLocation: 1, offset: 0, format: "float32x2" }, // pos
-        { shaderLocation: 2, offset: 2 * 4, format: "float32" }, // rotDegree
-        { shaderLocation: 3, offset: 3 * 4, format: "float32x3" }, // color
-        { shaderLocation: 4, offset: 6 * 4, format: "float32" }, // alive
+        { shaderLocation: 1, offset: 0, format: "float32x2" },
+        { shaderLocation: 2, offset: 2 * 4, format: "float32x2" },
+        { shaderLocation: 3, offset: 4 * 4, format: "float32x3" },
+        { shaderLocation: 4, offset: 7 * 4, format: "float32" },
       ],
     },
   ];
 
   const pipelineLayout = device.createPipelineLayout({
-    bindGroupLayouts: [globalLayout],
+    bindGroupLayouts: [globalLayout, visionWallsLayout],
   });
 
   const pipeline = device.createRenderPipeline({
@@ -133,8 +149,9 @@ export function createVisionPipeline(device: GPUDevice, format: GPUTextureFormat
     },
   });
 
-  return { pipeline };
+  return { pipeline, visionWallsLayout };
 }
+
 export function createTracerPipeline(device: GPUDevice, format: GPUTextureFormat, globalLayout: GPUBindGroupLayout) {
   const module = device.createShaderModule({ code: tracerShaderWGSL });
 

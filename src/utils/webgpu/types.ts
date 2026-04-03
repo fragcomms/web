@@ -158,19 +158,31 @@ export type FlashEvent = {
   entityid: number;
 };
 
+export type Vec2 = {
+  x: number;
+  y: number;
+};
+
 export type Segment = {
   x1: number;
   y1: number;
   x2: number;
   y2: number;
+
+  stroke?: string;
+  fill?: string;
+  group?: string[];
+  source?: string;
+};
+
+export type Bounds = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
 };
 
 export type MapGeometry = {
   segments: Segment[];
-  bounds: {
-    minX: number;
-    minY: number;
-    maxX: number;
-    maxY: number;
-  };
+  bounds: Bounds;
 };

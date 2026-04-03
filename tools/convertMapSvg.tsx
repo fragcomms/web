@@ -8,7 +8,7 @@ type SvgNode = {
   ":@ "?: Record<string, string>;
 };
 
-const MAP_NAME = "de_inferno";
+const MAP_NAME = "de_nuke1";
 
 const SVG_INPUT = path.resolve(`tools/map-src/${MAP_NAME}_radar.svg.svg`);
 const JSON_OUTPUT = path.resolve(`public/maps/${MAP_NAME}.geometry.json`);
@@ -28,7 +28,12 @@ function getAttrs(node: SvgNode): Record<string, string> {
   return (node[":@ "] as Record<string, string>) ?? {};
 }
 
-function pushSegment(out: Segment[], a: Vec2, b: Vec2) {
+function pushSegment(
+  out: Segment[],
+  a: Vec2,
+  b: Vec2,
+  meta: Partial<Segment>
+) {
   if (a.x === b.x && a.y === b.y) return;
 
   out.push({
@@ -36,18 +41,23 @@ function pushSegment(out: Segment[], a: Vec2, b: Vec2) {
     y1: a.y,
     x2: b.x,
     y2: b.y,
+    ...meta,
   });
 }
 
-function polygonToSegments(points: Vec2[], closed: boolean): Segment[] {
+function polygonToSegments(
+  points: Vec2[],
+  closed: boolean,
+  meta: Partial<Segment>
+): Segment[] {
   const out: Segment[] = [];
 
   for (let i = 0; i < points.length - 1; i++) {
-    pushSegment(out, points[i], points[i + 1]);
+    pushSegment(out, points[i], points[i + 1], meta);
   }
 
   if (closed && points.length > 2) {
-    pushSegment(out, points[points.length - 1], points[0]);
+    pushSegment(out, points[points.length - 1], points[0], meta);
   }
 
   return out;
@@ -70,19 +80,24 @@ function parsePointsString(pointsText: string): Vec2[] {
   return points;
 }
 
-function lineNodeToSegments(node: SvgNode): Segment[] {
+function lineNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
   const a = getAttrs(node);
+
   return [
     {
       x1: num(a.x1),
       y1: num(a.y1),
       x2: num(a.x2),
       y2: num(a.y2),
+      stroke: a.stroke,
+      fill: a.fill,
+      group: [...groupPath],
+      source: "line",
     },
   ];
 }
 
-function rectNodeToSegments(node: SvgNode): Segment[] {
+function rectNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
   const a = getAttrs(node);
 
   const x = num(a.x);
@@ -97,13 +112,28 @@ function rectNodeToSegments(node: SvgNode): Segment[] {
     { x, y: y + h },
   ];
 
-  return polygonToSegments(points, true);
+  return polygonToSegments(points, true, {
+    stroke: a.stroke,
+    fill: a.fill,
+    group: [...groupPath],
+    source: "rect",
+  });
 }
 
-function polylineNodeToSegments(node: SvgNode, closed: boolean): Segment[] {
+function polylineNodeToSegments(
+  node: SvgNode,
+  closed: boolean,
+  groupPath: string[]
+): Segment[] {
   const a = getAttrs(node);
   const points = parsePointsString(a.points ?? "");
-  return polygonToSegments(points, closed);
+
+  return polygonToSegments(points, closed, {
+    stroke: a.stroke,
+    fill: a.fill,
+    group: [...groupPath],
+    source: closed ? "polygon" : "polyline",
+  });
 }
 
 function isCommandToken(token: string): boolean {
@@ -144,6 +174,7 @@ function flattenCubicBezier(
   p1: Vec2,
   p2: Vec2,
   p3: Vec2,
+  meta: Partial<Segment>,
   steps = 12
 ): Segment[] {
   const out: Segment[] = [];
@@ -152,21 +183,26 @@ function flattenCubicBezier(
   for (let i = 1; i <= steps; i++) {
     const t = i / steps;
     const next = cubicBezierPoint(p0, p1, p2, p3, t);
-    pushSegment(out, prev, next);
+    pushSegment(out, prev, next, meta);
     prev = next;
   }
 
   return out;
 }
 
-function pathNodeToSegments(node: SvgNode): Segment[] {
+function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
   const a = getAttrs(node);
   const d = a.d ?? "";
   const tokens = tokenizePath(d);
 
-  const points: Vec2[] = [];
-  const out: Segment[] = [];
+  const meta: Partial<Segment> = {
+    stroke: a.stroke,
+    fill: a.fill,
+    group: [...groupPath],
+    source: "path",
+  };
 
+  const out: Segment[] = [];
   const idx = { i: 0 };
 
   let current: Vec2 = { x: 0, y: 0 };
@@ -190,7 +226,6 @@ function pathNodeToSegments(node: SvgNode): Segment[] {
             : { x: firstX, y: firstY };
 
         subpathStart = { ...current };
-        points.push({ ...current });
 
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
           const x = readNumber(tokens, idx);
@@ -201,9 +236,8 @@ function pathNodeToSegments(node: SvgNode): Segment[] {
               ? { x: current.x + x, y: current.y + y }
               : { x, y };
 
-          pushSegment(out, current, next);
+          pushSegment(out, current, next, meta);
           current = next;
-          points.push({ ...current });
         }
 
         break;
@@ -220,9 +254,8 @@ function pathNodeToSegments(node: SvgNode): Segment[] {
               ? { x: current.x + x, y: current.y + y }
               : { x, y };
 
-          pushSegment(out, current, next);
+          pushSegment(out, current, next, meta);
           current = next;
-          points.push({ ...current });
         }
 
         break;
@@ -232,14 +265,14 @@ function pathNodeToSegments(node: SvgNode): Segment[] {
       case "h": {
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
           const x = readNumber(tokens, idx);
+
           const next =
             command === "h"
               ? { x: current.x + x, y: current.y }
               : { x, y: current.y };
 
-          pushSegment(out, current, next);
+          pushSegment(out, current, next, meta);
           current = next;
-          points.push({ ...current });
         }
 
         break;
@@ -249,14 +282,14 @@ function pathNodeToSegments(node: SvgNode): Segment[] {
       case "v": {
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
           const y = readNumber(tokens, idx);
+
           const next =
             command === "v"
               ? { x: current.x, y: current.y + y }
               : { x: current.x, y };
 
-          pushSegment(out, current, next);
+          pushSegment(out, current, next, meta);
           current = next;
-          points.push({ ...current });
         }
 
         break;
@@ -265,13 +298,13 @@ function pathNodeToSegments(node: SvgNode): Segment[] {
       case "Z":
       case "z": {
         if (subpathStart) {
-          pushSegment(out, current, subpathStart);
+          pushSegment(out, current, subpathStart, meta);
           current = { ...subpathStart };
         }
         break;
       }
 
-            case "C":
+      case "C":
       case "c": {
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
           const x1 = readNumber(tokens, idx);
@@ -298,17 +331,14 @@ function pathNodeToSegments(node: SvgNode): Segment[] {
               ? { x: current.x + x, y: current.y + y }
               : { x, y };
 
-          out.push(...flattenCubicBezier(p0, p1, p2, p3, 12));
+          out.push(...flattenCubicBezier(p0, p1, p2, p3, meta, 12));
           current = p3;
-          points.push({ ...current });
         }
 
         break;
       }
 
       default: {
-        // For first pass, bail on unsupported commands like C/Q/A/S/T.
-        // This keeps the failure obvious instead of silently making junk geometry.
         throw new Error(`Unsupported SVG path command: ${command}`);
       }
     }
@@ -317,41 +347,42 @@ function pathNodeToSegments(node: SvgNode): Segment[] {
   return out;
 }
 
-function walkSvg(node: unknown, out: Segment[]) {
+function walkSvg(node: unknown, out: Segment[], groupPath: string[] = []) {
   if (!node || typeof node !== "object") return;
 
   const obj = node as Record<string, unknown>;
 
   for (const child of toArray(obj.path as SvgNode | SvgNode[])) {
-    out.push(...pathNodeToSegments(child));
+    out.push(...pathNodeToSegments(child, groupPath));
   }
 
   for (const child of toArray(obj.rect as SvgNode | SvgNode[])) {
-    out.push(...rectNodeToSegments(child));
+    out.push(...rectNodeToSegments(child, groupPath));
   }
 
   for (const child of toArray(obj.polygon as SvgNode | SvgNode[])) {
-    out.push(...polylineNodeToSegments(child, true));
+    out.push(...polylineNodeToSegments(child, true, groupPath));
   }
 
   for (const child of toArray(obj.polyline as SvgNode | SvgNode[])) {
-    out.push(...polylineNodeToSegments(child, false));
+    out.push(...polylineNodeToSegments(child, false, groupPath));
   }
 
   for (const child of toArray(obj.line as SvgNode | SvgNode[])) {
-    out.push(...lineNodeToSegments(child));
+    out.push(...lineNodeToSegments(child, groupPath));
   }
 
   for (const child of toArray(obj.g as SvgNode | SvgNode[])) {
-    walkSvg(child, out);
+    const childAttrs = getAttrs(child);
+    const id = childAttrs.id ?? "g";
+    walkSvg(child, out, [...groupPath, id]);
   }
 }
 
 function flipY(segments: Segment[]): Segment[] {
   return segments.map((s) => ({
-    x1: s.x1,
+    ...s,
     y1: -s.y1,
-    x2: s.x2,
     y2: -s.y2,
   }));
 }
