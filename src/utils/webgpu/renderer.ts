@@ -63,6 +63,22 @@ export class Renderer {
       0, 1 / half, 0, 0,
       0, 0, 1, 0,
       0, 0, 0, 1,
+      (1 / half) / aspect,
+      0,
+      0,
+      0,
+      0,
+      1 / half,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
     ]);
 
     const globalUniformBuffer = device.createBuffer({
