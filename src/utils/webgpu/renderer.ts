@@ -2,6 +2,7 @@ import { initWebGPU } from "./gpuContext";
 import {
   createGlobalLayout,
   createMapPipeline,
+  createMapImagePipeline,
   createPlayerPipeline,
   createShardPipeline,
   createTracerPipeline,
@@ -30,6 +31,10 @@ export class Renderer {
 
   private timeVec4 = new Float32Array(4);
   private lastRenderTimeSec: number | null = null;
+
+  public getMapRenderer() {
+    return this.mapRenderer;
+  }
 
   constructor(
     device: GPUDevice,
@@ -63,6 +68,7 @@ export class Renderer {
     const { pipeline: tracerPipeline } = createTracerPipeline(device, format, globalLayout);
     const { pipeline: shardPipeline } = createShardPipeline(device, format, globalLayout);
     const mapPipeline = createMapPipeline(device, format, globalLayout);
+    const mapImagePipeline = createMapImagePipeline(device, format, globalLayout);
 
     const half = 4000;
     const aspect = canvas.width / canvas.height;
@@ -231,8 +237,8 @@ export class Renderer {
       maxShards,
     );
 
-    const mapRenderer = new MapRenderer(device, mapPipeline);
-
+    const mapRenderer = new MapRenderer(device, mapPipeline, mapImagePipeline);
+    
     return new Renderer(
       device,
       queue,

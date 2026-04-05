@@ -3,6 +3,7 @@ import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
 import { Renderer } from "../../utils/webgpu/renderer";
 import { ReplayPlayer } from "../../utils/webgpu/replayPlayer";
 import type { ReplayJSON, RenderFrame, RoundEndEvent, ReplayMeta } from "../../utils/webgpu/types";
+import { MapRegistry, DefaultMapConfig } from "../../utils/webgpu/mapConfig";
 
 type ReplayAudioSyncConfig = {
   audioStartOffsetSec: number;
@@ -69,18 +70,18 @@ export function useReplayEngine(
   // compute live score
   const { scoreCT, scoreT } = useMemo(() => {
 
-    if(!roundEndEvents) return {score_ct: 0, score_t: 0};
+    if (!roundEndEvents) return { score_ct: 0, score_t: 0 };
     // start at 0-0
     let ct = 0;   //
     let t = 0;    //
     let round = 1; // starts at first round 
-    
+
 
     // increment score based on round end winner @ current tick
     for (const event of roundEndEvents) {
       const eventSec = (event.t - replayStartTick) / ticksPerSecond;
       const isFirstHalf = round <= 12; // team swap indicator (halftime)
-      if(eventSec <= currentTimeSec) {
+      if (eventSec <= currentTimeSec) {
         if (event.winner === "CT") {
           isFirstHalf ? ct++ : t++; //since the sides swap, the oringinal ct team becomes t and gets the points when they win
           //console.log("round " + round + " ended, winner: " + event.winner + ", score is now CT " + ct + " - T " + t); 
@@ -95,7 +96,7 @@ export function useReplayEngine(
         break;
       }
     }
-    return {scoreCT: ct, scoreT: t};
+    return { scoreCT: ct, scoreT: t };
   }, [roundEndEvents, currentTimeSec, replayStartTick, ticksPerSecond]);
 
   // Sync state to refs for the RAF loop & handle Audio transport
@@ -132,18 +133,25 @@ export function useReplayEngine(
         const data: ReplayJSON = JSON.parse(await res.text());
 
         //map loading
-         if (data.meta?.map) {
+        if (data.meta?.map) {
           try {
             const mapRes = await fetch(`/maps/${data.meta.map}.geometry.json`);
             if (mapRes.ok) {
-              renderer.setMapGeometry(await mapRes.json(), data.meta.map);
+              const geometryJSON = await mapRes.json();
+              renderer.setMapGeometry(geometryJSON, data.meta.map);
+
+              const config = MapRegistry[data.meta.map] || DefaultMapConfig;
+
+              // UPDATED FILENAME FORMAT: .radar.svg
+              const svgUrl = `/maps/${data.meta.map}.radar.svg`;
+              await renderer.getMapRenderer().loadMapImage(svgUrl, config, geometryJSON.bounds);
             } else {
               console.warn(`No map geometry found for ${data.meta.map}`);
             }
           } catch (err) {
             console.warn("Failed to load map geometry:", err);
           }
-        }       
+        }
 
         const player = new ReplayPlayer();
         player.setReplay(data);
@@ -197,7 +205,7 @@ export function useReplayEngine(
             frame = playerRef.current.getFrameAtElapsedSeconds(playerRef.current.getCurrentElapsedSeconds());
           }
 
-          if (frame)  {
+          if (frame) {
             rendererRef.current.render(frame, playerRef.current.getCurrentElapsedSeconds());
             setFrame(frame);
           }
@@ -248,6 +256,6 @@ export function useReplayEngine(
     scoreCT,
     scoreT,
     replayMeta,
-    
+
   };
 }

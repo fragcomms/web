@@ -1,10 +1,9 @@
 import playerShaderWGSL from "./shaders/player.wgsl?raw";
 import tracerShaderWGSL from "./shaders/tracer.wgsl?raw";
 import visionShaderWGSL from "./shaders/vision.wgsl?raw";
-import mapShaderWGSL from "./shaders/map.wgsl?raw";
+import mapShaderWGSL from "./shaders/mapOutline.wgsl?raw";
 import shardShaderWGSL from "./shaders/shard.wgsl?raw";
-
-// console.log("WGSL source:\n---\n" + playerShaderWGSL + "\n---");
+import mapImageShaderWGSL from "./shaders/mapImage.wgsl?raw";
 
 export function createGlobalLayout(device: GPUDevice) {
   return device.createBindGroupLayout({
@@ -308,6 +307,50 @@ export function createMapPipeline(
     },
     primitive: {
       topology: "line-list",
+    },
+  });
+}
+
+export function createMapImagePipeline(
+  device: GPUDevice,
+  format: GPUTextureFormat,
+  globalLayout: GPUBindGroupLayout
+) {
+  const module = device.createShaderModule({ code: mapImageShaderWGSL });
+
+  const textureBindGroupLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
+      { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: {} },
+    ],
+  });
+
+  return device.createRenderPipeline({
+    layout: device.createPipelineLayout({ bindGroupLayouts: [globalLayout, textureBindGroupLayout] }),
+    vertex: {
+      module,
+      entryPoint: "vs_main",
+      buffers: [{
+        arrayStride: 4 * 4, // X, Y, U, V
+        attributes: [
+          { shaderLocation: 0, offset: 0, format: "float32x2" }, // Position
+          { shaderLocation: 1, offset: 8, format: "float32x2" }, // UV
+        ],
+      }],
+    },
+    fragment: {
+      module,
+      entryPoint: "fs_main",
+      targets: [{
+        format,
+        blend: {
+          color: { srcFactor: "src-alpha", dstFactor: "one-minus-src-alpha", operation: "add" },
+          alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
+        }
+      }],
+    },
+    primitive: {
+      topology: "triangle-list",
     },
   });
 }

@@ -82,7 +82,6 @@ function parsePointsString(pointsText: string): Vec2[] {
 
 function lineNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
   const a = getAttrs(node);
-
   return [
     {
       x1: num(a.x1),
@@ -99,7 +98,6 @@ function lineNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
 
 function rectNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
   const a = getAttrs(node);
-
   const x = num(a.x);
   const y = num(a.y);
   const w = num(a.width);
@@ -239,10 +237,8 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
           pushSegment(out, current, next, meta);
           current = next;
         }
-
         break;
       }
-
       case "L":
       case "l": {
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
@@ -257,10 +253,8 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
           pushSegment(out, current, next, meta);
           current = next;
         }
-
         break;
       }
-
       case "H":
       case "h": {
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
@@ -274,10 +268,8 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
           pushSegment(out, current, next, meta);
           current = next;
         }
-
         break;
       }
-
       case "V":
       case "v": {
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
@@ -291,10 +283,8 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
           pushSegment(out, current, next, meta);
           current = next;
         }
-
         break;
       }
-
       case "Z":
       case "z": {
         if (subpathStart) {
@@ -303,7 +293,6 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
         }
         break;
       }
-
       case "C":
       case "c": {
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
@@ -315,29 +304,15 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
           const y = readNumber(tokens, idx);
 
           const p0 = current;
-
-          const p1 =
-            command === "c"
-              ? { x: current.x + x1, y: current.y + y1 }
-              : { x: x1, y: y1 };
-
-          const p2 =
-            command === "c"
-              ? { x: current.x + x2, y: current.y + y2 }
-              : { x: x2, y: y2 };
-
-          const p3 =
-            command === "c"
-              ? { x: current.x + x, y: current.y + y }
-              : { x, y };
+          const p1 = command === "c" ? { x: current.x + x1, y: current.y + y1 } : { x: x1, y: y1 };
+          const p2 = command === "c" ? { x: current.x + x2, y: current.y + y2 } : { x: x2, y: y2 };
+          const p3 = command === "c" ? { x: current.x + x, y: current.y + y } : { x, y };
 
           out.push(...flattenCubicBezier(p0, p1, p2, p3, meta, 12));
           current = p3;
         }
-
         break;
       }
-
       default: {
         throw new Error(`Unsupported SVG path command: ${command}`);
       }
@@ -356,15 +331,24 @@ function flipY(segments: Segment[]): Segment[] {
 }
 
 function computeBounds(segments: Segment[]): Bounds {
-  const xs = segments.flatMap((s) => [s.x1, s.x2]);
-  const ys = segments.flatMap((s) => [s.y1, s.y2]);
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
 
-  return {
-    minX: Math.min(...xs),
-    minY: Math.min(...ys),
-    maxX: Math.max(...xs),
-    maxY: Math.max(...ys),
-  };
+  for (const s of segments) {
+    if (s.x1 < minX) minX = s.x1;
+    if (s.x2 < minX) minX = s.x2;
+    if (s.y1 < minY) minY = s.y1;
+    if (s.y2 < minY) minY = s.y2;
+
+    if (s.x1 > maxX) maxX = s.x1;
+    if (s.x2 > maxX) maxX = s.x2;
+    if (s.y1 > maxY) maxY = s.y1;
+    if (s.y2 > maxY) maxY = s.y2;
+  }
+
+  return { minX, minY, maxX, maxY };
 }
 
 function dedupeSegments(segments: Segment[]): Segment[] {
@@ -384,40 +368,74 @@ function dedupeSegments(segments: Segment[]): Segment[] {
   return out;
 }
 
-function findOutlinePathNode(node: unknown): SvgNode | null {
-  if (!node || typeof node !== "object") return null;
+// Extracts EVERY individual shape into a separate segment array
+function extractAllShapes(node: unknown, outShapes: Segment[][], groupPath: string[] = []) {
+  if (!node || typeof node !== "object") return;
 
   const obj = node as Record<string, unknown>;
-
-  // Check if the current node has an ID matching the outline convention
+  
   const attrs = obj[":@ "] as Record<string, string> | undefined;
-  if (attrs?.id && attrs.id.startsWith("path-") && attrs.id.includes("-inside-")) {
-    
-    // Figma usually wraps these paths inside a <mask...> or <g...> tag with the ID. 
-    // If this node contains a path tag, extract the actual path object.
-    if (obj.path) {
-      const pathNode = Array.isArray(obj.path) ? obj.path[0] : obj.path;
-      return pathNode as SvgNode;
-    }
-    
-    // Otherwise, this node IS the path itself
-    return obj as SvgNode;
-  }
+  const id = attrs?.id ? [attrs.id] : [];
+  const currentPath = [...groupPath, ...id];
 
-  // If not found here, recursively search children
-  for (const value of Object.values(obj)) {
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        const found = findOutlinePathNode(item);
-        if (found) return found;
-      }
-    } else if (value && typeof value === "object") {
-      const found = findOutlinePathNode(value);
-      if (found) return found;
+  if (obj.path) {
+    for (const child of toArray(obj.path as SvgNode | SvgNode[])) {
+      const segments = pathNodeToSegments(child, currentPath);
+      if (segments.length > 0) outShapes.push(segments);
     }
   }
+  if (obj.rect) {
+    for (const child of toArray(obj.rect as SvgNode | SvgNode[])) {
+      const segments = rectNodeToSegments(child, currentPath);
+      if (segments.length > 0) outShapes.push(segments);
+    }
+  }
+  if (obj.polygon) {
+    for (const child of toArray(obj.polygon as SvgNode | SvgNode[])) {
+      const segments = polylineNodeToSegments(child, true, currentPath);
+      if (segments.length > 0) outShapes.push(segments);
+    }
+  }
+  if (obj.polyline) {
+    for (const child of toArray(obj.polyline as SvgNode | SvgNode[])) {
+      const segments = polylineNodeToSegments(child, false, currentPath);
+      if (segments.length > 0) outShapes.push(segments);
+    }
+  }
+  if (obj.line) {
+    for (const child of toArray(obj.line as SvgNode | SvgNode[])) {
+      const segments = lineNodeToSegments(child, currentPath);
+      if (segments.length > 0) outShapes.push(segments);
+    }
+  }
 
-  return null;
+  for (const [key, value] of Object.entries(obj)) {
+    if (["path", "rect", "polygon", "polyline", "line", ":@ "].includes(key)) continue;
+    
+    for (const child of toArray(value)) {
+      extractAllShapes(child, outShapes, currentPath);
+    }
+  }
+}
+
+// Analyzes all shapes and finds the outermost map boundaries
+function findLargestComplexShape(shapes: Segment[][]): Segment[] {
+  let bestShape: Segment[] = [];
+  let maxArea = -1;
+
+  for (const shape of shapes) {
+    if (shape.length < 10) continue;
+
+    const bounds = computeBounds(shape);
+    const area = (bounds.maxX - bounds.minX) * (bounds.maxY - bounds.minY);
+
+    if (area > maxArea) {
+      maxArea = area;
+      bestShape = shape;
+    }
+  }
+
+  return bestShape;
 }
 
 function main() {
@@ -436,21 +454,18 @@ function main() {
     throw new Error("No <svg> root found.");
   }
 
-  const rawSegments: Segment[] = [];
+  const allShapes: Segment[][] = [];
+  extractAllShapes(svgRoot, allShapes);
 
-  // Find specifically the path associated with the 'path-...-inside-...' ID
-  const outlinePathNode = findOutlinePathNode(svgRoot);
-  
-  if (!outlinePathNode) {
-    throw new Error(`Could not find the map outline vector matching the 'path-*-inside-*' ID pattern in ${MAP_NAME}.`);
+  const outlineSegments = findLargestComplexShape(allShapes);
+
+  if (outlineSegments.length === 0) {
+    throw new Error(`Failed to find a complex map outline inside ${MAP_NAME}.`);
   }
 
-  console.log("Outline vector located successfully!");
-  
-  // Parse ONLY the target path
-  rawSegments.push(...pathNodeToSegments(outlinePathNode, ["map-outline"]));
+  const taggedSegments = outlineSegments.map(s => ({ ...s, group: ["map-outline"] }));
 
-  const segments = dedupeSegments(flipY(rawSegments));
+  const segments = dedupeSegments(flipY(taggedSegments));
   const bounds = computeBounds(segments);
 
   const geometry: MapGeometry = {
@@ -461,7 +476,7 @@ function main() {
   fs.mkdirSync(path.dirname(JSON_OUTPUT), { recursive: true });
   fs.writeFileSync(JSON_OUTPUT, JSON.stringify(geometry, null, 2));
 
-  console.log(`Wrote ${segments.length} boundary segments to ${JSON_OUTPUT}`);
+  console.log(`Successfully found dynamic outline! Wrote ${segments.length} boundary segments to ${JSON_OUTPUT}`);
   console.log(bounds);
 }
 
