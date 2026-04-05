@@ -151,11 +151,12 @@ export class MapRenderer {
       pass.draw(6);
     }
 
-    if (this.lineVertexBuffer && this.lineVertexCount > 0) {
-      pass.setPipeline(this.linePipeline);
-      pass.setBindGroup(0, globalBindGroup);
-      pass.setVertexBuffer(0, this.lineVertexBuffer);
-      pass.draw(this.lineVertexCount);
-    }
+    // segments render
+    // if (this.lineVertexBuffer && this.lineVertexCount > 0) {
+    //   pass.setPipeline(this.linePipeline);
+    //   pass.setBindGroup(0, globalBindGroup);
+    //   pass.setVertexBuffer(0, this.lineVertexBuffer);
+    //   pass.draw(this.lineVertexCount);
+    // }
   }
 }

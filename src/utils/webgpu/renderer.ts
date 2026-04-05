@@ -36,6 +36,26 @@ export class Renderer {
     return this.mapRenderer;
   }
 
+  public updateCamera(cameraX: number, cameraY: number, zoom: number) {
+    const center = this.mapRenderer.mapCenter;
+    const half = 4000;
+
+    const canvas = this.context.canvas as HTMLCanvasElement;
+    const aspect = canvas.width / canvas.height;
+
+    const sx = (zoom / half) / aspect;
+    const sy = (zoom / half);
+
+    const viewProj = new Float32Array([
+      sx, 0, 0, 0,
+      0, sy, 0, 0,
+      0, 0, 1, 0,
+      -(center.x + cameraX) * sx, -(center.y + cameraY) * sy, 0, 1,
+    ]);
+
+    this.queue.writeBuffer(this.globalUniformBuffer, 0, viewProj);
+  }
+
   constructor(
     device: GPUDevice,
     queue: GPUQueue,

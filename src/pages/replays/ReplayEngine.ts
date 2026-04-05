@@ -4,6 +4,7 @@ import { Renderer } from "../../utils/webgpu/renderer";
 import { ReplayPlayer } from "../../utils/webgpu/replayPlayer";
 import type { ReplayJSON, RenderFrame, RoundEndEvent, ReplayMeta } from "../../utils/webgpu/types";
 import { MapRegistry, DefaultMapConfig } from "../../utils/webgpu/mapConfig";
+import { usePanZoom } from "../../utils/webgpu/panzoom";
 
 type ReplayAudioSyncConfig = {
   audioStartOffsetSec: number;
@@ -35,8 +36,9 @@ export function useReplayEngine(
   const [frame, setFrame] = useState<RenderFrame | null>(null); // catch each frame for hp
   const [replayMeta, setReplayMeta] = useState<ReplayMeta | null>(null); // to check final score
   const [roundEndEvents, setRoundEndEvents] = useState<RoundEndEvent[]>([]); // calculate live score based on end round events
-
   const [isRendererReady, setIsRendererReady] = useState(false);
+  const { camera, handlePointerDown, handlePointerMove, handlePointerUp, handleWheel } = usePanZoom();
+  const cameraRef = useRef(camera);
 
   const effectiveDurationSec = useMemo(() => {
     if (audioSyncConfig.audioSyncDisabled || audioSyncConfig.audioDurationSec === null) {
@@ -122,6 +124,10 @@ export function useReplayEngine(
     currentTimeRef.current = currentTimeSec;
   }, [currentTimeSec]);
 
+  useEffect(() => {
+    cameraRef.current = camera;
+  }, [camera]);
+
   // webgpu initialization
   useEffect(() => {
     let cancelled = false;
@@ -206,6 +212,9 @@ export function useReplayEngine(
         // getting the loop
         const loop = (nowMs: number) => {
           if (cancelled || !rendererRef.current || !playerRef.current) return;
+
+          const currentCamera = cameraRef.current;
+          rendererRef.current.updateCamera(currentCamera.x, currentCamera.y, currentCamera.zoom);
           
           if (lastTimeRef.current === null) lastTimeRef.current = nowMs;
 
@@ -251,7 +260,6 @@ export function useReplayEngine(
     };
   }, [id, isRendererReady])
 
-
   const handleSeek = useCallback((sec: number) => {
     if (!playerRef.current || !rendererRef.current) return;
     const clampedSec = Math.max(0, Math.min(sec, effectiveDurationSec));
@@ -281,6 +289,11 @@ export function useReplayEngine(
     scoreCT,
     scoreT,
     replayMeta,
-
+    canvasHandlers: {
+      onPointerDown: handlePointerDown,
+      onPointerMove: handlePointerMove,
+      onPointerUp: handlePointerUp,
+      onWheel: handleWheel
+    }
   };
 }

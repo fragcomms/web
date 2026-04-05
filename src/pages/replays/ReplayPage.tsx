@@ -47,6 +47,21 @@ export default function ReplayPage() {
     return () => audioPlayerRef.current?.destroy();
   }, []);
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const preventNativeScroll = (e: WheelEvent) => {
+      e.preventDefault();
+    };
+
+    canvas.addEventListener("wheel", preventNativeScroll, { passive: false });
+    
+    return () => {
+      canvas.removeEventListener("wheel", preventNativeScroll);
+    };
+  }, []);
+
   // master hook to handle all media related
   const {
     transcriptText,
@@ -75,6 +90,7 @@ export default function ReplayPage() {
     handleSeek,
     scoreCT,
     scoreT,
+    canvasHandlers,
     //replayMeta, // check final score (testing)
   } = useReplayEngine(id, canvasRef, audioPlayerRef, {
     audioStartOffsetSec,
@@ -281,7 +297,12 @@ export default function ReplayPage() {
           <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-md border border-slate-300 bg-white/90 px-2.5 py-1 text-xs font-semibold tracking-wide text-slate-700 dark:border-slate-600/80 dark:bg-slate-900/75 dark:text-slate-100">
             Replay #{id ?? "Unknown"}
           </div>
-          <canvas ref={canvasRef} className="block w-full h-full" />
+          <canvas 
+            ref={canvasRef} 
+            className="block w-full h-full cursor-grab active:cursor-grabbing" 
+            {...canvasHandlers}
+            style={{ touchAction: "none" }}
+          />
         </div>
 
         {/* Right Transcript Panel */}
