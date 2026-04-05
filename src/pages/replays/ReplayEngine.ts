@@ -36,6 +36,8 @@ export function useReplayEngine(
   const [replayMeta, setReplayMeta] = useState<ReplayMeta | null>(null); // to check final score
   const [roundEndEvents, setRoundEndEvents] = useState<RoundEndEvent[]>([]); // calculate live score based on end round events
 
+  const [isRendererReady, setIsRendererReady] = useState(false);
+
   const effectiveDurationSec = useMemo(() => {
     if (audioSyncConfig.audioSyncDisabled || audioSyncConfig.audioDurationSec === null) {
       return durationSec;
@@ -44,6 +46,11 @@ export function useReplayEngine(
     const audioEndSec = audioSyncConfig.audioStartOffsetSec + audioSyncConfig.audioDurationSec;
     return Math.max(0, Math.min(durationSec, audioEndSec));
   }, [audioSyncConfig, durationSec]);
+
+  const effectiveDurationSecRef = useRef(effectiveDurationSec);
+  useEffect(() => {
+    effectiveDurationSecRef.current = effectiveDurationSec;
+  }, [effectiveDurationSec]);
 
   const syncAudioForReplayTime = useCallback((replaySec: number) => {
     if (!audioPlayerRef.current) return;
@@ -115,41 +122,63 @@ export function useReplayEngine(
     currentTimeRef.current = currentTimeSec;
   }, [currentTimeSec]);
 
-  // Main WebGPU Initialization
+  // webgpu initialization
+  useEffect(() => {
+    let cancelled = false;
+    if (!canvasRef.current) return;
+
+    (async () => {
+      try {
+        const renderer = await Renderer.create(canvasRef.current!);
+        if (cancelled) return;
+
+        rendererRef.current = renderer;
+        setIsRendererReady(true);
+        console.log("WebGPU initialized");
+      } catch (err: any) {
+        if (!cancelled) setFetchError("Failed to initialize WebGPU: " + err.message);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canvasRef])
+
+  // data fetch and loop initialization
   useEffect(() => {
     let cancelled = false;
 
+    if (!id || !isRendererReady || !rendererRef.current) return;
+
     (async () => {
-      if (!id || !canvasRef.current) return setFetchError("No replay ID or canvas.");
+      setIsFetching(true);
+
       try {
         const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/${id}/json`, { credentials: "include" });
-        if (!res.ok) throw new Error(`Server Error ${res.status}`);
+        if (!res.ok) throw new Error (`Server error ${res.status}`);
 
-        const renderer = await Renderer.create(canvasRef.current);
-
+        const data: ReplayJSON = await res.json();
         if (cancelled) return;
-        rendererRef.current = renderer;
 
-        const data: ReplayJSON = JSON.parse(await res.text());
-
-        //map loading
+        // loading the map
         if (data.meta?.map) {
           try {
-            const mapRes = await fetch(`/maps/${data.meta.map}.geometry.json`);
-            if (mapRes.ok) {
-              const geometryJSON = await mapRes.json();
-              renderer.setMapGeometry(geometryJSON, data.meta.map);
+            const mapOutlineRes = await fetch(`/maps/${data.meta.map}.geometry.json`);
+            if (mapOutlineRes.ok) {
+              const geometryJSON = await mapOutlineRes.json();
+
+              rendererRef.current?.setMapGeometry(geometryJSON, data.meta.map);
 
               const config = MapRegistry[data.meta.map] || DefaultMapConfig;
+              const mapUrl = `/maps/${data.meta.map}.radar.svg`;
 
-              // UPDATED FILENAME FORMAT: .radar.svg
-              const svgUrl = `/maps/${data.meta.map}.radar.svg`;
-              await renderer.getMapRenderer().loadMapImage(svgUrl, config, geometryJSON.bounds);
+              await rendererRef.current?.getMapRenderer().loadMapImage(mapUrl, config, geometryJSON.bounds);
             } else {
               console.warn(`No map geometry found for ${data.meta.map}`);
             }
           } catch (err) {
-            console.warn("Failed to load map geometry:", err);
+            console.warn(`Failed to load map geometry or image: `, err);
           }
         }
 
@@ -157,46 +186,42 @@ export function useReplayEngine(
         player.setReplay(data);
         playerRef.current = player;
 
-        // match metadata
         if (data.meta) setReplayMeta(data.meta);
+        if (data.events?.round_end) setRoundEndEvents(data.events.round_end);
 
-        // round end events
-        if (data.events?.round_end) {
-          setRoundEndEvents(data.events.round_end);
-        }
-
-
-        // setup initial state based on replay metadata
         setTicksPerSecond(player.ticksPerSecond);
         setReplayStartTick(data.timeline[0]?.t ?? 0);
-        setRoundStartTicks(
-          (data.events?.round_start ?? []).map(r => r.t).filter(Number.isFinite).sort((a, b) => a - b),
-        );
+        setRoundStartTicks((data.events?.round_start ?? []).map(r => r.t).filter(Number.isFinite).sort((a, b) => a - b),);
         setDurationSec(player.getDurationSeconds());
         setCurrentTimeSec(0);
 
         const firstFrame = player.seekToElapsedSeconds(0);
         if (firstFrame) {
-          renderer.render(firstFrame, 0);
+          rendererRef.current?.render(firstFrame, 0);
           setFrame(firstFrame);
         }
+
         setIsFetching(false);
 
-        // main loop to advance replay frames and sync audio
+        // getting the loop
         const loop = (nowMs: number) => {
           if (cancelled || !rendererRef.current || !playerRef.current) return;
+          
           if (lastTimeRef.current === null) lastTimeRef.current = nowMs;
 
           const dtSec = (nowMs - lastTimeRef.current) / 1000;
           lastTimeRef.current = nowMs;
 
           let frame = null;
+          const currentEffectiveDuration = effectiveDurationSecRef.current;
+
           if (isPlayingRef.current) {
             frame = playerRef.current.advance(dtSec);
-            const nextSec = Math.min(playerRef.current.getCurrentElapsedSeconds(), effectiveDurationSec);
-            if (nextSec >= effectiveDurationSec) {
-              playerRef.current.seekToElapsedSeconds(effectiveDurationSec);
-              setCurrentTimeSec(effectiveDurationSec);
+            const nextSec = Math.min(playerRef.current.getCurrentElapsedSeconds(), currentEffectiveDuration);
+
+            if (nextSec >= currentEffectiveDuration) {
+              playerRef.current.seekToElapsedSeconds(currentEffectiveDuration);
+              setCurrentTimeSec(currentEffectiveDuration);
               setIsPlaying(false);
             } else {
               setCurrentTimeSec(nextSec);
@@ -211,21 +236,21 @@ export function useReplayEngine(
           }
           rafRef.current = requestAnimationFrame(loop);
         };
-
         rafRef.current = requestAnimationFrame(loop);
       } catch (err: any) {
         if (!cancelled) {
-          setFetchError(err.message || "Failed to load replay.");
+          setFetchError(err.message || "Failed to load replay.")
           setIsFetching(false);
         }
       }
     })();
-
+    
     return () => {
       cancelled = true;
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [id, canvasRef, effectiveDurationSec]);
+  }, [id, isRendererReady])
+
 
   const handleSeek = useCallback((sec: number) => {
     if (!playerRef.current || !rendererRef.current) return;
