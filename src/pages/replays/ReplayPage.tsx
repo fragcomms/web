@@ -47,21 +47,6 @@ export default function ReplayPage() {
     return () => audioPlayerRef.current?.destroy();
   }, []);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const preventNativeScroll = (e: WheelEvent) => {
-      e.preventDefault();
-    };
-
-    canvas.addEventListener("wheel", preventNativeScroll, { passive: false });
-    
-    return () => {
-      canvas.removeEventListener("wheel", preventNativeScroll);
-    };
-  }, []);
-
   // master hook to handle all media related
   const {
     transcriptText,
@@ -109,6 +94,24 @@ export default function ReplayPage() {
     setIsPlaying(true);
     handleSeek(seekSec);
   }, [roundStartTicks, replayStartTick, ticksPerSecond, setIsPlaying, handleSeek]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleNativeWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (canvasHandlers?.onWheel) {
+        canvasHandlers.onWheel(e as unknown as React.WheelEvent<HTMLCanvasElement>);
+      }
+    };
+
+    canvas.addEventListener("wheel", handleNativeWheel, { passive: false });
+    
+    return () => {
+      canvas.removeEventListener("wheel", handleNativeWheel);
+    };
+  }, [canvasHandlers]);
 
   useEffect(() => {
     function handleSpacebarToggle(event: KeyboardEvent) {

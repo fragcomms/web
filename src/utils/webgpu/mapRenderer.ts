@@ -7,9 +7,9 @@ export class MapRenderer {
   private device: GPUDevice;
   
   // json image
-  private linePipeline: GPURenderPipeline;
+  // private linePipeline: GPURenderPipeline;
   private lineVertexBuffer: GPUBuffer | null = null;
-  private lineVertexCount = 0;
+  // private lineVertexCount = 0;
   private blockingSegments: WallSegment[] = [];
 
   // svg image
