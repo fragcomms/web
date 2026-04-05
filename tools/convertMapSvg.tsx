@@ -50,6 +50,77 @@ function parsePointsString(pointsText: string): Vec2[] {
   return points;
 }
 
+function getPerpendicularDistance(p: Vec2, p1: Vec2, p2: Vec2): number {
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const mag = Math.sqrt(dx * dx + dy * dy);
+  if (mag === 0) return Math.sqrt((p.x - p1.x) ** 2 + (p.y - p1.y) ** 2);
+  return Math.abs(dx * (p1.y - p.y) - (p1.x - p.x) * dy) / mag;
+}
+
+// Ramer-Douglas-Peucker algorithm
+function simplifyLineRDP(points: Vec2[], epsilon: number): Vec2[] {
+  if (points.length < 3) return points;
+  let dmax = 0;
+  let index = 0;
+  const end = points.length - 1;
+
+  for (let i = 1; i < end; i++) {
+    const d = getPerpendicularDistance(points[i], points[0], points[end]);
+    if (d > dmax) {
+      index = i;
+      dmax = d;
+    }
+  }
+
+  if (dmax > epsilon) {
+    const left = simplifyLineRDP(points.slice(0, index + 1), epsilon);
+    const right = simplifyLineRDP(points.slice(index), epsilon);
+    return left.slice(0, left.length - 1).concat(right);
+  } else {
+    return [points[0], points[end]];
+  }
+}
+
+function optimizeSegments(segments: Segment[], epsilon = 1.0): Segment[] {
+  const polylines: { points: Vec2[], meta: Partial<Segment> }[] = [];
+  let current: Vec2[] = [];
+  let currentMeta: Partial<Segment> = {};
+
+  for (const s of segments) {
+    if (current.length === 0) {
+      current.push({ x: s.x1, y: s.y1 }, { x: s.x2, y: s.y2 });
+      currentMeta = { group: s.group, stroke: s.stroke, fill: s.fill, source: s.source };
+    } else {
+      const last = current[current.length - 1];
+      if (Math.abs(last.x - s.x1) < 0.001 && Math.abs(last.y - s.y1) < 0.001) {
+        current.push({ x: s.x2, y: s.y2 });
+      } else {
+        polylines.push({ points: current, meta: currentMeta });
+        current = [{ x: s.x1, y: s.y1 }, { x: s.x2, y: s.y2 }];
+        currentMeta = { group: s.group, stroke: s.stroke, fill: s.fill, source: s.source };
+      }
+    }
+  }
+  if (current.length > 0) polylines.push({ points: current, meta: currentMeta });
+
+  const optimizedSegments: Segment[] = [];
+  for (const poly of polylines) {
+    const simplified = simplifyLineRDP(poly.points, epsilon);
+    for (let i = 0; i < simplified.length - 1; i++) {
+      optimizedSegments.push({
+        x1: simplified[i].x,
+        y1: simplified[i].y,
+        x2: simplified[i + 1].x,
+        y2: simplified[i + 1].y,
+        ...poly.meta
+      });
+    }
+  }
+
+  return optimizedSegments;
+}
+
 function lineNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
   const a = getAttrs(node);
   return [{
@@ -97,7 +168,7 @@ function cubicBezierPoint(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: number): Ve
   };
 }
 
-function flattenCubicBezier(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, meta: Partial<Segment>, steps = 12): Segment[] {
+function flattenCubicBezier(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, meta: Partial<Segment>, steps = 3): Segment[] {
   const out: Segment[] = [];
   let prev = p0;
   for (let i = 1; i <= steps; i++) {
@@ -177,7 +248,7 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
           const p1 = command === "c" ? { x: current.x + x1, y: current.y + y1 } : { x: x1, y: y1 };
           const p2 = command === "c" ? { x: current.x + x2, y: current.y + y2 } : { x: x2, y: y2 };
           const p3 = command === "c" ? { x: current.x + x, y: current.y + y } : { x, y };
-          out.push(...flattenCubicBezier(p0, p1, p2, p3, meta, 12));
+          out.push(...flattenCubicBezier(p0, p1, p2, p3, meta, 3));
           current = p3;
         }
         break;
@@ -284,7 +355,8 @@ function processSvgFile(inputPath: string, mapName: string) {
       return;
     }
 
-    const segments = dedupeSegments(flipY(outlineSegments));
+    let segments = dedupeSegments(flipY(outlineSegments));
+    segments = optimizeSegments(segments, 1.5);
     const bounds = computeBounds(segments);
 
     const geometry: MapGeometry = {

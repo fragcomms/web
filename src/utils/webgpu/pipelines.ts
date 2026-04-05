@@ -97,9 +97,7 @@ export function createVisionPipeline(
     {
       arrayStride: 2 * 4,
       stepMode: "vertex",
-      attributes: [
-        { shaderLocation: 0, offset: 0, format: "float32x2" },
-      ],
+      attributes: [{ shaderLocation: 0, offset: 0, format: "float32x2" }],
     },
     {
       arrayStride: 8 * 4,
@@ -114,38 +112,24 @@ export function createVisionPipeline(
   ];
 
   const pipelineLayout = device.createPipelineLayout({
-    bindGroupLayouts: [globalLayout, visionWallsLayout],
+    bindGroupLayouts: [globalLayout, visionWallsLayout], // Add it back here
   });
 
   const pipeline = device.createRenderPipeline({
     layout: pipelineLayout,
-    vertex: {
-      module,
-      entryPoint: "vs_main",
-      buffers: vertexBuffers,
-    },
+    vertex: { module, entryPoint: "vs_main", buffers: vertexBuffers },
     fragment: {
       module,
       entryPoint: "fs_main",
       targets: [{
         format,
         blend: {
-          color: {
-            srcFactor: "one",
-            dstFactor: "one-minus-src-alpha",
-            operation: "add",
-          },
-          alpha: {
-            srcFactor: "one",
-            dstFactor: "one-minus-src-alpha",
-            operation: "add",
-          },
+          color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
+          alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
         },
       }],
     },
-    primitive: {
-      topology: "triangle-list",
-    },
+    primitive: { topology: "triangle-list" },
   });
 
   return { pipeline, visionWallsLayout };

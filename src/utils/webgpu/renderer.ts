@@ -160,24 +160,19 @@ export class Renderer {
 
     const visionWallsBindGroup = device.createBindGroup({
       layout: visionWallsLayout,
-      entries: [
-        {
-          binding: 0,
-          resource: { buffer: visionWallBuffer },
-        },
-      ],
+      entries: [{ binding: 0, resource: { buffer: visionWallBuffer } }],
     });
 
     const visionRenderer = new VisionRenderer(
       queue,
       visionPipeline,
       globalBindGroup,
-      visionWallsBindGroup,
+      visionWallsBindGroup, // Bring this back
       visionQuadVertexBuffer,
       visionInstanceBuffer,
-      visionWallBuffer,
+      visionWallBuffer, // Bring this back
       maxVisionInstances,
-      maxVisionWalls,
+      maxVisionWalls, // Bring this back
     );
 
     const tracerQuadVertexBuffer = device.createBuffer({

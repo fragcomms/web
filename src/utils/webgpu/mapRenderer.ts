@@ -1,9 +1,5 @@
-import type { MapGeometry, Segment } from "./types";
+import type { MapGeometry } from "./types";
 import type { MapConfig } from "./mapConfig";
-
-function isVisionBlocker(s: Segment): boolean {
-  return s.stroke === "#3F464D" && (s.fill == null || s.fill === "none");
-}
 
 export type WallSegment = { x1: number; y1: number; x2: number; y2: number; };
 
@@ -112,7 +108,7 @@ export class MapRenderer {
     this.mapCenter.x = (svgCenterX * scale) + originX;
     this.mapCenter.y = (svgCenterY * scale) + originY;
 
-    this.blockingSegments = [];
+    this.blockingSegments = []; // Clear old walls
     let i = 0;
 
     for (const s of geometry.segments) {
@@ -121,13 +117,17 @@ export class MapRenderer {
       const y1 = (s.y1 * scale) + originY;
       const y2 = (s.y2 * scale) + originY;
 
-      verts[i++] = x1; verts[i++] = y1;
-      verts[i++] = x2; verts[i++] = y2;
+      verts[i++] = x1; 
+      verts[i++] = y1;
+      verts[i++] = x2; 
+      verts[i++] = y2;
 
-      if (isVisionBlocker(s)) {
-        this.blockingSegments.push({ x1, y1, x2, y2 });
-      }
+      // FIX: Push EVERY segment into the blocking array, no color checks needed!
+      this.blockingSegments.push({ x1, y1, x2, y2 });
     }
+
+    // Quick Debug: Check your browser console to make sure this is > 0
+    console.log(`Loaded ${this.blockingSegments.length} vision-blocking walls.`);
 
     this.lineVertexCount = geometry.segments.length * 2;
 

@@ -9,11 +9,8 @@ struct WallBuffer {
   segments : array<vec4<f32>>,
 };
 
-@group(0) @binding(0)
-var<uniform> uniforms : Uniforms;
-
-@group(1) @binding(0)
-var<storage, read> walls : WallBuffer;
+@group(0) @binding(0) var<uniform> uniforms : Uniforms;
+@group(1) @binding(0) var<storage, read> walls : WallBuffer;
 
 struct VSOut {
   @builtin(position) position : vec4<f32>,
@@ -37,9 +34,7 @@ fn segmentBlocks(origin : vec2<f32>, fragPos : vec2<f32>, wall : vec4<f32>) -> b
   let s = wall.zw - wall.xy;
   let rxs = cross2(r, s);
 
-  if (abs(rxs) < 0.0001) {
-    return false;
-  }
+  if (abs(rxs) < 0.0001) { return false; }
 
   let qp = q - p;
   let t = cross2(qp, s) / rxs;
@@ -72,21 +67,15 @@ fn vs_main(
 
 @fragment
 fn fs_main(input: VSOut) -> @location(0) vec4<f32> {
-  if (input.alive < 0.5) {
-    discard;
-  }
+  if (input.alive < 0.5) { discard; }
 
   let toFrag = input.worldPos - input.origin;
   let dist = length(toFrag);
 
-  if (dist < 0.001 || dist > input.radius) {
-    discard;
-  }
+  if (dist < 0.001 || dist > input.radius) { discard; }
 
   let dir = normalize(toFrag);
-  if (dot(dir, input.facingDir) < input.cosHalfFov) {
-    discard;
-  }
+  if (dot(dir, input.facingDir) < input.cosHalfFov) { discard; }
 
   let wallCount = u32(walls.header.x);
   for (var i = 0u; i < wallCount; i = i + 1u) {
