@@ -1,7 +1,7 @@
 import { initWebGPU } from "./gpuContext";
 import {
   createGlobalLayout,
-  createMapPipeline,
+  // createMapPipeline,
   createMapImagePipeline,
   createPlayerPipeline,
   createShardPipeline,
@@ -87,7 +87,7 @@ export class Renderer {
     const { pipeline: visionPipeline, visionWallsLayout } = createVisionPipeline(device, format, globalLayout);
     const { pipeline: tracerPipeline } = createTracerPipeline(device, format, globalLayout);
     const { pipeline: shardPipeline } = createShardPipeline(device, format, globalLayout);
-    const mapPipeline = createMapPipeline(device, format, globalLayout);
+    // const mapPipeline = createMapPipeline(device, format, globalLayout);
     const mapImagePipeline = createMapImagePipeline(device, format, globalLayout);
 
     const half = 4000;
