@@ -4,7 +4,7 @@ import { Renderer } from "../../utils/webgpu/renderer";
 import { ReplayPlayer } from "../../utils/webgpu/replayPlayer";
 import type { ReplayJSON, RenderFrame, RoundEndEvent, ReplayMeta } from "../../utils/webgpu/types";
 import { MapRegistry, DefaultMapConfig } from "../../utils/webgpu/mapConfig";
-import { usePanZoom } from "../../utils/webgpu/panzoom";
+import { usePanZoom } from "../../utils/webgpu/panZoom";
 
 type ReplayAudioSyncConfig = {
   audioStartOffsetSec: number;

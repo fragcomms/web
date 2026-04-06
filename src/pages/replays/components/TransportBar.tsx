@@ -1,5 +1,5 @@
 import { ArrowLeftRight, Clock3, Pause, Play } from "lucide-react";
-import { memo } from "react";
+import { memo, useState, useCallback, startTransition } from "react"; // <-- Import startTransition
 
 interface TransportBarProps {
   isPlaying: boolean;
@@ -28,6 +28,37 @@ export const TransportBar = memo(function TransportBar({
   handleRoundSelect,
   formatTime,
 }: TransportBarProps) {
+  
+  // Track dragging state and the temporary visual value
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragValue, setDragValue] = useState(0);
+
+  // Determine what to show on the screen instantly
+  const displayValue = isDragging ? dragValue : activeRoundElapsedSec;
+
+  const handlePointerDown = useCallback(() => {
+    setIsPlaying(false);
+    setIsDragging(true);
+    setDragValue(activeRoundElapsedSec);
+  }, [setIsPlaying, activeRoundElapsedSec]);
+
+  const handlePointerUp = useCallback(() => {
+    setIsDragging(false);
+    // Final high-priority seek when they let go of the mouse
+    handleSeek(activeRoundStartSec + dragValue);
+  }, [handleSeek, activeRoundStartSec, dragValue]);
+
+  const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Number(e.target.value);
+    
+    setDragValue(val); 
+
+    startTransition(() => {
+      handleSeek(activeRoundStartSec + val);
+    });
+    
+  }, [activeRoundStartSec, handleSeek]);
+
   return (
     <div className="w-full flex flex-col items-center gap-1.5 self-center">
       <div className="flex items-center gap-2 w-full max-w-200">
@@ -46,13 +77,16 @@ export const TransportBar = memo(function TransportBar({
           min={0}
           max={activeRoundDurationSec}
           step={0.01}
-          value={activeRoundElapsedSec}
-          onMouseDown={() => setIsPlaying(false)}
-          onChange={(e) => handleSeek(activeRoundStartSec + Number(e.target.value))}
+          value={displayValue} 
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onChange={handleSliderChange}
           className="flex-1 cursor-pointer"
           disabled={isFetching}
         />
-        <span className="text-slate-700 dark:text-white">{formatTime(activeRoundElapsedSec)} / {formatTime(activeRoundDurationSec)}</span>
+        <span className="text-slate-700 dark:text-white">
+          {formatTime(displayValue)} / {formatTime(activeRoundDurationSec)}
+        </span>
       </div>
 
       <div className="w-full max-w-300 self-center">
