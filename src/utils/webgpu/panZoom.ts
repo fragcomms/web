@@ -37,9 +37,6 @@ export function usePanZoom() {
   }, []);
 
   const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
-    // Prevent the whole browser page from scrolling
-    e.preventDefault(); 
-
     const zoomFactor = 1.1; // 10% zoom per scroll tick
 
     setCamera((prev) => ({

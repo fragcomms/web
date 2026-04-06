@@ -6,10 +6,7 @@ export type WallSegment = { x1: number; y1: number; x2: number; y2: number; };
 export class MapRenderer {
   private device: GPUDevice;
   
-  // json image
-  // private linePipeline: GPURenderPipeline;
-  private lineVertexBuffer: GPUBuffer | null = null;
-  // private lineVertexCount = 0;
+  // json boundaries
   private blockingSegments: WallSegment[] = [];
 
   // svg image
@@ -20,9 +17,8 @@ export class MapRenderer {
 
   public mapCenter = { x: 0, y: 0 };
 
-  constructor(device: GPUDevice, linePipeline: GPURenderPipeline, imagePipeline: GPURenderPipeline) {
+  constructor(device: GPUDevice, imagePipeline: GPURenderPipeline) {
     this.device = device;
-    this.linePipeline = linePipeline;
     this.imagePipeline = imagePipeline;
 
     this.sampler = device.createSampler({
@@ -99,7 +95,6 @@ export class MapRenderer {
   }
 
   setMapGeometry(geometry: MapGeometry, config: MapConfig) {
-    const verts = new Float32Array(geometry.segments.length * 4);
     const { scale, originX, originY } = config;
 
     const svgCenterX = (geometry.bounds.minX + geometry.bounds.maxX) / 2;
@@ -109,7 +104,6 @@ export class MapRenderer {
     this.mapCenter.y = (svgCenterY * scale) + originY;
 
     this.blockingSegments = []; // Clear old walls
-    let i = 0;
 
     for (const s of geometry.segments) {
       const x1 = (s.x1 * scale) + originX;
@@ -117,26 +111,10 @@ export class MapRenderer {
       const y1 = (s.y1 * scale) + originY;
       const y2 = (s.y2 * scale) + originY;
 
-      verts[i++] = x1; 
-      verts[i++] = y1;
-      verts[i++] = x2; 
-      verts[i++] = y2;
-
-      // FIX: Push EVERY segment into the blocking array, no color checks needed!
       this.blockingSegments.push({ x1, y1, x2, y2 });
     }
 
-    // Quick Debug: Check your browser console to make sure this is > 0
-    console.log(`Loaded ${this.blockingSegments.length} vision-blocking walls.`);
-
-    this.lineVertexCount = geometry.segments.length * 2;
-
-    if (this.lineVertexBuffer) this.lineVertexBuffer.destroy();
-    this.lineVertexBuffer = this.device.createBuffer({
-      size: verts.byteLength,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-    });
-    this.device.queue.writeBuffer(this.lineVertexBuffer, 0, verts);
+    // console.log(`Loaded ${this.blockingSegments.length} vision-blocking walls.`);
   }
 
   getBlockingSegments(): WallSegment[] { return this.blockingSegments; }

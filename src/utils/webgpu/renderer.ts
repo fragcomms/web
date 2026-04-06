@@ -252,7 +252,7 @@ export class Renderer {
       maxShards,
     );
 
-    const mapRenderer = new MapRenderer(device, mapPipeline, mapImagePipeline);
+    const mapRenderer = new MapRenderer(device, mapImagePipeline);
     
     return new Renderer(
       device,
