@@ -1,4 +1,4 @@
-import type { RenderPlayer } from "./types";
+import type { RenderAreaEffect, RenderPlayer } from "./types";
 import type { WallSegment } from "./mapRenderer";
 
 export class VisionRenderer {
@@ -6,38 +6,49 @@ export class VisionRenderer {
   private pipeline: GPURenderPipeline;
   private globalBindGroup: GPUBindGroup;
   private wallsBindGroup: GPUBindGroup;
+  private smokeBindGroup: GPUBindGroup;
   private quadVertexBuffer: GPUBuffer;
   private instanceBuffer: GPUBuffer;
   private wallBuffer: GPUBuffer;
+  private smokeBuffer: GPUBuffer;
 
   private maxInstances: number;
   private maxWalls: number;
+  private maxSmokes: number;
   private instanceStrideFloats = 8;
   private instanceScratch: Float32Array;
   private wallScratch: Float32Array;
+  private smokeScratch: Float32Array;
 
   constructor(
     queue: GPUQueue,
     pipeline: GPURenderPipeline,
     globalBindGroup: GPUBindGroup,
     wallsBindGroup: GPUBindGroup,
+    smokeBindGroup: GPUBindGroup,
     quadVertexBuffer: GPUBuffer,
     instanceBuffer: GPUBuffer,
     wallBuffer: GPUBuffer,
+    smokeBuffer: GPUBuffer,
     maxInstances: number,
     maxWalls: number,
+    maxSmokes: number,
   ) {
     this.queue = queue;
     this.pipeline = pipeline;
     this.globalBindGroup = globalBindGroup;
     this.wallsBindGroup = wallsBindGroup;
+    this.smokeBindGroup = smokeBindGroup;
     this.quadVertexBuffer = quadVertexBuffer;
     this.instanceBuffer = instanceBuffer;
     this.wallBuffer = wallBuffer;
+    this.smokeBuffer = smokeBuffer;
     this.maxInstances = maxInstances;
     this.maxWalls = maxWalls;
+    this.maxSmokes = maxSmokes;
     this.instanceScratch = new Float32Array(this.maxInstances * this.instanceStrideFloats);
     this.wallScratch = new Float32Array(4 + this.maxWalls * 4);
+    this.smokeScratch = new Float32Array(4 + this.maxSmokes * 4);
   }
 
   setWalls(walls: WallSegment[]) {
@@ -58,6 +69,29 @@ export class VisionRenderer {
       0,
       this.wallScratch.buffer,
       this.wallScratch.byteOffset,
+      (4 + count * 4) * 4,
+    );
+  }
+
+  setSmokes(effects: RenderAreaEffect[]) {
+    const smokes = effects.filter((effect) => effect.kind === "smoke");
+    const count = Math.min(smokes.length, this.maxSmokes);
+    this.smokeScratch[0] = count;
+
+    for (let i = 0; i < count; i++) {
+      const smoke = smokes[i];
+      const base = 4 + i * 4;
+      this.smokeScratch[base + 0] = smoke.x;
+      this.smokeScratch[base + 1] = smoke.y;
+      this.smokeScratch[base + 2] = smoke.radius;
+      this.smokeScratch[base + 3] = smoke.alpha;
+    }
+
+    this.queue.writeBuffer(
+      this.smokeBuffer,
+      0,
+      this.smokeScratch.buffer,
+      this.smokeScratch.byteOffset,
       (4 + count * 4) * 4,
     );
   }
@@ -105,6 +139,7 @@ export class VisionRenderer {
     pass.setPipeline(this.pipeline);
     pass.setBindGroup(0, this.globalBindGroup);
     pass.setBindGroup(1, this.wallsBindGroup);
+    pass.setBindGroup(2, this.smokeBindGroup);
     pass.setVertexBuffer(0, this.quadVertexBuffer);
     pass.setVertexBuffer(1, this.instanceBuffer);
     pass.draw(6, instanceCount, 0, 0);

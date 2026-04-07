@@ -1,5 +1,6 @@
 import { initWebGPU } from "./gpuContext";
 import {
+  createAreaEffectPipeline,
   createGlobalLayout,
   // createMapPipeline,
   createMapImagePipeline,
@@ -8,6 +9,8 @@ import {
   createTracerPipeline,
   createVisionPipeline,
 } from "./pipelines";
+import { AreaEffectRenderer } from "./areaEffectRenderer";
+import { GrenadeRenderer } from "./grenadeRenderer";
 import { PlayerRenderer } from "./playerRenderer";
 import { TracerRenderer } from "./tracerRenderer";
 import type { MapGeometry, RenderFrame } from "./types";
@@ -24,6 +27,8 @@ export class Renderer {
   private globalUniformBuffer: GPUBuffer;
 
   private playerRenderer: PlayerRenderer;
+  private grenadeRenderer: GrenadeRenderer;
+  private areaEffectRenderer: AreaEffectRenderer;
   private visionRenderer: VisionRenderer;
   private tracerRenderer: TracerRenderer;
   private mapRenderer: MapRenderer;
@@ -62,6 +67,8 @@ export class Renderer {
     context: GPUCanvasContext,
     globalUniformBuffer: GPUBuffer,
     playerRenderer: PlayerRenderer,
+    grenadeRenderer: GrenadeRenderer,
+    areaEffectRenderer: AreaEffectRenderer,
     visionRenderer: VisionRenderer,
     tracerRenderer: TracerRenderer,
     mapRenderer: MapRenderer,
@@ -72,6 +79,8 @@ export class Renderer {
     this.context = context;
     this.globalUniformBuffer = globalUniformBuffer;
     this.playerRenderer = playerRenderer;
+    this.grenadeRenderer = grenadeRenderer;
+    this.areaEffectRenderer = areaEffectRenderer;
     this.visionRenderer = visionRenderer;
     this.tracerRenderer = tracerRenderer;
     this.mapRenderer = mapRenderer;
@@ -83,8 +92,9 @@ export class Renderer {
 
     const globalLayout = createGlobalLayout(device);
 
+    const { pipeline: areaEffectPipeline } = createAreaEffectPipeline(device, format, globalLayout);
     const { pipeline: playerPipeline } = createPlayerPipeline(device, format, globalLayout);
-    const { pipeline: visionPipeline, visionWallsLayout } = createVisionPipeline(device, format, globalLayout);
+    const { pipeline: visionPipeline, visionWallsLayout, visionSmokeLayout } = createVisionPipeline(device, format, globalLayout);
     const { pipeline: tracerPipeline } = createTracerPipeline(device, format, globalLayout);
     const { pipeline: shardPipeline } = createShardPipeline(device, format, globalLayout);
     // const mapPipeline = createMapPipeline(device, format, globalLayout);
@@ -148,6 +158,72 @@ export class Renderer {
       maxPlayerInstances,
     );
 
+    const grenadeQuadVerts = new Float32Array([
+      -14, -14,
+       14, -14,
+      -14,  14,
+      -14,  14,
+       14, -14,
+       14,  14,
+    ]);
+
+    const grenadeQuadVertexBuffer = device.createBuffer({
+      size: grenadeQuadVerts.byteLength,
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+      mappedAtCreation: true,
+    });
+    new Float32Array(grenadeQuadVertexBuffer.getMappedRange()).set(grenadeQuadVerts);
+    grenadeQuadVertexBuffer.unmap();
+
+    const maxGrenadeInstances = 128;
+    const grenadeInstanceStrideBytes = 5 * 4;
+    const grenadeInstanceBuffer = device.createBuffer({
+      size: maxGrenadeInstances * grenadeInstanceStrideBytes,
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    });
+
+    const grenadeRenderer = new GrenadeRenderer(
+      queue,
+      playerPipeline,
+      globalBindGroup,
+      grenadeQuadVertexBuffer,
+      grenadeInstanceBuffer,
+      maxGrenadeInstances,
+    );
+
+    const areaEffectQuadVerts = new Float32Array([
+      -1, -1,
+       1, -1,
+      -1,  1,
+      -1,  1,
+       1, -1,
+       1,  1,
+    ]);
+
+    const areaEffectQuadVertexBuffer = device.createBuffer({
+      size: areaEffectQuadVerts.byteLength,
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+      mappedAtCreation: true,
+    });
+    new Float32Array(areaEffectQuadVertexBuffer.getMappedRange()).set(areaEffectQuadVerts);
+    areaEffectQuadVertexBuffer.unmap();
+
+    const maxAreaEffectInstances = 64;
+    const areaEffectInstanceStrideBytes = 10 * 4;
+    const areaEffectInstanceBuffer = device.createBuffer({
+      size: maxAreaEffectInstances * areaEffectInstanceStrideBytes,
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    });
+
+    const areaEffectRenderer = new AreaEffectRenderer(
+      queue,
+      areaEffectPipeline,
+      globalBindGroup,
+      areaEffectQuadVertexBuffer,
+      areaEffectInstanceBuffer,
+      maxAreaEffectInstances,
+    );
+
     const unitQuadVerts = new Float32Array([
       -1, -1,
        1, -1,
@@ -183,16 +259,30 @@ export class Renderer {
       entries: [{ binding: 0, resource: { buffer: visionWallBuffer } }],
     });
 
+    const maxVisionSmokes = 32;
+    const visionSmokeBuffer = device.createBuffer({
+      size: (4 + maxVisionSmokes * 4) * 4,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+
+    const visionSmokeBindGroup = device.createBindGroup({
+      layout: visionSmokeLayout,
+      entries: [{ binding: 0, resource: { buffer: visionSmokeBuffer } }],
+    });
+
     const visionRenderer = new VisionRenderer(
       queue,
       visionPipeline,
       globalBindGroup,
       visionWallsBindGroup, // Bring this back
+      visionSmokeBindGroup,
       visionQuadVertexBuffer,
       visionInstanceBuffer,
       visionWallBuffer, // Bring this back
+      visionSmokeBuffer,
       maxVisionInstances,
       maxVisionWalls, // Bring this back
+      maxVisionSmokes,
     );
 
     const tracerQuadVertexBuffer = device.createBuffer({
@@ -260,6 +350,8 @@ export class Renderer {
       context,
       globalUniformBuffer,
       playerRenderer,
+      grenadeRenderer,
+      areaEffectRenderer,
       visionRenderer,
       tracerRenderer,
       mapRenderer,
@@ -313,8 +405,11 @@ export class Renderer {
     this.deathShardRenderer.syncDeaths(frame.players, frame.tracers);
     this.deathShardRenderer.update(dtSec);
 
+    this.visionRenderer.setSmokes(frame.areaEffects);
     const visionCount = this.visionRenderer.upload(frame.players);
     const shardCount = this.deathShardRenderer.upload();
+    const areaEffectCount = this.areaEffectRenderer.upload(frame.areaEffects);
+    const grenadeCount = this.grenadeRenderer.upload(frame.grenades);
     const playerCount = this.playerRenderer.upload(frame.players);
     const tracerCount = this.tracerRenderer.upload(frame.tracers);
 
@@ -333,8 +428,10 @@ export class Renderer {
     });
 
     this.mapRenderer.render(pass, this.playerRenderer["globalBindGroup"]);
+    this.areaEffectRenderer.draw(pass, areaEffectCount);
     this.visionRenderer.draw(pass, visionCount);
     this.deathShardRenderer.draw(pass, shardCount);
+    this.grenadeRenderer.draw(pass, grenadeCount);
     this.tracerRenderer.draw(pass, tracerCount);
     this.playerRenderer.draw(pass, playerCount);
 

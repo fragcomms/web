@@ -33,13 +33,29 @@ export type TimelineGrenade = [number, number, number, number, number, number]
 export type TimelineTick = {
   t: number;
   p: TimelinePlayer[];
-  // g?: TimelineGrenade[];
+  g?: TimelineGrenade[];
 };
 
 export type WeaponFireEvent = {
   t: number;
   id: number; // steamid to number because shortened
   wep: string;
+};
+
+export type PositionedEvent = {
+  t: number;
+  id: number;
+  x: number;
+  y: number;
+  z: number;
+};
+
+export type InfernoExtinguishEvent = {
+  t: number;
+  id?: number;
+  x?: number;
+  y?: number;
+  z?: number;
 };
 
 export type RoundStartEvent = {
@@ -55,6 +71,12 @@ export type RoundEndEvent = {
 
 export type ReplayEvents = {
   weapon_fire?: WeaponFireEvent[];
+  hegrenade_detonate?: PositionedEvent[];
+  flashbang_detonate?: PositionedEvent[];
+  smokegrenade_detonate?: PositionedEvent[];
+  inferno_startburn?: PositionedEvent[];
+  inferno_expire?: PositionedEvent[];
+  inferno_extinguish?: InfernoExtinguishEvent[];
   round_start?: RoundStartEvent[];
   round_end?: RoundEndEvent[];
 };
@@ -86,9 +108,34 @@ export type RenderTracer = {
   team: Team;
 };
 
+export type RenderGrenade = {
+  eid: number;
+  ownerId: number;
+  grenadeType: number;
+  x: number;
+  y: number;
+  z: number;
+};
+
+export type RenderAreaEffect = {
+  kind: "smoke" | "inferno";
+  effectType?: number;
+  x: number;
+  y: number;
+  radius: number;
+  r: number;
+  g: number;
+  b: number;
+  alpha: number;
+  softness?: number;
+  density?: number;
+};
+
 export type RenderFrame = {
   tick: number;
   players: RenderPlayer[];
+  grenades: RenderGrenade[];
+  areaEffects: RenderAreaEffect[];
   tracers: RenderTracer[];
 };
 

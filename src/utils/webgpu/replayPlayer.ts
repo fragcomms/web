@@ -1,16 +1,28 @@
 import type {
+  InfernoExtinguishEvent,
+  PositionedEvent,
+  RenderAreaEffect,
   RenderFrame,
+  RenderGrenade,
   RenderPlayer,
   RenderTracer,
   ReplayJSON,
   SteamID,
   Team,
+  TimelineGrenade,
   TimelinePlayer,
   TimelineTick,
   WeaponFireEvent,
 } from "./types";
 
 type RosterInfo = { steamid: SteamID; team: Team; name: string; };
+type TimedAreaEffect = {
+  kind: "smoke" | "inferno";
+  startTick: number;
+  endTick: number;
+  x: number;
+  y: number;
+};
 
 export class ReplayPlayer {
   private timeline: TimelineTick[] = [];
@@ -24,6 +36,11 @@ export class ReplayPlayer {
   private rosterBySid = new Map<number, RosterInfo>();
 
   private weaponFire: WeaponFireEvent[] = [];
+  private smokeDetonations: PositionedEvent[] = [];
+  private infernoStartBurns: PositionedEvent[] = [];
+  private infernoExpires: PositionedEvent[] = [];
+  private infernoExtinguishes: InfernoExtinguishEvent[] = [];
+  private timedAreaEffects: TimedAreaEffect[] = [];
 
   setReplay(data: ReplayJSON) {
     const tl = data.timeline;
@@ -32,6 +49,11 @@ export class ReplayPlayer {
       this.timeline = [];
       this.tickNums = [];
       this.weaponFire = [];
+      this.smokeDetonations = [];
+      this.infernoStartBurns = [];
+      this.infernoExpires = [];
+      this.infernoExtinguishes = [];
+      this.timedAreaEffects = [];
       this.startTick = 0;
       this.endTick = 0;
       this.elapsedSec = 0;
@@ -71,6 +93,12 @@ export class ReplayPlayer {
 
     this.weaponFire = (data.events?.weapon_fire ?? []).slice();
     this.weaponFire.sort((a, b) => a.t - b.t);
+
+    this.smokeDetonations = (data.events?.smokegrenade_detonate ?? []).slice().sort((a, b) => a.t - b.t);
+    this.infernoStartBurns = (data.events?.inferno_startburn ?? []).slice().sort((a, b) => a.t - b.t);
+    this.infernoExpires = (data.events?.inferno_expire ?? []).slice().sort((a, b) => a.t - b.t);
+    this.infernoExtinguishes = (data.events?.inferno_extinguish ?? []).slice().sort((a, b) => a.t - b.t);
+    this.timedAreaEffects = this.buildTimedAreaEffects();
   }
 
   getDurationSeconds(): number {
@@ -145,8 +173,10 @@ export class ReplayPlayer {
   private makeRenderFrame(targetTick: number, prev: TimelineTick, next: TimelineTick): RenderFrame {
     if (prev.t === next.t) {
       const players = this.tickToRenderPlayers(prev);
+      const grenades = this.tickToRenderGrenades(prev);
+      const areaEffects = this.buildAreaEffectsForTick(prev.t);
       const { tracers } = this.buildTracersForTick(prev.t, players);
-      return { tick: prev.t, players, tracers };
+      return { tick: prev.t, players, grenades, areaEffects, tracers };
     }
 
     const denom = next.t - prev.t;
@@ -221,8 +251,10 @@ export class ReplayPlayer {
       }
     }
 
+    const grenades = this.interpolateGrenades(prev.g ?? [], next.g ?? [], alpha);
+    const areaEffects = this.buildAreaEffectsForTick(targetTick);
     const { tracers } = this.buildTracersForTick(targetTick, out);
-    return { tick: targetTick, players: out, tracers };
+    return { tick: targetTick, players: out, grenades, areaEffects, tracers };
   }
 
   private tickToRenderPlayers(tick: TimelineTick): RenderPlayer[] {
@@ -249,6 +281,71 @@ export class ReplayPlayer {
         name: roster?.name ?? "",
 
       };
+    }
+
+    return out;
+  }
+
+  private tickToRenderGrenades(tick: TimelineTick): RenderGrenade[] {
+    const grenades = tick.g ?? [];
+    const out: RenderGrenade[] = new Array(grenades.length);
+
+    for (let i = 0; i < grenades.length; i++) {
+      const grenade = grenades[i];
+      out[i] = {
+        eid: grenade[0],
+        ownerId: grenade[1],
+        grenadeType: grenade[2],
+        x: grenade[3],
+        y: grenade[4],
+        z: grenade[5],
+      };
+    }
+
+    return out;
+  }
+
+  private interpolateGrenades(
+    prevGrenades: TimelineGrenade[],
+    nextGrenades: TimelineGrenade[],
+    alpha: number,
+  ): RenderGrenade[] {
+    const nextByEntityId = new Map<number, TimelineGrenade>();
+    for (const grenade of nextGrenades) {
+      nextByEntityId.set(grenade[0], grenade);
+    }
+
+    const out: RenderGrenade[] = [];
+
+    for (const grenade of prevGrenades) {
+      const eid = grenade[0];
+      const ownerId = grenade[1];
+      const grenadeType = grenade[2];
+      const aX = grenade[3];
+      const aY = grenade[4];
+      const aZ = grenade[5];
+
+      const nextGrenade = nextByEntityId.get(eid);
+      if (!nextGrenade) {
+        out.push({
+          eid,
+          ownerId,
+          grenadeType,
+          x: aX,
+          y: aY,
+          z: aZ,
+        });
+        continue;
+      }
+
+      out.push({
+        eid,
+        ownerId,
+        grenadeType,
+        x: aX + (nextGrenade[3] - aX) * alpha,
+        y: aY + (nextGrenade[4] - aY) * alpha,
+        z: aZ + (nextGrenade[5] - aZ) * alpha,
+      });
     }
 
     return out;
@@ -305,6 +402,165 @@ export class ReplayPlayer {
     }
 
     return { tracers };
+  }
+
+  private buildTimedAreaEffects(): TimedAreaEffect[] {
+    const effects: TimedAreaEffect[] = [];
+
+    const smokeDurationTicks = Math.round(18 * this.ticksPerSecond);
+    for (const smoke of this.smokeDetonations) {
+      effects.push({
+        kind: "smoke",
+        startTick: smoke.t,
+        endTick: smoke.t + smokeDurationTicks,
+        x: smoke.x,
+        y: smoke.y,
+      });
+    }
+
+    const infernoFallbackDurationTicks = Math.round(7 * this.ticksPerSecond);
+    const unmatchedExpires = this.infernoExpires.slice();
+    const unmatchedExtinguishes = this.infernoExtinguishes.slice();
+
+    for (const start of this.infernoStartBurns) {
+      const expireIdx = this.findBestMatchingInfernoEnd(start, unmatchedExpires);
+      const extinguishIdx = this.findBestMatchingInfernoEnd(start, unmatchedExtinguishes);
+
+      let endTick = start.t + infernoFallbackDurationTicks;
+
+      if (expireIdx >= 0) {
+        endTick = Math.min(endTick, unmatchedExpires[expireIdx].t);
+      }
+      if (extinguishIdx >= 0) {
+        endTick = Math.min(endTick, unmatchedExtinguishes[extinguishIdx].t);
+      }
+
+      if (expireIdx >= 0) unmatchedExpires.splice(expireIdx, 1);
+      if (extinguishIdx >= 0) unmatchedExtinguishes.splice(extinguishIdx, 1);
+
+      effects.push({
+        kind: "inferno",
+        startTick: start.t,
+        endTick,
+        x: start.x,
+        y: start.y,
+      });
+    }
+
+    effects.sort((a, b) => a.startTick - b.startTick);
+    return effects;
+  }
+
+  private findBestMatchingInfernoEnd(
+    start: PositionedEvent,
+    candidates: Array<PositionedEvent | InfernoExtinguishEvent>,
+  ): number {
+    let bestIdx = -1;
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    for (let i = 0; i < candidates.length; i++) {
+      const candidate = candidates[i];
+      if (candidate.t < start.t) continue;
+
+      let score = candidate.t - start.t;
+
+      if (candidate.id != null && candidate.id === start.id) {
+        score -= 100000;
+      }
+
+      if (candidate.x != null && candidate.y != null) {
+        const dx = candidate.x - start.x;
+        const dy = candidate.y - start.y;
+        score += Math.hypot(dx, dy) * 0.1;
+      }
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestIdx = i;
+      }
+    }
+
+    return bestIdx;
+  }
+
+  private buildAreaEffectsForTick(targetTick: number): RenderAreaEffect[] {
+    const effects: RenderAreaEffect[] = [];
+
+    for (const effect of this.timedAreaEffects) {
+      if (effect.startTick > targetTick) {
+        break;
+      }
+      if (effect.endTick <= targetTick) {
+        continue;
+      }
+
+      const duration = Math.max(1, effect.endTick - effect.startTick);
+      const progress = (targetTick - effect.startTick) / duration;
+      const life = 1 - progress;
+
+      if (effect.kind === "smoke") {
+        const fadeIn = Math.min(1, (targetTick - effect.startTick) / (this.ticksPerSecond * 0.75));
+        const fadeOut = Math.min(1, (effect.endTick - targetTick) / (this.ticksPerSecond * 1.5));
+        const smokeLife = Math.min(fadeIn, fadeOut);
+        effects.push({
+          kind: "smoke",
+          effectType: 0,
+          x: effect.x,
+          y: effect.y,
+          radius: 120 + fadeIn * 34,
+          r: 0.58,
+          g: 0.59,
+          b: 0.62,
+          alpha: 0.12 + smokeLife * 0.24,
+          softness: 0.85,
+          density: 1.15,
+        });
+        effects.push({
+          kind: "smoke",
+          effectType: 0,
+          x: effect.x + 28,
+          y: effect.y - 18,
+          radius: 92 + fadeIn * 26,
+          r: 0.64,
+          g: 0.66,
+          b: 0.69,
+          alpha: 0.09 + smokeLife * 0.16,
+          softness: 1.0,
+          density: 1.35,
+        });
+        effects.push({
+          kind: "smoke",
+          effectType: 0,
+          x: effect.x - 24,
+          y: effect.y + 22,
+          radius: 98 + fadeIn * 22,
+          r: 0.5,
+          g: 0.52,
+          b: 0.56,
+          alpha: 0.07 + smokeLife * 0.12,
+          softness: 0.95,
+          density: 1.45,
+        });
+        continue;
+      }
+
+      const flicker = 0.92 + 0.08 * Math.sin(targetTick * 0.09 + effect.x * 0.002);
+      effects.push({
+        kind: "inferno",
+        effectType: 1,
+        x: effect.x,
+        y: effect.y,
+        radius: 118 + (1 - life) * 8,
+        r: 1.0,
+        g: 0.46 + 0.1 * flicker,
+        b: 0.05,
+        alpha: (0.34 + life * 0.24) * flicker,
+        softness: 0.22,
+        density: 1.25,
+      });
+    }
+
+    return effects;
   }
 }
 

@@ -1,4 +1,5 @@
 import playerShaderWGSL from "./shaders/player.wgsl?raw";
+import areaEffectShaderWGSL from "./shaders/areaEffect.wgsl?raw";
 import tracerShaderWGSL from "./shaders/tracer.wgsl?raw";
 import visionShaderWGSL from "./shaders/vision.wgsl?raw";
 import mapShaderWGSL from "./shaders/mapOutline.wgsl?raw";
@@ -76,12 +77,86 @@ export function createPlayerPipeline(device: GPUDevice, format: GPUTextureFormat
   return { pipeline };
 }
 
+export function createAreaEffectPipeline(device: GPUDevice, format: GPUTextureFormat, globalLayout: GPUBindGroupLayout) {
+  const module = device.createShaderModule({ code: areaEffectShaderWGSL });
+
+  const vertexBuffers: GPUVertexBufferLayout[] = [
+    {
+      arrayStride: 2 * 4,
+      stepMode: "vertex",
+      attributes: [
+        { shaderLocation: 0, offset: 0, format: "float32x2" },
+      ],
+    },
+    {
+      arrayStride: 10 * 4,
+      stepMode: "instance",
+      attributes: [
+        { shaderLocation: 1, offset: 0, format: "float32x2" },
+        { shaderLocation: 2, offset: 2 * 4, format: "float32" },
+        { shaderLocation: 3, offset: 3 * 4, format: "float32x3" },
+        { shaderLocation: 4, offset: 6 * 4, format: "float32" },
+        { shaderLocation: 5, offset: 7 * 4, format: "float32" },
+        { shaderLocation: 6, offset: 8 * 4, format: "float32" },
+        { shaderLocation: 7, offset: 9 * 4, format: "float32" },
+      ],
+    },
+  ];
+
+  const pipelineLayout = device.createPipelineLayout({
+    bindGroupLayouts: [globalLayout],
+  });
+
+  const pipeline = device.createRenderPipeline({
+    layout: pipelineLayout,
+    vertex: {
+      module,
+      entryPoint: "vs_main",
+      buffers: vertexBuffers,
+    },
+    fragment: {
+      module,
+      entryPoint: "fs_main",
+      targets: [{
+        format,
+        blend: {
+          color: {
+            srcFactor: "one",
+            dstFactor: "one-minus-src-alpha",
+            operation: "add",
+          },
+          alpha: {
+            srcFactor: "one",
+            dstFactor: "one-minus-src-alpha",
+            operation: "add",
+          },
+        },
+      }],
+    },
+    primitive: {
+      topology: "triangle-list",
+    },
+  });
+
+  return { pipeline };
+}
+
 export function createVisionPipeline(
   device: GPUDevice,
   format: GPUTextureFormat,
   globalLayout: GPUBindGroupLayout
 ) {
   const visionWallsLayout = device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.FRAGMENT,
+        buffer: { type: "read-only-storage" },
+      },
+    ],
+  });
+
+  const visionSmokeLayout = device.createBindGroupLayout({
     entries: [
       {
         binding: 0,
@@ -112,7 +187,7 @@ export function createVisionPipeline(
   ];
 
   const pipelineLayout = device.createPipelineLayout({
-    bindGroupLayouts: [globalLayout, visionWallsLayout], // Add it back here
+    bindGroupLayouts: [globalLayout, visionWallsLayout, visionSmokeLayout],
   });
 
   const pipeline = device.createRenderPipeline({
@@ -132,7 +207,7 @@ export function createVisionPipeline(
     primitive: { topology: "triangle-list" },
   });
 
-  return { pipeline, visionWallsLayout };
+  return { pipeline, visionWallsLayout, visionSmokeLayout };
 }
 
 export function createTracerPipeline(device: GPUDevice, format: GPUTextureFormat, globalLayout: GPUBindGroupLayout) {

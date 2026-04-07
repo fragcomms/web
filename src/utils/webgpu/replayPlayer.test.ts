@@ -27,6 +27,9 @@ function makeReplay(): ReplayJSON {
           [0, 100, 0, 0, 0, 0],
           [1, 100, 10, 10, 0, 90]
         ],
+        g: [
+          [99, 0, 2, 100, 200, 10],
+        ],
       },
       {
         t: 110,
@@ -34,10 +37,22 @@ function makeReplay(): ReplayJSON {
           [0, 100, 10, 0, 0, 0],
           [1, 100, 20, 10, 0, 90]
         ],
+        g: [
+          [99, 0, 2, 120, 240, 10],
+        ],
       },
     ],
     events: {
       weapon_fire: [],
+      smokegrenade_detonate: [
+        { t: 100, id: 0, x: 300, y: 400, z: 0 },
+      ],
+      inferno_startburn: [
+        { t: 100, id: 7, x: 500, y: 600, z: 0 },
+      ],
+      inferno_expire: [
+        { t: 108, id: 7, x: 500, y: 600, z: 0 },
+      ],
     },
   };
 }
@@ -66,6 +81,13 @@ describe("ReplayPlayer", () => {
     expect(frame!.players[0].steamid).toBe("111");
     expect(frame!.players[0].team).toBe(2);
     expect(frame!.players[0].alive).toBe(true);
+    expect(frame!.grenades).toHaveLength(1);
+    expect(frame!.grenades[0].eid).toBe(99);
+    expect(frame!.grenades[0].x).toBe(100);
+    expect(frame!.grenades[0].y).toBe(200);
+    expect(frame!.areaEffects).toHaveLength(4);
+    expect(frame!.areaEffects.slice(0, 3).every((effect) => effect.kind === "smoke")).toBe(true);
+    expect(frame!.areaEffects[3].kind).toBe("inferno");
     expect(frame!.tracers).toEqual([]);
   });
 
@@ -80,6 +102,10 @@ describe("ReplayPlayer", () => {
     expect(frame!.players[0].y).toBe(0);
     expect(frame!.players[1].x).toBe(20);
     expect(frame!.players[1].y).toBe(10);
+    expect(frame!.grenades[0].x).toBe(120);
+    expect(frame!.grenades[0].y).toBe(240);
+    expect(frame!.areaEffects).toHaveLength(3);
+    expect(frame!.areaEffects.every((effect) => effect.kind === "smoke")).toBe(true);
     expect(frame!.tracers).toEqual([]);
   });
 
@@ -95,6 +121,9 @@ describe("ReplayPlayer", () => {
 
     expect(frame!.players[1].x).toBeCloseTo(15, 5);
     expect(frame!.players[1].y).toBeCloseTo(10, 5);
+    expect(frame!.grenades[0].x).toBeCloseTo(110, 5);
+    expect(frame!.grenades[0].y).toBeCloseTo(220, 5);
+    expect(frame!.areaEffects).toHaveLength(4);
 
     expect(frame!.players[0].steamid).toBe("111");
     expect(frame!.players[1].steamid).toBe("222");
@@ -112,6 +141,8 @@ describe("ReplayPlayer", () => {
     expect(frame!.players[1].x).toBe(10);
     expect(frame!.players[0].rot).toBe(0);
     expect(frame!.players[1].rot).toBe(90);
+    expect(frame!.grenades[0].grenadeType).toBe(2);
+    expect(frame!.areaEffects.map((effect) => effect.kind)).toEqual(["smoke", "smoke", "smoke", "inferno"]);
     expect(frame!.tracers).toEqual([]);
   });
 });
