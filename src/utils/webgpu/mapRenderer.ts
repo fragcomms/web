@@ -1,4 +1,4 @@
-import type { MapGeometry } from "./types";
+import type { MapGeometry, WorldBounds } from "./types";
 import type { MapConfig } from "./mapConfig";
 
 export type WallSegment = { x1: number; y1: number; x2: number; y2: number; };
@@ -16,6 +16,7 @@ export class MapRenderer {
   private sampler: GPUSampler;
 
   public mapCenter = { x: 0, y: 0 };
+  public worldBounds: WorldBounds = { minX: -4000, minY: -4000, maxX: 4000, maxY: 4000 };
 
   constructor(device: GPUDevice, imagePipeline: GPURenderPipeline) {
     this.device = device;
@@ -102,6 +103,12 @@ export class MapRenderer {
 
     this.mapCenter.x = (svgCenterX * scale) + originX;
     this.mapCenter.y = (svgCenterY * scale) + originY;
+    this.worldBounds = {
+      minX: (geometry.bounds.minX * scale) + originX,
+      minY: (geometry.bounds.minY * scale) + originY,
+      maxX: (geometry.bounds.maxX * scale) + originX,
+      maxY: (geometry.bounds.maxY * scale) + originY,
+    };
 
     this.blockingSegments = []; // Clear old walls
 

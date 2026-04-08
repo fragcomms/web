@@ -9,14 +9,18 @@ struct WallBuffer {
   segments : array<vec4<f32>>,
 };
 
-struct SmokeBuffer {
-  header : vec4<f32>,
-  circles : array<vec4<f32>>,
+struct SmokeFieldParams {
+  mapMin : vec2<f32>,
+  mapMax : vec2<f32>,
+  control : vec4<f32>,
+  extra : vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> uniforms : Uniforms;
 @group(1) @binding(0) var<storage, read> walls : WallBuffer;
-@group(2) @binding(0) var<storage, read> smokes : SmokeBuffer;
+@group(2) @binding(0) var smokeSampler : sampler;
+@group(2) @binding(1) var smokeField : texture_2d<f32>;
+@group(2) @binding(2) var<uniform> smokeParams : SmokeFieldParams;
 
 struct VSOut {
   @builtin(position) position : vec4<f32>,
@@ -72,20 +76,13 @@ fn vs_main(
 }
 
 fn smokeDensity(worldPos : vec2<f32>) -> f32 {
-  let smokeCount = u32(smokes.header.x);
-  var density = 0.0;
-
-  for (var i = 0u; i < smokeCount; i = i + 1u) {
-    let smoke = smokes.circles[i];
-    let toFrag = worldPos - smoke.xy;
-    let dist = length(toFrag);
-    let normalized = dist / max(smoke.z, 0.001);
-    let body = 1.0 - smoothstep(0.18, 1.0, normalized);
-    let swirl = 0.85 + 0.15 * sin(uniforms.timeSec * 1.2 + normalized * 10.0 + f32(i) * 1.7);
-    density = max(density, body * smoke.w * 2.2 * swirl);
-  }
-
-  return clamp(density, 0.0, 1.0);
+  let size = max(smokeParams.mapMax - smokeParams.mapMin, vec2<f32>(1.0, 1.0));
+  let uv = clamp(vec2<f32>(
+    (worldPos.x - smokeParams.mapMin.x) / size.x,
+    (smokeParams.mapMax.y - worldPos.y) / size.y
+  ), vec2<f32>(0.0), vec2<f32>(1.0));
+  let density = clamp(textureSampleLevel(smokeField, smokeSampler, uv, 0.0).x, 0.0, 1.0);
+  return clamp(density * 1.2, 0.0, 1.0);
 }
 
 @fragment
@@ -111,11 +108,11 @@ fn fs_main(input: VSOut) -> @location(0) vec4<f32> {
   let radialMask = 1.0 - smoothstep(input.radius - wDist, input.radius + wDist, dist);
   let falloff = 1.0 - smoothstep(0.0, input.radius, dist);
   let smoke = smokeDensity(input.worldPos);
-  let scatter = smoke * pow(falloff, 0.45);
+  let scatter = smoke * pow(falloff, 0.55);
 
-  let baseAlpha = radialMask * falloff * 0.18;
-  let scatterAlpha = radialMask * scatter * 0.3;
-  let alpha = baseAlpha * (1.0 - smoke * 0.8) + scatterAlpha;
-  let scatteredColor = mix(input.color, vec3<f32>(0.92, 0.94, 0.96), smoke * 0.75);
+  let baseAlpha = radialMask * falloff * mix(0.18, 0.14, smoke);
+  let scatterAlpha = radialMask * scatter * 0.18;
+  let alpha = clamp(baseAlpha + scatterAlpha, 0.0, 0.28);
+  let scatteredColor = mix(input.color, vec3<f32>(0.96, 0.97, 1.0), smoke * 0.22);
   return vec4<f32>(scatteredColor * alpha, alpha);
 }

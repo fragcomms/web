@@ -85,9 +85,11 @@ describe("ReplayPlayer", () => {
     expect(frame!.grenades[0].eid).toBe(99);
     expect(frame!.grenades[0].x).toBe(100);
     expect(frame!.grenades[0].y).toBe(200);
-    expect(frame!.areaEffects).toHaveLength(4);
-    expect(frame!.areaEffects.slice(0, 3).every((effect) => effect.kind === "smoke")).toBe(true);
-    expect(frame!.areaEffects[3].kind).toBe("inferno");
+    expect(frame!.areaEffects).toHaveLength(1);
+    expect(frame!.areaEffects[0].kind).toBe("inferno");
+    expect(frame!.smokeSources).toHaveLength(1);
+    expect(frame!.smokeSources[0].x).toBe(300);
+    expect(frame!.smokeSources[0].y).toBe(400);
     expect(frame!.tracers).toEqual([]);
   });
 
@@ -104,8 +106,8 @@ describe("ReplayPlayer", () => {
     expect(frame!.players[1].y).toBe(10);
     expect(frame!.grenades[0].x).toBe(120);
     expect(frame!.grenades[0].y).toBe(240);
-    expect(frame!.areaEffects).toHaveLength(3);
-    expect(frame!.areaEffects.every((effect) => effect.kind === "smoke")).toBe(true);
+    expect(frame!.areaEffects).toHaveLength(0);
+    expect(frame!.smokeSources).toHaveLength(1);
     expect(frame!.tracers).toEqual([]);
   });
 
@@ -123,7 +125,8 @@ describe("ReplayPlayer", () => {
     expect(frame!.players[1].y).toBeCloseTo(10, 5);
     expect(frame!.grenades[0].x).toBeCloseTo(110, 5);
     expect(frame!.grenades[0].y).toBeCloseTo(220, 5);
-    expect(frame!.areaEffects).toHaveLength(4);
+    expect(frame!.areaEffects).toHaveLength(1);
+    expect(frame!.smokeSources).toHaveLength(1);
 
     expect(frame!.players[0].steamid).toBe("111");
     expect(frame!.players[1].steamid).toBe("222");
@@ -142,7 +145,8 @@ describe("ReplayPlayer", () => {
     expect(frame!.players[0].rot).toBe(0);
     expect(frame!.players[1].rot).toBe(90);
     expect(frame!.grenades[0].grenadeType).toBe(2);
-    expect(frame!.areaEffects.map((effect) => effect.kind)).toEqual(["smoke", "smoke", "smoke", "inferno"]);
+    expect(frame!.areaEffects.map((effect) => effect.kind)).toEqual(["inferno"]);
+    expect(frame!.smokeSources).toHaveLength(1);
     expect(frame!.tracers).toEqual([]);
   });
 });

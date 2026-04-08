@@ -1,23 +1,27 @@
 import { initWebGPU } from "./gpuContext";
 import {
   createAreaEffectPipeline,
+  createFluidSimPipelines,
   createGlobalLayout,
   // createMapPipeline,
   createMapImagePipeline,
   createPlayerPipeline,
   createShardPipeline,
+  createSmokeRenderPipeline,
   createTracerPipeline,
   createVisionPipeline,
 } from "./pipelines";
 import { AreaEffectRenderer } from "./areaEffectRenderer";
 import { GrenadeRenderer } from "./grenadeRenderer";
 import { PlayerRenderer } from "./playerRenderer";
+import { SmokeRenderer } from "./smokeRenderer";
 import { TracerRenderer } from "./tracerRenderer";
 import type { MapGeometry, RenderFrame } from "./types";
 import { VisionRenderer } from "./visionRenderer";
 import { MapRenderer } from "./mapRenderer";
 import { DeathShardRenderer } from "./deathShardRenderer";
 import { MapRegistry, DefaultMapConfig } from "./mapConfig";
+import { FluidSim } from "./fluidSim";
 
 export class Renderer {
   private device: GPUDevice;
@@ -31,8 +35,10 @@ export class Renderer {
   private areaEffectRenderer: AreaEffectRenderer;
   private visionRenderer: VisionRenderer;
   private tracerRenderer: TracerRenderer;
+  private smokeRenderer: SmokeRenderer;
   private mapRenderer: MapRenderer;
   private deathShardRenderer: DeathShardRenderer;
+  private fluidSim: FluidSim;
 
   private timeVec4 = new Float32Array(4);
   private lastRenderTimeSec: number | null = null;
@@ -71,8 +77,10 @@ export class Renderer {
     areaEffectRenderer: AreaEffectRenderer,
     visionRenderer: VisionRenderer,
     tracerRenderer: TracerRenderer,
+    smokeRenderer: SmokeRenderer,
     mapRenderer: MapRenderer,
     deathShardRenderer: DeathShardRenderer,
+    fluidSim: FluidSim,
   ) {
     this.device = device;
     this.queue = queue;
@@ -83,8 +91,10 @@ export class Renderer {
     this.areaEffectRenderer = areaEffectRenderer;
     this.visionRenderer = visionRenderer;
     this.tracerRenderer = tracerRenderer;
+    this.smokeRenderer = smokeRenderer;
     this.mapRenderer = mapRenderer;
     this.deathShardRenderer = deathShardRenderer;
+    this.fluidSim = fluidSim;
   }
 
   static async create(canvas: HTMLCanvasElement): Promise<Renderer> {
@@ -92,9 +102,11 @@ export class Renderer {
 
     const globalLayout = createGlobalLayout(device);
 
-    const { pipeline: areaEffectPipeline } = createAreaEffectPipeline(device, format, globalLayout);
+    const { pipeline: areaEffectPipeline, smokeFieldLayout } = createAreaEffectPipeline(device, format, globalLayout);
+    const { pipeline: smokeRenderPipeline } = createSmokeRenderPipeline(device, format, globalLayout, smokeFieldLayout);
+    const fluidSimPipelines = createFluidSimPipelines(device);
     const { pipeline: playerPipeline } = createPlayerPipeline(device, format, globalLayout);
-    const { pipeline: visionPipeline, visionWallsLayout, visionSmokeLayout } = createVisionPipeline(device, format, globalLayout);
+    const { pipeline: visionPipeline, visionWallsLayout } = createVisionPipeline(device, format, globalLayout, smokeFieldLayout);
     const { pipeline: tracerPipeline } = createTracerPipeline(device, format, globalLayout);
     const { pipeline: shardPipeline } = createShardPipeline(device, format, globalLayout);
     // const mapPipeline = createMapPipeline(device, format, globalLayout);
@@ -224,6 +236,39 @@ export class Renderer {
       maxAreaEffectInstances,
     );
 
+    const fluidSim = new FluidSim(
+      device,
+      queue,
+      fluidSimPipelines,
+      smokeFieldLayout,
+    );
+    areaEffectRenderer.setSmokeFieldBindGroup(fluidSim.getSampleBindGroup());
+
+    const smokeQuadVerts = new Float32Array([
+      -4000, -4000, 0, 1,
+       4000, -4000, 1, 1,
+      -4000,  4000, 0, 0,
+      -4000,  4000, 0, 0,
+       4000, -4000, 1, 1,
+       4000,  4000, 1, 0,
+    ]);
+
+    const smokeQuadVertexBuffer = device.createBuffer({
+      size: smokeQuadVerts.byteLength,
+      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+      mappedAtCreation: true,
+    });
+    new Float32Array(smokeQuadVertexBuffer.getMappedRange()).set(smokeQuadVerts);
+    smokeQuadVertexBuffer.unmap();
+
+    const smokeRenderer = new SmokeRenderer(
+      queue,
+      smokeRenderPipeline,
+      globalBindGroup,
+      smokeQuadVertexBuffer,
+    );
+    smokeRenderer.setSmokeFieldBindGroup(fluidSim.getSampleBindGroup());
+
     const unitQuadVerts = new Float32Array([
       -1, -1,
        1, -1,
@@ -259,31 +304,18 @@ export class Renderer {
       entries: [{ binding: 0, resource: { buffer: visionWallBuffer } }],
     });
 
-    const maxVisionSmokes = 32;
-    const visionSmokeBuffer = device.createBuffer({
-      size: (4 + maxVisionSmokes * 4) * 4,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
-
-    const visionSmokeBindGroup = device.createBindGroup({
-      layout: visionSmokeLayout,
-      entries: [{ binding: 0, resource: { buffer: visionSmokeBuffer } }],
-    });
-
     const visionRenderer = new VisionRenderer(
       queue,
       visionPipeline,
       globalBindGroup,
-      visionWallsBindGroup, // Bring this back
-      visionSmokeBindGroup,
+      visionWallsBindGroup,
       visionQuadVertexBuffer,
       visionInstanceBuffer,
-      visionWallBuffer, // Bring this back
-      visionSmokeBuffer,
+      visionWallBuffer,
       maxVisionInstances,
-      maxVisionWalls, // Bring this back
-      maxVisionSmokes,
+      maxVisionWalls,
     );
+    visionRenderer.setSmokeFieldBindGroup(fluidSim.getSampleBindGroup());
 
     const tracerQuadVertexBuffer = device.createBuffer({
       size: unitQuadVerts.byteLength,
@@ -354,8 +386,10 @@ export class Renderer {
       areaEffectRenderer,
       visionRenderer,
       tracerRenderer,
+      smokeRenderer,
       mapRenderer,
       deathShardRenderer,
+      fluidSim,
     );
   }
 
@@ -366,6 +400,8 @@ export class Renderer {
     }
 
     this.mapRenderer.setMapGeometry(geometry, config);
+    this.fluidSim.setBounds(this.mapRenderer.worldBounds);
+    this.smokeRenderer.setBounds(this.mapRenderer.worldBounds);
 
     const walls = this.mapRenderer.getBlockingSegments();
     this.visionRenderer.setWalls(walls);
@@ -404,8 +440,10 @@ export class Renderer {
 
     this.deathShardRenderer.syncDeaths(frame.players, frame.tracers);
     this.deathShardRenderer.update(dtSec);
-
-    this.visionRenderer.setSmokes(frame.areaEffects);
+    this.fluidSim.syncToFrame(frame);
+    this.areaEffectRenderer.setSmokeFieldBindGroup(this.fluidSim.getSampleBindGroup());
+    this.smokeRenderer.setSmokeFieldBindGroup(this.fluidSim.getSampleBindGroup());
+    this.visionRenderer.setSmokeFieldBindGroup(this.fluidSim.getSampleBindGroup());
     const visionCount = this.visionRenderer.upload(frame.players);
     const shardCount = this.deathShardRenderer.upload();
     const areaEffectCount = this.areaEffectRenderer.upload(frame.areaEffects);
@@ -428,6 +466,7 @@ export class Renderer {
     });
 
     this.mapRenderer.render(pass, this.playerRenderer["globalBindGroup"]);
+    this.smokeRenderer.draw(pass);
     this.areaEffectRenderer.draw(pass, areaEffectCount);
     this.visionRenderer.draw(pass, visionCount);
     this.deathShardRenderer.draw(pass, shardCount);

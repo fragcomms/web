@@ -131,12 +131,29 @@ export type RenderAreaEffect = {
   density?: number;
 };
 
+export type RenderSmokeSource = {
+  x: number;
+  y: number;
+  radius: number;
+  alpha: number;
+};
+
+export interface ReplayTickSource {
+  ticksPerSecond: number;
+  getFrameAtTick(tick: number): RenderFrame | null;
+  getStartTick(): number;
+  getEndTick(): number;
+  getSimulationResetTicks?(): number[];
+}
+
 export type RenderFrame = {
   tick: number;
   players: RenderPlayer[];
   grenades: RenderGrenade[];
   areaEffects: RenderAreaEffect[];
+  smokeSources: RenderSmokeSource[];
   tracers: RenderTracer[];
+  replaySource?: ReplayTickSource;
 };
 
 // maybe defunct
@@ -228,6 +245,8 @@ export type Bounds = {
   maxX: number;
   maxY: number;
 };
+
+export type WorldBounds = Bounds;
 
 export type MapGeometry = {
   segments: Segment[];

@@ -5,6 +5,7 @@ export class AreaEffectRenderer {
 
   private pipeline: GPURenderPipeline;
   private globalBindGroup: GPUBindGroup;
+  private smokeFieldBindGroup: GPUBindGroup | null = null;
 
   private quadVertexBuffer: GPUBuffer;
   private instanceBuffer: GPUBuffer;
@@ -31,13 +32,23 @@ export class AreaEffectRenderer {
     this.instanceScratch = new Float32Array(this.maxInstances * this.instanceStrideFloats);
   }
 
-  upload(effects: RenderAreaEffect[]) {
-    const count = Math.min(effects.length, this.maxInstances);
-    const data = this.instanceScratch;
+  setSmokeFieldBindGroup(bindGroup: GPUBindGroup) {
+    this.smokeFieldBindGroup = bindGroup;
+  }
 
-    for (let i = 0; i < count; i++) {
-      const effect = effects[i];
-      const base = i * this.instanceStrideFloats;
+  upload(effects: RenderAreaEffect[]) {
+    const data = this.instanceScratch;
+    let count = 0;
+
+    for (const effect of effects) {
+      if (effect.kind !== "inferno") {
+        continue;
+      }
+      if (count >= this.maxInstances) {
+        break;
+      }
+
+      const base = count * this.instanceStrideFloats;
 
       data[base + 0] = effect.x;
       data[base + 1] = effect.y;
@@ -49,6 +60,7 @@ export class AreaEffectRenderer {
       data[base + 7] = effect.softness ?? 0.5;
       data[base + 8] = effect.density ?? 1.0;
       data[base + 9] = effect.effectType ?? (effect.kind === "inferno" ? 1 : 0);
+      count++;
     }
 
     this.queue.writeBuffer(
@@ -69,6 +81,9 @@ export class AreaEffectRenderer {
 
     pass.setPipeline(this.pipeline);
     pass.setBindGroup(0, this.globalBindGroup);
+    if (this.smokeFieldBindGroup) {
+      pass.setBindGroup(1, this.smokeFieldBindGroup);
+    }
     pass.setVertexBuffer(0, this.quadVertexBuffer);
     pass.setVertexBuffer(1, this.instanceBuffer);
     pass.draw(6, instanceCount, 0, 0);

@@ -5,6 +5,7 @@ import type {
   RenderFrame,
   RenderGrenade,
   RenderPlayer,
+  RenderSmokeSource,
   RenderTracer,
   ReplayJSON,
   SteamID,
@@ -30,6 +31,7 @@ export class ReplayPlayer {
   private startTick = 0;
   private endTick = 0;
   private elapsedSec = 0;
+  private roundStartTicks: number[] = [];
 
   ticksPerSecond = 64;
 
@@ -57,6 +59,7 @@ export class ReplayPlayer {
       this.startTick = 0;
       this.endTick = 0;
       this.elapsedSec = 0;
+      this.roundStartTicks = [];
       this.rosterBySid.clear();
       return;
     }
@@ -66,6 +69,7 @@ export class ReplayPlayer {
     this.startTick = this.timeline.length ? this.timeline[0].t : 0;
     this.endTick = this.timeline.length ? this.timeline[this.timeline.length - 1].t : 0;
     this.elapsedSec = 0;
+    this.roundStartTicks = [];
 
     this.rosterBySid.clear();
     const roster = data.players ?? {};
@@ -98,6 +102,10 @@ export class ReplayPlayer {
     this.infernoStartBurns = (data.events?.inferno_startburn ?? []).slice().sort((a, b) => a.t - b.t);
     this.infernoExpires = (data.events?.inferno_expire ?? []).slice().sort((a, b) => a.t - b.t);
     this.infernoExtinguishes = (data.events?.inferno_extinguish ?? []).slice().sort((a, b) => a.t - b.t);
+    this.roundStartTicks = uniqueSortedTicks([
+      this.startTick,
+      ...(data.events?.round_start ?? []).map((event) => event.t),
+    ]);
     this.timedAreaEffects = this.buildTimedAreaEffects();
   }
 
@@ -110,6 +118,18 @@ export class ReplayPlayer {
 
   getCurrentElapsedSeconds(): number {
     return this.elapsedSec;
+  }
+
+  getStartTick(): number {
+    return this.startTick;
+  }
+
+  getEndTick(): number {
+    return this.endTick;
+  }
+
+  getSimulationResetTicks(): number[] {
+    return this.roundStartTicks.length ? this.roundStartTicks : [this.startTick];
   }
 
   reset() {
@@ -128,6 +148,18 @@ export class ReplayPlayer {
     const duration = this.getDurationSeconds();
     this.elapsedSec = Math.max(0, Math.min(sec, duration));
     return this.getFrameAtElapsedSeconds(this.elapsedSec);
+  }
+
+  getFrameAtTick(tick: number): RenderFrame | null {
+    if (!this.timeline || this.timeline.length === 0) {
+      return null;
+    }
+    const targetTick = Math.max(this.startTick, Math.min(tick, this.endTick));
+    const bracket = this.bracketTick(targetTick);
+    if (!bracket) {
+      return null;
+    }
+    return this.makeRenderFrame(targetTick, bracket.prev, bracket.next);
   }
 
   getFrameAtElapsedSeconds(elapsedSec: number): RenderFrame | null {
@@ -175,8 +207,17 @@ export class ReplayPlayer {
       const players = this.tickToRenderPlayers(prev);
       const grenades = this.tickToRenderGrenades(prev);
       const areaEffects = this.buildAreaEffectsForTick(prev.t);
+      const smokeSources = this.buildSmokeSourcesForTick(prev.t);
       const { tracers } = this.buildTracersForTick(prev.t, players);
-      return { tick: prev.t, players, grenades, areaEffects, tracers };
+      return {
+        tick: prev.t,
+        players,
+        grenades,
+        areaEffects,
+        smokeSources,
+        tracers,
+        replaySource: this,
+      };
     }
 
     const denom = next.t - prev.t;
@@ -253,8 +294,17 @@ export class ReplayPlayer {
 
     const grenades = this.interpolateGrenades(prev.g ?? [], next.g ?? [], alpha);
     const areaEffects = this.buildAreaEffectsForTick(targetTick);
+    const smokeSources = this.buildSmokeSourcesForTick(targetTick);
     const { tracers } = this.buildTracersForTick(targetTick, out);
-    return { tick: targetTick, players: out, grenades, areaEffects, tracers };
+    return {
+      tick: targetTick,
+      players: out,
+      grenades,
+      areaEffects,
+      smokeSources,
+      tracers,
+      replaySource: this,
+    };
   }
 
   private tickToRenderPlayers(tick: TimelineTick): RenderPlayer[] {
@@ -499,48 +549,6 @@ export class ReplayPlayer {
       const life = 1 - progress;
 
       if (effect.kind === "smoke") {
-        const fadeIn = Math.min(1, (targetTick - effect.startTick) / (this.ticksPerSecond * 0.75));
-        const fadeOut = Math.min(1, (effect.endTick - targetTick) / (this.ticksPerSecond * 1.5));
-        const smokeLife = Math.min(fadeIn, fadeOut);
-        effects.push({
-          kind: "smoke",
-          effectType: 0,
-          x: effect.x,
-          y: effect.y,
-          radius: 120 + fadeIn * 34,
-          r: 0.58,
-          g: 0.59,
-          b: 0.62,
-          alpha: 0.12 + smokeLife * 0.24,
-          softness: 0.85,
-          density: 1.15,
-        });
-        effects.push({
-          kind: "smoke",
-          effectType: 0,
-          x: effect.x + 28,
-          y: effect.y - 18,
-          radius: 92 + fadeIn * 26,
-          r: 0.64,
-          g: 0.66,
-          b: 0.69,
-          alpha: 0.09 + smokeLife * 0.16,
-          softness: 1.0,
-          density: 1.35,
-        });
-        effects.push({
-          kind: "smoke",
-          effectType: 0,
-          x: effect.x - 24,
-          y: effect.y + 22,
-          radius: 98 + fadeIn * 22,
-          r: 0.5,
-          g: 0.52,
-          b: 0.56,
-          alpha: 0.07 + smokeLife * 0.12,
-          softness: 0.95,
-          density: 1.45,
-        });
         continue;
       }
 
@@ -550,17 +558,46 @@ export class ReplayPlayer {
         effectType: 1,
         x: effect.x,
         y: effect.y,
-        radius: 118 + (1 - life) * 8,
+        radius: 126 + (1 - life) * 10,
         r: 1.0,
         g: 0.46 + 0.1 * flicker,
         b: 0.05,
-        alpha: (0.34 + life * 0.24) * flicker,
-        softness: 0.22,
-        density: 1.25,
+        alpha: (0.4 + life * 0.28) * flicker,
+        softness: 0.18,
+        density: 1.42,
       });
     }
 
     return effects;
+  }
+
+  private buildSmokeSourcesForTick(targetTick: number): RenderSmokeSource[] {
+    const sources: RenderSmokeSource[] = [];
+
+    for (const effect of this.timedAreaEffects) {
+      if (effect.kind !== "smoke") {
+        continue;
+      }
+      if (effect.startTick > targetTick) {
+        break;
+      }
+      if (effect.endTick <= targetTick) {
+        continue;
+      }
+
+      const fadeIn = Math.min(1, (targetTick - effect.startTick) / (this.ticksPerSecond * 0.75));
+      const fadeOut = Math.min(1, (effect.endTick - targetTick) / (this.ticksPerSecond * 1.5));
+      const smokeLife = Math.min(fadeIn, fadeOut);
+
+      sources.push({
+        x: effect.x,
+        y: effect.y,
+        radius: 212 + fadeIn * 56,
+        alpha: 0.58 + smokeLife * 0.38,
+      });
+    }
+
+    return sources;
   }
 }
 
@@ -590,6 +627,18 @@ function lowerBoundWeaponFire(arr: { t: number; }[], tick: number): number {
     else hi = mid;
   }
   return lo;
+}
+
+function uniqueSortedTicks(ticks: number[]): number[] {
+  const seen = new Set<number>();
+  const out: number[] = [];
+  for (const tick of ticks) {
+    if (!Number.isFinite(tick) || seen.has(tick)) continue;
+    seen.add(tick);
+    out.push(tick);
+  }
+  out.sort((a, b) => a - b);
+  return out;
 }
 
 function tracerLengthForWeapon(weapon: string): number {
