@@ -1,4 +1,6 @@
 import type { RenderPlayer } from "./types";
+import { getPlayerColor } from "./renderPalette";
+import { writeFloat32Slice } from "./gpuBufferUtils";
 
 export class PlayerRenderer {
   private queue: GPUQueue;
@@ -10,7 +12,7 @@ export class PlayerRenderer {
   private playerInstanceBuffer: GPUBuffer;
 
   private maxPlayerInstances: number;
-  private instanceStrideFloats = 5;
+  private instanceStrideFloats = 7;
 
   private instanceScratch: Float32Array;
 
@@ -34,11 +36,6 @@ export class PlayerRenderer {
 
   upload(players: RenderPlayer[]) {
     const count = Math.min(players.length, this.maxPlayerInstances);
-
-    const ctR = 0.2, ctG = 0.6, ctB = 1.0; // counterTerrorist RGB
-    const tR = 1.0, tG = 0.4, tB = 0.2; // terrorist RGB
-    const dim = 0.2;
-
     const data = this.instanceScratch;
 
     for (let i = 0; i < count; i++) {
@@ -48,23 +45,15 @@ export class PlayerRenderer {
       data[base + 0] = p.x;
       data[base + 1] = p.y;
 
-      const isCT = p.team === 3;
-      const r = isCT ? ctR : tR;
-      const g = isCT ? ctG : tG;
-      const b = isCT ? ctB : tB;
-
-      data[base + 2] = p.alive ? r : dim;
-      data[base + 3] = p.alive ? g : dim;
-      data[base + 4] = p.alive ? b : dim;
+      const [r, g, b] = getPlayerColor(p.team, p.alive);
+      data[base + 2] = r;
+      data[base + 3] = g;
+      data[base + 4] = b;
+      data[base + 5] = p.alive ? 1 - Math.max(0, Math.min(100, p.hp)) / 100 : -1;
+      data[base + 6] = hashSteamId(p.steamid);
     }
 
-    this.queue.writeBuffer(
-      this.playerInstanceBuffer,
-      0,
-      data.buffer,
-      data.byteOffset,
-      count * this.instanceStrideFloats * 4,
-    );
+    writeFloat32Slice(this.queue, this.playerInstanceBuffer, data, count * this.instanceStrideFloats);
     return count;
   }
 
@@ -79,4 +68,13 @@ export class PlayerRenderer {
     pass.setVertexBuffer(1, this.playerInstanceBuffer);
     pass.draw(6, instanceCount, 0, 0);
   }
+}
+
+function hashSteamId(steamid: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < steamid.length; i++) {
+    hash ^= steamid.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return ((hash >>> 0) % 1024) / 1024;
 }

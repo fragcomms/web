@@ -86,6 +86,12 @@ fn fbm(p : vec2<f32>) -> f32 {
     return value;
 }
 
+fn ringProfile(dist : f32, radius : f32, width : f32) -> f32 {
+    let safeWidth = max(width, 0.001);
+    let d = (dist - radius) / safeWidth;
+    return exp(-d * d);
+}
+
 fn ridgeFbm(p : vec2<f32>) -> f32 {
     var value = 0.0;
     var amp = 0.5;
@@ -148,6 +154,50 @@ fn fs_main(input: VSOut) -> @location(0) vec4<f32> {
         let alpha = (rippedBody + tail * 0.9 + outerWisp * 0.6) * input.alpha * densityBoost;
         let coolTint = mix(input.color, vec3<f32>(0.82, 0.86, 0.9), rim * 0.35 + field.z * 0.28);
         let finalColor = mix(coolTint * 0.78, coolTint * 1.12, softBody + tail * 0.45);
+        return vec4<f32>(finalColor * alpha, alpha);
+    }
+
+    if (input.effectType > 1.5) {
+        let progress = clamp(input.softness, 0.0, 1.0);
+        let life = clamp(input.density, 0.0, 1.0);
+        let shockRadius = 0.16 + progress * 0.78;
+        let ringWidth = 0.05 + progress * 0.05;
+        let shockRing = ringProfile(dist, shockRadius, ringWidth) * (0.7 + life * 0.6);
+        let rippleRing = ringProfile(dist, shockRadius + 0.12, ringWidth * 1.6)
+            * (1.0 - progress)
+            * 0.46;
+        let core = (1.0 - smoothstep(0.0, 0.24 + progress * 0.1, dist)) * life;
+        let secondaryRing = ringProfile(dist, shockRadius + 0.18, ringWidth * 0.92)
+            * (1.0 - smoothstep(0.0, 0.44, progress))
+            * 0.72;
+        let dustBloom = (1.0 - smoothstep(0.05, 0.94, dist))
+            * (1.0 - smoothstep(0.0, 0.42, progress))
+            * (0.34 + life * 0.9);
+        let haze = (1.0 - smoothstep(0.08, 1.0, dist))
+            * (1.0 - smoothstep(0.06, 0.54, progress))
+            * 0.22;
+        let shimmer = fbm(
+            input.localPos * (9.0 + progress * 5.0)
+            + vec2<f32>(uniforms.timeSec * 3.8, -uniforms.timeSec * 2.4)
+        );
+        let tailFade = 1.0 - smoothstep(0.46, 1.0, progress);
+        let alpha = clamp(
+            core * 1.08
+            + shockRing * 1.12
+            + rippleRing
+            + secondaryRing
+            + dustBloom * 0.42
+            + haze * 0.08,
+            0.0,
+            1.35
+        ) * input.alpha * tailFade * (0.9 + shimmer * 0.14);
+        let hotCore = vec3<f32>(1.0, 0.96, 0.84);
+        let gold = vec3<f32>(1.0, 0.8, 0.46);
+        let ember = vec3<f32>(1.0, 0.48, 0.16);
+        var finalColor = mix(ember, gold, clamp(shockRing + secondaryRing * 0.42 + haze * 0.22, 0.0, 1.0));
+        finalColor = mix(finalColor, hotCore, clamp(core + rippleRing * 0.28, 0.0, 1.0));
+        finalColor = mix(finalColor, vec3<f32>(0.78, 0.72, 0.64), clamp(dustBloom * 0.5, 0.0, 0.42));
+        finalColor = mix(finalColor, input.color, 0.28);
         return vec4<f32>(finalColor * alpha, alpha);
     }
 

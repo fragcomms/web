@@ -2,8 +2,9 @@ import { initWebGPU } from "./gpuContext";
 import {
   createAreaEffectPipeline,
   createFluidSimPipelines,
+  createGrenadePipeline,
   createGlobalLayout,
-  // createMapPipeline,
+  createMapPipeline,
   createMapImagePipeline,
   createPlayerPipeline,
   createShardPipeline,
@@ -22,6 +23,8 @@ import { MapRenderer } from "./mapRenderer";
 import { DeathShardRenderer } from "./deathShardRenderer";
 import { MapRegistry, DefaultMapConfig } from "./mapConfig";
 import { FluidSim } from "./fluidSim";
+import { createDynamicBuffer, createFloat32Buffer } from "./gpuBufferUtils";
+import { createCenteredQuadVertices, createUnitQuadVertices, createWorldQuadVertices } from "./quadGeometry";
 
 export class Renderer {
   private device: GPUDevice;
@@ -29,6 +32,7 @@ export class Renderer {
   private context: GPUCanvasContext;
 
   private globalUniformBuffer: GPUBuffer;
+  private globalBindGroup: GPUBindGroup;
 
   private playerRenderer: PlayerRenderer;
   private grenadeRenderer: GrenadeRenderer;
@@ -72,6 +76,7 @@ export class Renderer {
     queue: GPUQueue,
     context: GPUCanvasContext,
     globalUniformBuffer: GPUBuffer,
+    globalBindGroup: GPUBindGroup,
     playerRenderer: PlayerRenderer,
     grenadeRenderer: GrenadeRenderer,
     areaEffectRenderer: AreaEffectRenderer,
@@ -86,6 +91,7 @@ export class Renderer {
     this.queue = queue;
     this.context = context;
     this.globalUniformBuffer = globalUniformBuffer;
+    this.globalBindGroup = globalBindGroup;
     this.playerRenderer = playerRenderer;
     this.grenadeRenderer = grenadeRenderer;
     this.areaEffectRenderer = areaEffectRenderer;
@@ -106,10 +112,11 @@ export class Renderer {
     const { pipeline: smokeRenderPipeline } = createSmokeRenderPipeline(device, format, globalLayout, smokeFieldLayout);
     const fluidSimPipelines = createFluidSimPipelines(device);
     const { pipeline: playerPipeline } = createPlayerPipeline(device, format, globalLayout);
+    const { pipeline: grenadePipeline } = createGrenadePipeline(device, format, globalLayout);
     const { pipeline: visionPipeline, visionWallsLayout } = createVisionPipeline(device, format, globalLayout, smokeFieldLayout);
     const { pipeline: tracerPipeline } = createTracerPipeline(device, format, globalLayout);
     const { pipeline: shardPipeline } = createShardPipeline(device, format, globalLayout);
-    // const mapPipeline = createMapPipeline(device, format, globalLayout);
+    const mapPipeline = createMapPipeline(device, format, globalLayout);
     const mapImagePipeline = createMapImagePipeline(device, format, globalLayout);
 
     const half = 4000;
@@ -137,103 +144,61 @@ export class Renderer {
       ],
     });
 
-    const quadVerts = new Float32Array([
-      -32, -32,
-       32, -32,
-      -32,  32,
-      -32,  32,
-       32, -32,
-       32,  32,
-    ]);
-
-    const quadVertexBuffer = device.createBuffer({
-      size: quadVerts.byteLength,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-      mappedAtCreation: true,
-    });
-    new Float32Array(quadVertexBuffer.getMappedRange()).set(quadVerts);
-    quadVertexBuffer.unmap();
+    const playerQuadVertexBuffer = createFloat32Buffer(
+      device,
+      createCenteredQuadVertices(44),
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    );
 
     const maxPlayerInstances = 64;
-    const instanceStrideBytes = 5 * 4;
-    const playerInstanceBuffer = device.createBuffer({
-      size: maxPlayerInstances * instanceStrideBytes,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-    });
+    const playerInstanceBuffer = createDynamicBuffer(
+      device,
+      maxPlayerInstances * 7 * 4,
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    );
 
     const playerRenderer = new PlayerRenderer(
       queue,
       playerPipeline,
       globalBindGroup,
-      quadVertexBuffer,
+      playerQuadVertexBuffer,
       playerInstanceBuffer,
       maxPlayerInstances,
     );
 
-    const grenadeQuadVerts = new Float32Array([
-      -14, -14,
-       14, -14,
-      -14,  14,
-      -14,  14,
-       14, -14,
-       14,  14,
-    ]);
-
-    const grenadeQuadVertexBuffer = device.createBuffer({
-      size: grenadeQuadVerts.byteLength,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-      mappedAtCreation: true,
-    });
-    new Float32Array(grenadeQuadVertexBuffer.getMappedRange()).set(grenadeQuadVerts);
-    grenadeQuadVertexBuffer.unmap();
+    const grenadeQuadVertexBuffer = createFloat32Buffer(
+      device,
+      createCenteredQuadVertices(56),
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    );
 
     const maxGrenadeInstances = 128;
-    const grenadeInstanceStrideBytes = 5 * 4;
-    const grenadeInstanceBuffer = device.createBuffer({
-      size: maxGrenadeInstances * grenadeInstanceStrideBytes,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-    });
+    const grenadeInstanceBuffer = createDynamicBuffer(
+      device,
+      maxGrenadeInstances * 7 * 4,
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    );
 
     const grenadeRenderer = new GrenadeRenderer(
       queue,
-      playerPipeline,
+      grenadePipeline,
       globalBindGroup,
       grenadeQuadVertexBuffer,
       grenadeInstanceBuffer,
       maxGrenadeInstances,
     );
 
-    const areaEffectQuadVerts = new Float32Array([
-      -1, -1,
-       1, -1,
-      -1,  1,
-      -1,  1,
-       1, -1,
-       1,  1,
-    ]);
-
-    const areaEffectQuadVertexBuffer = device.createBuffer({
-      size: areaEffectQuadVerts.byteLength,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-      mappedAtCreation: true,
-    });
-    new Float32Array(areaEffectQuadVertexBuffer.getMappedRange()).set(areaEffectQuadVerts);
-    areaEffectQuadVertexBuffer.unmap();
+    const unitQuadVertexBuffer = createFloat32Buffer(
+      device,
+      createUnitQuadVertices(),
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    );
 
     const maxAreaEffectInstances = 64;
-    const areaEffectInstanceStrideBytes = 10 * 4;
-    const areaEffectInstanceBuffer = device.createBuffer({
-      size: maxAreaEffectInstances * areaEffectInstanceStrideBytes,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-    });
-
-    const areaEffectRenderer = new AreaEffectRenderer(
-      queue,
-      areaEffectPipeline,
-      globalBindGroup,
-      areaEffectQuadVertexBuffer,
-      areaEffectInstanceBuffer,
-      maxAreaEffectInstances,
+    const areaEffectInstanceBuffer = createDynamicBuffer(
+      device,
+      maxAreaEffectInstances * 10 * 4,
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     );
 
     const fluidSim = new FluidSim(
@@ -242,62 +207,44 @@ export class Renderer {
       fluidSimPipelines,
       smokeFieldLayout,
     );
-    areaEffectRenderer.setSmokeFieldBindGroup(fluidSim.getSampleBindGroup());
 
-    const smokeQuadVerts = new Float32Array([
-      -4000, -4000, 0, 1,
-       4000, -4000, 1, 1,
-      -4000,  4000, 0, 0,
-      -4000,  4000, 0, 0,
-       4000, -4000, 1, 1,
-       4000,  4000, 1, 0,
-    ]);
+    const areaEffectRenderer = new AreaEffectRenderer(
+      queue,
+      areaEffectPipeline,
+      globalBindGroup,
+      fluidSim.getSampleBindGroup(),
+      unitQuadVertexBuffer,
+      areaEffectInstanceBuffer,
+      maxAreaEffectInstances,
+    );
 
-    const smokeQuadVertexBuffer = device.createBuffer({
-      size: smokeQuadVerts.byteLength,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-      mappedAtCreation: true,
-    });
-    new Float32Array(smokeQuadVertexBuffer.getMappedRange()).set(smokeQuadVerts);
-    smokeQuadVertexBuffer.unmap();
+    const smokeQuadVertexBuffer = createFloat32Buffer(
+      device,
+      createWorldQuadVertices({ minX: -4000, minY: -4000, maxX: 4000, maxY: 4000 }),
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    );
 
     const smokeRenderer = new SmokeRenderer(
       queue,
       smokeRenderPipeline,
       globalBindGroup,
+      fluidSim.getSampleBindGroup(),
       smokeQuadVertexBuffer,
     );
-    smokeRenderer.setSmokeFieldBindGroup(fluidSim.getSampleBindGroup());
-
-    const unitQuadVerts = new Float32Array([
-      -1, -1,
-       1, -1,
-      -1,  1,
-      -1,  1,
-       1, -1,
-       1,  1,
-    ]);
-
-    const visionQuadVertexBuffer = device.createBuffer({
-      size: unitQuadVerts.byteLength,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-      mappedAtCreation: true,
-    });
-    new Float32Array(visionQuadVertexBuffer.getMappedRange()).set(unitQuadVerts);
-    visionQuadVertexBuffer.unmap();
 
     const maxVisionInstances = 64;
-    const visionInstanceStrideBytes = 8 * 4;
-    const visionInstanceBuffer = device.createBuffer({
-      size: maxVisionInstances * visionInstanceStrideBytes,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-    });
+    const visionInstanceBuffer = createDynamicBuffer(
+      device,
+      maxVisionInstances * 8 * 4,
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    );
 
     const maxVisionWalls = 4096;
-    const visionWallBuffer = device.createBuffer({
-      size: (4 + maxVisionWalls * 4) * 4,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
+    const visionWallBuffer = createDynamicBuffer(
+      device,
+      (4 + maxVisionWalls * 4) * 4,
+      GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    );
 
     const visionWallsBindGroup = device.createBindGroup({
       layout: visionWallsLayout,
@@ -309,78 +256,54 @@ export class Renderer {
       visionPipeline,
       globalBindGroup,
       visionWallsBindGroup,
-      visionQuadVertexBuffer,
+      fluidSim.getSampleBindGroup(),
+      unitQuadVertexBuffer,
       visionInstanceBuffer,
       visionWallBuffer,
       maxVisionInstances,
       maxVisionWalls,
     );
-    visionRenderer.setSmokeFieldBindGroup(fluidSim.getSampleBindGroup());
-
-    const tracerQuadVertexBuffer = device.createBuffer({
-      size: unitQuadVerts.byteLength,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-      mappedAtCreation: true,
-    });
-    new Float32Array(tracerQuadVertexBuffer.getMappedRange()).set(unitQuadVerts);
-    tracerQuadVertexBuffer.unmap();
 
     const maxTracerInstances = 256;
-    const tracerInstanceStrideBytes = 8 * 4;
-    const tracerInstanceBuffer = device.createBuffer({
-      size: maxTracerInstances * tracerInstanceStrideBytes,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-    });
+    const tracerInstanceBuffer = createDynamicBuffer(
+      device,
+      maxTracerInstances * 8 * 4,
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    );
 
     const tracerRenderer = new TracerRenderer(
       queue,
       tracerPipeline,
       globalBindGroup,
-      tracerQuadVertexBuffer,
+      unitQuadVertexBuffer,
       tracerInstanceBuffer,
       maxTracerInstances,
     );
 
-    const shardQuadVerts = new Float32Array([
-      -1, -1,
-       1, -1,
-      -1,  1,
-      -1,  1,
-       1, -1,
-       1,  1,
-    ]);
-
-    const shardQuadVertexBuffer = device.createBuffer({
-      size: shardQuadVerts.byteLength,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-      mappedAtCreation: true,
-    });
-    new Float32Array(shardQuadVertexBuffer.getMappedRange()).set(shardQuadVerts);
-    shardQuadVertexBuffer.unmap();
-
     const maxShards = 512;
-    const shardInstanceStrideBytes = 7 * 4;
-    const shardInstanceBuffer = device.createBuffer({
-      size: maxShards * shardInstanceStrideBytes,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-    });
+    const shardInstanceBuffer = createDynamicBuffer(
+      device,
+      maxShards * 7 * 4,
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    );
 
     const deathShardRenderer = new DeathShardRenderer(
       queue,
       shardPipeline,
       globalBindGroup,
-      shardQuadVertexBuffer,
+      unitQuadVertexBuffer,
       shardInstanceBuffer,
       maxShards,
     );
 
-    const mapRenderer = new MapRenderer(device, mapImagePipeline);
+    const mapRenderer = new MapRenderer(device, mapPipeline, mapImagePipeline);
     
     return new Renderer(
       device,
       queue,
       context,
       globalUniformBuffer,
+      globalBindGroup,
       playerRenderer,
       grenadeRenderer,
       areaEffectRenderer,
@@ -441,9 +364,6 @@ export class Renderer {
     this.deathShardRenderer.syncDeaths(frame.players, frame.tracers);
     this.deathShardRenderer.update(dtSec);
     this.fluidSim.syncToFrame(frame);
-    this.areaEffectRenderer.setSmokeFieldBindGroup(this.fluidSim.getSampleBindGroup());
-    this.smokeRenderer.setSmokeFieldBindGroup(this.fluidSim.getSampleBindGroup());
-    this.visionRenderer.setSmokeFieldBindGroup(this.fluidSim.getSampleBindGroup());
     const visionCount = this.visionRenderer.upload(frame.players);
     const shardCount = this.deathShardRenderer.upload();
     const areaEffectCount = this.areaEffectRenderer.upload(frame.areaEffects);
@@ -465,7 +385,7 @@ export class Renderer {
       ],
     });
 
-    this.mapRenderer.render(pass, this.playerRenderer["globalBindGroup"]);
+    this.mapRenderer.render(pass, this.globalBindGroup);
     this.smokeRenderer.draw(pass);
     this.areaEffectRenderer.draw(pass, areaEffectCount);
     this.visionRenderer.draw(pass, visionCount);

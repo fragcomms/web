@@ -75,18 +75,6 @@ export async function initWebGPU(canvas: HTMLCanvasElement): Promise<GPUContext>
   vv?.addEventListener("resize", configure);
   window.addEventListener("resize", configure);
 
-  const rect = canvas.getBoundingClientRect();
-  console.log(
-    "rect:",
-    rect.width,
-    rect.height,
-    "backing:",
-    canvas.width,
-    canvas.height,
-    "dpr:",
-    window.devicePixelRatio,
-  );
-
   const gpuContext: GPUContext = {
     device,
     queue: device.queue,

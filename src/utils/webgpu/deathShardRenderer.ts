@@ -1,10 +1,8 @@
 import type { WallSegment } from "./mapRenderer";
 import type { RenderPlayer, RenderTracer } from "./types";
-
-type Vec2 = {
-  x: number;
-  y: number;
-};
+import { intersectSegmentWithWall, normalizeVec2, type Vec2 } from "./geometry2d";
+import { getTeamColor } from "./renderPalette";
+import { writeFloat32Slice } from "./gpuBufferUtils";
 
 type Shard = {
   x: number;
@@ -18,53 +16,8 @@ type Shard = {
   g: number;
   b: number;
   active: boolean;
+  bouncesRemaining: number;
 };
-
-function cross(a: Vec2, b: Vec2): number {
-  return a.x * b.y - a.y * b.x;
-}
-
-function length(v: Vec2): number {
-  return Math.hypot(v.x, v.y);
-}
-
-function normalize(v: Vec2): Vec2 {
-  const len = length(v);
-  if (len < 1e-6) {
-    return { x: 0, y: 0 };
-  }
-  return { x: v.x / len, y: v.y / len };
-}
-
-function intersectSegmentWithWall(
-  start: Vec2,
-  end: Vec2,
-  wall: WallSegment,
-): { t: number; x: number; y: number } | null {
-  const p = start;
-  const r = { x: end.x - start.x, y: end.y - start.y };
-  const q = { x: wall.x1, y: wall.y1 };
-  const s = { x: wall.x2 - wall.x1, y: wall.y2 - wall.y1 };
-
-  const rxs = cross(r, s);
-  if (Math.abs(rxs) < 1e-8) {
-    return null;
-  }
-
-  const qp = { x: q.x - p.x, y: q.y - p.y };
-  const t = cross(qp, s) / rxs;
-  const u = cross(qp, r) / rxs;
-
-  if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
-    return {
-      t,
-      x: p.x + r.x * t,
-      y: p.y + r.y * t,
-    };
-  }
-
-  return null;
-}
 
 export class DeathShardRenderer {
   private queue: GPUQueue;
@@ -110,6 +63,7 @@ export class DeathShardRenderer {
         g: 1,
         b: 1,
         active: false,
+        bouncesRemaining: 0,
       });
     }
   }
@@ -146,7 +100,7 @@ export class DeathShardRenderer {
       const nextX = shard.x + shard.vx * dt;
       const nextY = shard.y + shard.vy * dt;
 
-      let nearestHit: { t: number; x: number; y: number } | null = null;
+      let nearestHit: { t: number; x: number; y: number; wall: WallSegment } | null = null;
       for (const wall of this.walls) {
         const hit = intersectSegmentWithWall(
           { x: shard.x, y: shard.y },
@@ -155,15 +109,43 @@ export class DeathShardRenderer {
         );
         if (!hit) continue;
         if (!nearestHit || hit.t < nearestHit.t) {
-          nearestHit = hit;
+          nearestHit = { ...hit, wall };
         }
       }
 
       if (nearestHit) {
-        shard.x = nearestHit.x;
-        shard.y = nearestHit.y;
-        shard.vx = 0;
-        shard.vy = 0;
+        const collision = this.getCollisionBasis(nearestHit.wall, { x: shard.vx, y: shard.vy });
+        this.spawnWallSplatter(nearestHit.x, nearestHit.y, shard, collision.tangent, collision.normal);
+
+        if (shard.bouncesRemaining > 0) {
+          const bounceVelocity = this.computeBounceVelocity(
+            { x: shard.vx, y: shard.vy },
+            collision.tangent,
+            collision.normal,
+          );
+          const bounceSpeedSq = bounceVelocity.x * bounceVelocity.x + bounceVelocity.y * bounceVelocity.y;
+
+          if (bounceSpeedSq > 80 * 80) {
+            shard.x = nearestHit.x + collision.normal.x * 3;
+            shard.y = nearestHit.y + collision.normal.y * 3;
+            shard.vx = bounceVelocity.x;
+            shard.vy = bounceVelocity.y;
+            shard.size *= 0.82;
+            shard.life *= 0.72;
+            shard.bouncesRemaining = 0;
+          } else {
+            shard.x = nearestHit.x;
+            shard.y = nearestHit.y;
+            shard.vx = 0;
+            shard.vy = 0;
+            shard.bouncesRemaining = 0;
+          }
+        } else {
+          shard.x = nearestHit.x;
+          shard.y = nearestHit.y;
+          shard.vx = 0;
+          shard.vy = 0;
+        }
       } else {
         shard.x = nextX;
         shard.y = nextY;
@@ -194,13 +176,7 @@ export class DeathShardRenderer {
       count++;
     }
 
-    this.queue.writeBuffer(
-      this.instanceBuffer,
-      0,
-      data.buffer,
-      data.byteOffset,
-      count * this.instanceStrideFloats * 4,
-    );
+    writeFloat32Slice(this.queue, this.instanceBuffer, data, count * this.instanceStrideFloats);
 
     return count;
   }
@@ -216,10 +192,7 @@ export class DeathShardRenderer {
   }
 
   private spawnBurst(player: RenderPlayer, tracers: RenderTracer[]) {
-    const isCT = player.team === 3;
-    const baseR = isCT ? 0.2 : 1.0;
-    const baseG = isCT ? 0.6 : 0.4;
-    const baseB = isCT ? 1.0 : 0.2;
+    const [baseR, baseG, baseB] = getTeamColor(player.team);
     const impactDir = this.findImpactDirection(player, tracers);
     const baseAngle = Math.atan2(impactDir.y, impactDir.x);
 
@@ -243,6 +216,7 @@ export class DeathShardRenderer {
       shard.g = Math.min(1, baseG + Math.random() * 0.25);
       shard.b = Math.min(1, baseB + Math.random() * 0.25);
       shard.active = true;
+      shard.bouncesRemaining = 1;
     }
   }
 
@@ -258,7 +232,7 @@ export class DeathShardRenderer {
         continue;
       }
 
-      const shotDir = normalize({
+      const shotDir = normalizeVec2({
         x: tracer.x1 - tracer.x0,
         y: tracer.y1 - tracer.y0,
       });
@@ -284,19 +258,86 @@ export class DeathShardRenderer {
     };
   }
 
-  private allocateShard(): Shard {
+  private allocateShard(excluded?: Shard): Shard {
     for (const shard of this.shards) {
-      if (!shard.active) {
+      if (shard !== excluded && !shard.active) {
         return shard;
       }
     }
 
-    let oldest = this.shards[0];
+    let oldest: Shard | null = null;
     for (const shard of this.shards) {
-      if (shard.life < oldest.life) {
+      if (shard === excluded) {
+        continue;
+      }
+      if (!oldest || shard.life < oldest.life) {
         oldest = shard;
       }
     }
-    return oldest;
+    return oldest ?? excluded ?? this.shards[0];
+  }
+
+  private getCollisionBasis(wall: WallSegment, velocity: Vec2) {
+    const tangent = normalizeVec2({
+      x: wall.x2 - wall.x1,
+      y: wall.y2 - wall.y1,
+    });
+
+    let normal = {
+      x: -tangent.y,
+      y: tangent.x,
+    };
+
+    if (this.dot(velocity, normal) > 0) {
+      normal = {
+        x: -normal.x,
+        y: -normal.y,
+      };
+    }
+
+    return { tangent, normal };
+  }
+
+  private computeBounceVelocity(velocity: Vec2, tangent: Vec2, normal: Vec2): Vec2 {
+    const tangentSpeed = this.dot(velocity, tangent);
+    const normalSpeed = this.dot(velocity, normal);
+
+    return {
+      x: tangent.x * tangentSpeed * 0.58 + normal.x * (-normalSpeed) * 0.22,
+      y: tangent.y * tangentSpeed * 0.58 + normal.y * (-normalSpeed) * 0.22,
+    };
+  }
+
+  private spawnWallSplatter(hitX: number, hitY: number, source: Shard, tangent: Vec2, normal: Vec2) {
+    const sourceSpeed = Math.hypot(source.vx, source.vy);
+    if (sourceSpeed < 220) {
+      return;
+    }
+
+    const splatterCount = Math.min(6, 3 + Math.floor(sourceSpeed / 900));
+    for (let i = 0; i < splatterCount; i++) {
+      const shard = this.allocateShard(source);
+      const tangentDir = Math.random() < 0.5 ? -1 : 1;
+      const tangentSpeed = (0.12 + Math.random() * 0.2) * sourceSpeed * tangentDir;
+      const outwardSpeed = (0.02 + Math.random() * 0.05) * sourceSpeed;
+      const life = 0.35 + Math.random() * 0.35;
+
+      shard.x = hitX + normal.x * (1.5 + Math.random() * 1.5) + tangent.x * ((Math.random() - 0.5) * 8);
+      shard.y = hitY + normal.y * (1.5 + Math.random() * 1.5) + tangent.y * ((Math.random() - 0.5) * 8);
+      shard.vx = tangent.x * tangentSpeed + normal.x * outwardSpeed;
+      shard.vy = tangent.y * tangentSpeed + normal.y * outwardSpeed;
+      shard.size = Math.max(2, source.size * (0.32 + Math.random() * 0.26));
+      shard.life = life;
+      shard.maxLife = life;
+      shard.r = Math.min(1, source.r + Math.random() * 0.08);
+      shard.g = Math.min(1, source.g + Math.random() * 0.08);
+      shard.b = Math.min(1, source.b + Math.random() * 0.08);
+      shard.active = true;
+      shard.bouncesRemaining = 0;
+    }
+  }
+
+  private dot(a: Vec2, b: Vec2): number {
+    return a.x * b.x + a.y * b.y;
   }
 }

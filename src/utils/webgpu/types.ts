@@ -118,7 +118,7 @@ export type RenderGrenade = {
 };
 
 export type RenderAreaEffect = {
-  kind: "smoke" | "inferno";
+  kind: "smoke" | "inferno" | "he";
   effectType?: number;
   x: number;
   y: number;
@@ -156,7 +156,7 @@ export type RenderFrame = {
   replaySource?: ReplayTickSource;
 };
 
-// maybe defunct
+// Legacy analytics-oriented types retained for compatibility with external callers.
 export type PlayerState = {
   steamid: SteamID;
   name: string;

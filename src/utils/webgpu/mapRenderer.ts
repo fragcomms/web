@@ -1,5 +1,6 @@
 import type { MapGeometry, WorldBounds } from "./types";
 import type { MapConfig } from "./mapConfig";
+import { createFloat32Buffer } from "./gpuBufferUtils";
 
 export type WallSegment = { x1: number; y1: number; x2: number; y2: number; };
 
@@ -8,6 +9,9 @@ export class MapRenderer {
   
   // json boundaries
   private blockingSegments: WallSegment[] = [];
+  private linePipeline: GPURenderPipeline;
+  private lineVertexBuffer: GPUBuffer | null = null;
+  private lineVertexCount = 0;
 
   // svg image
   private imagePipeline: GPURenderPipeline;
@@ -18,8 +22,9 @@ export class MapRenderer {
   public mapCenter = { x: 0, y: 0 };
   public worldBounds: WorldBounds = { minX: -4000, minY: -4000, maxX: 4000, maxY: 4000 };
 
-  constructor(device: GPUDevice, imagePipeline: GPURenderPipeline) {
+  constructor(device: GPUDevice, linePipeline: GPURenderPipeline, imagePipeline: GPURenderPipeline) {
     this.device = device;
+    this.linePipeline = linePipeline;
     this.imagePipeline = imagePipeline;
 
     this.sampler = device.createSampler({
@@ -86,11 +91,11 @@ export class MapRenderer {
     ]);
 
     if (this.imageVertexBuffer) this.imageVertexBuffer.destroy();
-    this.imageVertexBuffer = this.device.createBuffer({
-      size: verts.byteLength,
-      usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-    });
-    this.device.queue.writeBuffer(this.imageVertexBuffer, 0, verts);
+    this.imageVertexBuffer = createFloat32Buffer(
+      this.device,
+      verts,
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    );
     
     bitmap.close();
   }
@@ -111,6 +116,8 @@ export class MapRenderer {
     };
 
     this.blockingSegments = []; // Clear old walls
+    const lineVerts = new Float32Array(geometry.segments.length * 4);
+    let lineOffset = 0;
 
     for (const s of geometry.segments) {
       const x1 = (s.x1 * scale) + originX;
@@ -119,29 +126,41 @@ export class MapRenderer {
       const y2 = (s.y2 * scale) + originY;
 
       this.blockingSegments.push({ x1, y1, x2, y2 });
+      lineVerts[lineOffset + 0] = x1;
+      lineVerts[lineOffset + 1] = y1;
+      lineVerts[lineOffset + 2] = x2;
+      lineVerts[lineOffset + 3] = y2;
+      lineOffset += 4;
     }
 
-    // console.log(`Loaded ${this.blockingSegments.length} vision-blocking walls.`);
+    if (this.lineVertexBuffer) {
+      this.lineVertexBuffer.destroy();
+    }
+    this.lineVertexBuffer = createFloat32Buffer(
+      this.device,
+      lineVerts,
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    );
+    this.lineVertexCount = geometry.segments.length * 2;
   }
 
   getBlockingSegments(): WallSegment[] { return this.blockingSegments; }
 
   render(pass: GPURenderPassEncoder, globalBindGroup: GPUBindGroup) {
-    // map portion
     if (this.imageVertexBuffer && this.imageBindGroup) {
       pass.setPipeline(this.imagePipeline);
       pass.setBindGroup(0, globalBindGroup);
       pass.setBindGroup(1, this.imageBindGroup);
       pass.setVertexBuffer(0, this.imageVertexBuffer);
       pass.draw(6);
+      return;
     }
 
-    // segments render
-    // if (this.lineVertexBuffer && this.lineVertexCount > 0) {
-    //   pass.setPipeline(this.linePipeline);
-    //   pass.setBindGroup(0, globalBindGroup);
-    //   pass.setVertexBuffer(0, this.lineVertexBuffer);
-    //   pass.draw(this.lineVertexCount);
-    // }
+    if (this.lineVertexBuffer && this.lineVertexCount > 0) {
+      pass.setPipeline(this.linePipeline);
+      pass.setBindGroup(0, globalBindGroup);
+      pass.setVertexBuffer(0, this.lineVertexBuffer);
+      pass.draw(this.lineVertexCount);
+    }
   }
 }

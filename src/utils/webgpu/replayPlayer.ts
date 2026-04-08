@@ -18,7 +18,7 @@ import type {
 
 type RosterInfo = { steamid: SteamID; team: Team; name: string; };
 type TimedAreaEffect = {
-  kind: "smoke" | "inferno";
+  kind: "smoke" | "inferno" | "he";
   startTick: number;
   endTick: number;
   x: number;
@@ -38,11 +38,13 @@ export class ReplayPlayer {
   private rosterBySid = new Map<number, RosterInfo>();
 
   private weaponFire: WeaponFireEvent[] = [];
+  private heDetonations: PositionedEvent[] = [];
   private smokeDetonations: PositionedEvent[] = [];
   private infernoStartBurns: PositionedEvent[] = [];
   private infernoExpires: PositionedEvent[] = [];
   private infernoExtinguishes: InfernoExtinguishEvent[] = [];
   private timedAreaEffects: TimedAreaEffect[] = [];
+  private timedAreaEffectsTicksPerSecond = this.ticksPerSecond;
 
   setReplay(data: ReplayJSON) {
     const tl = data.timeline;
@@ -51,11 +53,13 @@ export class ReplayPlayer {
       this.timeline = [];
       this.tickNums = [];
       this.weaponFire = [];
+      this.heDetonations = [];
       this.smokeDetonations = [];
       this.infernoStartBurns = [];
       this.infernoExpires = [];
       this.infernoExtinguishes = [];
       this.timedAreaEffects = [];
+      this.timedAreaEffectsTicksPerSecond = this.ticksPerSecond;
       this.startTick = 0;
       this.endTick = 0;
       this.elapsedSec = 0;
@@ -98,6 +102,7 @@ export class ReplayPlayer {
     this.weaponFire = (data.events?.weapon_fire ?? []).slice();
     this.weaponFire.sort((a, b) => a.t - b.t);
 
+    this.heDetonations = (data.events?.hegrenade_detonate ?? []).slice().sort((a, b) => a.t - b.t);
     this.smokeDetonations = (data.events?.smokegrenade_detonate ?? []).slice().sort((a, b) => a.t - b.t);
     this.infernoStartBurns = (data.events?.inferno_startburn ?? []).slice().sort((a, b) => a.t - b.t);
     this.infernoExpires = (data.events?.inferno_expire ?? []).slice().sort((a, b) => a.t - b.t);
@@ -107,6 +112,7 @@ export class ReplayPlayer {
       ...(data.events?.round_start ?? []).map((event) => event.t),
     ]);
     this.timedAreaEffects = this.buildTimedAreaEffects();
+    this.timedAreaEffectsTicksPerSecond = this.ticksPerSecond;
   }
 
   getDurationSeconds(): number {
@@ -203,9 +209,11 @@ export class ReplayPlayer {
   }
 
   private makeRenderFrame(targetTick: number, prev: TimelineTick, next: TimelineTick): RenderFrame {
+    this.ensureTimedAreaEffects();
+
     if (prev.t === next.t) {
       const players = this.tickToRenderPlayers(prev);
-      const grenades = this.tickToRenderGrenades(prev);
+      const grenades = this.tickToRenderGrenades(prev, prev.t);
       const areaEffects = this.buildAreaEffectsForTick(prev.t);
       const smokeSources = this.buildSmokeSourcesForTick(prev.t);
       const { tracers } = this.buildTracersForTick(prev.t, players);
@@ -292,7 +300,7 @@ export class ReplayPlayer {
       }
     }
 
-    const grenades = this.interpolateGrenades(prev.g ?? [], next.g ?? [], alpha);
+    const grenades = this.interpolateGrenades(prev.g ?? [], next.g ?? [], alpha, targetTick);
     const areaEffects = this.buildAreaEffectsForTick(targetTick);
     const smokeSources = this.buildSmokeSourcesForTick(targetTick);
     const { tracers } = this.buildTracersForTick(targetTick, out);
@@ -336,13 +344,14 @@ export class ReplayPlayer {
     return out;
   }
 
-  private tickToRenderGrenades(tick: TimelineTick): RenderGrenade[] {
+  private tickToRenderGrenades(tick: TimelineTick, targetTick: number): RenderGrenade[] {
     const grenades = tick.g ?? [];
-    const out: RenderGrenade[] = new Array(grenades.length);
+    const out: RenderGrenade[] = [];
+    const roundStartTick = this.getRoundStartTickForTick(targetTick);
 
     for (let i = 0; i < grenades.length; i++) {
       const grenade = grenades[i];
-      out[i] = {
+      const renderGrenade: RenderGrenade = {
         eid: grenade[0],
         ownerId: grenade[1],
         grenadeType: grenade[2],
@@ -350,6 +359,10 @@ export class ReplayPlayer {
         y: grenade[4],
         z: grenade[5],
       };
+
+      if (!this.shouldHideGrenade(renderGrenade, targetTick, roundStartTick)) {
+        out.push(renderGrenade);
+      }
     }
 
     return out;
@@ -359,6 +372,7 @@ export class ReplayPlayer {
     prevGrenades: TimelineGrenade[],
     nextGrenades: TimelineGrenade[],
     alpha: number,
+    targetTick: number,
   ): RenderGrenade[] {
     const nextByEntityId = new Map<number, TimelineGrenade>();
     for (const grenade of nextGrenades) {
@@ -366,6 +380,7 @@ export class ReplayPlayer {
     }
 
     const out: RenderGrenade[] = [];
+    const roundStartTick = this.getRoundStartTickForTick(targetTick);
 
     for (const grenade of prevGrenades) {
       const eid = grenade[0];
@@ -377,25 +392,31 @@ export class ReplayPlayer {
 
       const nextGrenade = nextByEntityId.get(eid);
       if (!nextGrenade) {
-        out.push({
+        const renderGrenade: RenderGrenade = {
           eid,
           ownerId,
           grenadeType,
           x: aX,
           y: aY,
           z: aZ,
-        });
+        };
+        if (!this.shouldHideGrenade(renderGrenade, targetTick, roundStartTick)) {
+          out.push(renderGrenade);
+        }
         continue;
       }
 
-      out.push({
+      const renderGrenade: RenderGrenade = {
         eid,
         ownerId,
         grenadeType,
         x: aX + (nextGrenade[3] - aX) * alpha,
         y: aY + (nextGrenade[4] - aY) * alpha,
         z: aZ + (nextGrenade[5] - aZ) * alpha,
-      });
+      };
+      if (!this.shouldHideGrenade(renderGrenade, targetTick, roundStartTick)) {
+        out.push(renderGrenade);
+      }
     }
 
     return out;
@@ -457,6 +478,17 @@ export class ReplayPlayer {
   private buildTimedAreaEffects(): TimedAreaEffect[] {
     const effects: TimedAreaEffect[] = [];
 
+    const heDurationTicks = Math.max(1, Math.round(0.16 * this.ticksPerSecond));
+    for (const he of this.heDetonations) {
+      effects.push({
+        kind: "he",
+        startTick: he.t,
+        endTick: he.t + heDurationTicks,
+        x: he.x,
+        y: he.y,
+      });
+    }
+
     const smokeDurationTicks = Math.round(18 * this.ticksPerSecond);
     for (const smoke of this.smokeDetonations) {
       effects.push({
@@ -499,6 +531,45 @@ export class ReplayPlayer {
 
     effects.sort((a, b) => a.startTick - b.startTick);
     return effects;
+  }
+
+  private ensureTimedAreaEffects() {
+    if (this.timedAreaEffectsTicksPerSecond === this.ticksPerSecond) {
+      return;
+    }
+    this.timedAreaEffects = this.buildTimedAreaEffects();
+    this.timedAreaEffectsTicksPerSecond = this.ticksPerSecond;
+  }
+
+  private getRoundStartTickForTick(targetTick: number): number {
+    let roundStartTick = this.startTick;
+    for (const tick of this.roundStartTicks) {
+      if (tick > targetTick) {
+        break;
+      }
+      roundStartTick = tick;
+    }
+    return roundStartTick;
+  }
+
+  private shouldHideGrenade(grenade: RenderGrenade, targetTick: number, roundStartTick: number): boolean {
+    if (grenade.grenadeType !== 1) {
+      return false;
+    }
+
+    for (const event of this.heDetonations) {
+      if (event.t < roundStartTick) {
+        continue;
+      }
+      if (event.t > targetTick) {
+        break;
+      }
+      if (event.id === grenade.ownerId) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private findBestMatchingInfernoEnd(
@@ -549,6 +620,24 @@ export class ReplayPlayer {
       const life = 1 - progress;
 
       if (effect.kind === "smoke") {
+        continue;
+      }
+
+      if (effect.kind === "he") {
+        const blastFade = Math.max(0, 1 - progress * 1.85);
+        effects.push({
+          kind: "he",
+          effectType: 2,
+          x: effect.x,
+          y: effect.y,
+          radius: 74 + progress * 228,
+          r: 1.0,
+          g: 0.76,
+          b: 0.48,
+          alpha: 1.08 * blastFade * blastFade,
+          softness: progress,
+          density: life,
+        });
         continue;
       }
 

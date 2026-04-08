@@ -1,4 +1,5 @@
 import playerShaderWGSL from "./shaders/player.wgsl?raw";
+import grenadeShaderWGSL from "./shaders/grenade.wgsl?raw";
 import areaEffectShaderWGSL from "./shaders/areaEffect.wgsl?raw";
 import tracerShaderWGSL from "./shaders/tracer.wgsl?raw";
 import visionShaderWGSL from "./shaders/vision.wgsl?raw";
@@ -31,11 +32,74 @@ export function createPlayerPipeline(device: GPUDevice, format: GPUTextureFormat
       ],
     },
     {
-      arrayStride: (2 + 3) * 4,
+      arrayStride: 7 * 4,
       stepMode: "instance",
       attributes: [
         { shaderLocation: 1, offset: 0, format: "float32x2" },
         { shaderLocation: 2, offset: 2 * 4, format: "float32x3" },
+        { shaderLocation: 3, offset: 5 * 4, format: "float32" },
+        { shaderLocation: 4, offset: 6 * 4, format: "float32" },
+      ],
+    },
+  ];
+
+  const pipelineLayout = device.createPipelineLayout({
+    bindGroupLayouts: [globalLayout],
+  });
+
+  const pipeline = device.createRenderPipeline({
+    layout: pipelineLayout,
+    vertex: {
+      module,
+      entryPoint: "vs_main",
+      buffers: vertexBuffers,
+    },
+    fragment: {
+      module,
+      entryPoint: "fs_main",
+      targets: [{
+        format,
+        blend: {
+          color: {
+            srcFactor: "one",
+            dstFactor: "one-minus-src-alpha",
+            operation: "add",
+          },
+          alpha: {
+            srcFactor: "one",
+            dstFactor: "one-minus-src-alpha",
+            operation: "add",
+          },
+        },
+      }],
+    },
+    primitive: {
+      topology: "triangle-list",
+    },
+  });
+
+  return { pipeline };
+}
+
+export function createGrenadePipeline(device: GPUDevice, format: GPUTextureFormat, globalLayout: GPUBindGroupLayout) {
+  const module = device.createShaderModule({ code: grenadeShaderWGSL });
+
+  const vertexBuffers: GPUVertexBufferLayout[] = [
+    {
+      arrayStride: 2 * 4,
+      stepMode: "vertex",
+      attributes: [
+        { shaderLocation: 0, offset: 0, format: "float32x2" },
+      ],
+    },
+    {
+      arrayStride: 7 * 4,
+      stepMode: "instance",
+      attributes: [
+        { shaderLocation: 1, offset: 0, format: "float32x2" },
+        { shaderLocation: 2, offset: 2 * 4, format: "float32x3" },
+        { shaderLocation: 3, offset: 5 * 4, format: "float32" },
+        { shaderLocation: 4, offset: 6 * 4, format: "float32" },
       ],
     },
   ];
@@ -590,232 +654,6 @@ fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
   };
 }
 
-export function createSmokeFieldPipeline(device: GPUDevice, format: GPUTextureFormat) {
-  const injectModule = device.createShaderModule({ code: `
-struct SimParams {
-  bounds : vec4<f32>,
-  control : vec4<f32>,
-  decay : vec4<f32>,
-};
-
-struct PlayerInjector {
-  pos : vec2<f32>,
-  vel : vec2<f32>,
-};
-
-struct TracerInjector {
-  startPos : vec2<f32>,
-  endPos : vec2<f32>,
-};
-
-@group(0) @binding(0) var simSampler : sampler;
-@group(0) @binding(1) var prevState : texture_2d<f32>;
-@group(0) @binding(2) var<uniform> params : SimParams;
-@group(0) @binding(3) var<storage, read> players : array<PlayerInjector>;
-@group(0) @binding(4) var<storage, read> tracers : array<TracerInjector>;
-@group(0) @binding(5) var<storage, read> smokes : array<vec4<f32>>;
-
-struct VSOut {
-  @builtin(position) position : vec4<f32>,
-  @location(0) uv : vec2<f32>,
-};
-
-@vertex
-fn vs_main(@builtin(vertex_index) vertexIndex : u32) -> VSOut {
-  var positions = array<vec2<f32>, 3>(
-    vec2<f32>(-1.0, -3.0),
-    vec2<f32>(-1.0, 1.0),
-    vec2<f32>(3.0, 1.0)
-  );
-
-  var out : VSOut;
-  let pos = positions[vertexIndex];
-  out.position = vec4<f32>(pos, 0.0, 1.0);
-  out.uv = pos * vec2<f32>(0.5, -0.5) + vec2<f32>(0.5, 0.5);
-  return out;
-}
-
-fn distanceToSegment(p : vec2<f32>, a : vec2<f32>, b : vec2<f32>) -> f32 {
-  let ab = b - a;
-  let denom = max(dot(ab, ab), 0.0001);
-  let t = clamp(dot(p - a, ab) / denom, 0.0, 1.0);
-  return length(p - (a + ab * t));
-}
-
-@fragment
-fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
-  let prev = textureSampleLevel(prevState, simSampler, input.uv, 0.0);
-  var velocity = prev.xy;
-  var density = prev.z;
-  var activity = prev.w;
-
-  let worldPos = mix(params.bounds.xy, params.bounds.zw, input.uv);
-
-  let smokeCount = u32(params.control.w);
-  for (var i = 0u; i < smokeCount; i = i + 1u) {
-    let smoke = smokes[i];
-    let dist = length(worldPos - smoke.xy);
-    let source = 1.0 - smoothstep(smoke.z * 0.18, smoke.z, dist);
-    density = max(density, source * smoke.w);
-    activity = max(activity, source * 0.12);
-  }
-
-  let playerCount = u32(params.control.y);
-  for (var i = 0u; i < playerCount; i = i + 1u) {
-    let player = players[i];
-    let speed = min(1.0, length(player.vel) / 260.0);
-    if (speed < 0.01) {
-      continue;
-    }
-    let dist = length(worldPos - player.pos);
-    let influence = 1.0 - smoothstep(10.0, 120.0, dist);
-    let dir = normalize(player.vel + vec2<f32>(0.0001, 0.0));
-    velocity = velocity + dir * influence * speed * 120.0;
-    activity = max(activity, influence * speed * 0.55);
-  }
-
-  let tracerCount = u32(params.control.z);
-  for (var i = 0u; i < tracerCount; i = i + 1u) {
-    let tracer = tracers[i];
-    let seg = tracer.endPos - tracer.startPos;
-    let segLen = max(length(seg), 0.001);
-    let dir = seg / segLen;
-    let dist = distanceToSegment(worldPos, tracer.startPos, tracer.endPos);
-    let along = clamp(dot(worldPos - tracer.startPos, dir) / segLen, -0.08, 1.2);
-    let trailCenter = tracer.startPos + dir * along * segLen;
-    let trailDist = length(worldPos - trailCenter);
-    let core = 1.0 - smoothstep(1.0, 11.0, dist);
-    let wake = 1.0 - smoothstep(8.0, 42.0, trailDist);
-    density = density * (1.0 - core * 0.96);
-    velocity = velocity + dir * wake * 440.0;
-    activity = max(activity, max(core * 0.65, wake));
-  }
-
-  return vec4<f32>(velocity, clamp(density, 0.0, 1.0), clamp(activity, 0.0, 1.0));
-}
-` });
-
-  const advectModule = device.createShaderModule({ code: `
-struct SimParams {
-  bounds : vec4<f32>,
-  control : vec4<f32>,
-  decay : vec4<f32>,
-};
-
-@group(0) @binding(0) var simSampler : sampler;
-@group(0) @binding(1) var stateTex : texture_2d<f32>;
-@group(0) @binding(2) var<uniform> params : SimParams;
-
-struct VSOut {
-  @builtin(position) position : vec4<f32>,
-  @location(0) uv : vec2<f32>,
-};
-
-@vertex
-fn vs_main(@builtin(vertex_index) vertexIndex : u32) -> VSOut {
-  var positions = array<vec2<f32>, 3>(
-    vec2<f32>(-1.0, -3.0),
-    vec2<f32>(-1.0, 1.0),
-    vec2<f32>(3.0, 1.0)
-  );
-
-  var out : VSOut;
-  let pos = positions[vertexIndex];
-  out.position = vec4<f32>(pos, 0.0, 1.0);
-  out.uv = pos * vec2<f32>(0.5, -0.5) + vec2<f32>(0.5, 0.5);
-  return out;
-}
-
-fn sampleState(uv : vec2<f32>) -> vec4<f32> {
-  return textureSampleLevel(stateTex, simSampler, clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0)), 0.0);
-}
-
-@fragment
-fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
-  let mapSize = max(params.bounds.zw - params.bounds.xy, vec2<f32>(1.0, 1.0));
-  let here = sampleState(input.uv);
-  let backUv = input.uv - (here.xy * params.control.x) / mapSize;
-  let adv = sampleState(backUv);
-
-  let dims = vec2<f32>(textureDimensions(stateTex));
-  let texel = vec2<f32>(1.0) / dims;
-
-  let left = sampleState(input.uv + vec2<f32>(-texel.x, 0.0));
-  let right = sampleState(input.uv + vec2<f32>(texel.x, 0.0));
-  let up = sampleState(input.uv + vec2<f32>(0.0, -texel.y));
-  let down = sampleState(input.uv + vec2<f32>(0.0, texel.y));
-  let blur = (left + right + up + down) * 0.25;
-
-  let velocity = mix(adv.xy, blur.xy, 0.09) * params.decay.x;
-  let density = mix(adv.z, blur.z, 0.09) * params.decay.y;
-  let activity = mix(adv.w, blur.w, 0.08) * params.decay.z;
-
-  return vec4<f32>(velocity, max(0.0, density), max(0.0, activity));
-}
-` });
-
-  const injectLayout = device.createBindGroupLayout({
-    entries: [
-      { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
-      { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: {} },
-      { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
-      { binding: 3, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "read-only-storage" } },
-      { binding: 4, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "read-only-storage" } },
-      { binding: 5, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "read-only-storage" } },
-    ],
-  });
-
-  const advectLayout = device.createBindGroupLayout({
-    entries: [
-      { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
-      { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: {} },
-      { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
-    ],
-  });
-
-  const injectPipeline = device.createRenderPipeline({
-    layout: device.createPipelineLayout({
-      bindGroupLayouts: [injectLayout],
-    }),
-    vertex: {
-      module: injectModule,
-      entryPoint: "vs_main",
-    },
-    fragment: {
-      module: injectModule,
-      entryPoint: "fs_main",
-      targets: [{
-        format,
-      }],
-    },
-    primitive: {
-      topology: "triangle-list",
-    },
-  });
-
-  const advectPipeline = device.createRenderPipeline({
-    layout: device.createPipelineLayout({
-      bindGroupLayouts: [advectLayout],
-    }),
-    vertex: {
-      module: advectModule,
-      entryPoint: "vs_main",
-    },
-    fragment: {
-      module: advectModule,
-      entryPoint: "fs_main",
-      targets: [{
-        format,
-      }],
-    },
-    primitive: {
-      topology: "triangle-list",
-    },
-  });
-
-  return { injectPipeline, advectPipeline, injectLayout, advectLayout };
-}
-
 export function createVisionPipeline(
   device: GPUDevice,
   format: GPUTextureFormat,
@@ -997,7 +835,7 @@ export function createShardPipeline(device: GPUDevice, format: GPUTextureFormat,
 export function createMapPipeline(
   device: GPUDevice,
   format: GPUTextureFormat,
-  globalLayout: GPUBindGroupLayout
+  globalLayout: GPUBindGroupLayout,
 ): GPURenderPipeline {
   const module = device.createShaderModule({ code: mapShaderWGSL });
 
@@ -1008,27 +846,17 @@ export function createMapPipeline(
     vertex: {
       module,
       entryPoint: "vs_main",
-      buffers: [
-        {
-          arrayStride: 8,
-          attributes: [
-            {
-              shaderLocation: 0,
-              offset: 0,
-              format: "float32x2",
-            },
-          ],
-        },
-      ],
+      buffers: [{
+        arrayStride: 2 * 4,
+        attributes: [
+          { shaderLocation: 0, offset: 0, format: "float32x2" },
+        ],
+      }],
     },
     fragment: {
       module,
       entryPoint: "fs_main",
-      targets: [
-        {
-          format,
-        },
-      ],
+      targets: [{ format }],
     },
     primitive: {
       topology: "line-list",

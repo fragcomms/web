@@ -1,4 +1,6 @@
 import type { RenderGrenade } from "./types";
+import { getGrenadeColor } from "./renderPalette";
+import { writeFloat32Slice } from "./gpuBufferUtils";
 
 export class GrenadeRenderer {
   private queue: GPUQueue;
@@ -10,7 +12,7 @@ export class GrenadeRenderer {
   private grenadeInstanceBuffer: GPUBuffer;
 
   private maxGrenadeInstances: number;
-  private instanceStrideFloats = 5;
+  private instanceStrideFloats = 7;
 
   private instanceScratch: Float32Array;
 
@@ -39,22 +41,18 @@ export class GrenadeRenderer {
     for (let i = 0; i < count; i++) {
       const grenade = grenades[i];
       const base = i * this.instanceStrideFloats;
-      const [r, g, b] = grenadeColor(grenade.grenadeType);
+      const [r, g, b] = getGrenadeColor(grenade.grenadeType);
 
       data[base + 0] = grenade.x;
       data[base + 1] = grenade.y;
       data[base + 2] = r;
       data[base + 3] = g;
       data[base + 4] = b;
+      data[base + 5] = grenade.grenadeType;
+      data[base + 6] = (grenade.eid % 97) / 97;
     }
 
-    this.queue.writeBuffer(
-      this.grenadeInstanceBuffer,
-      0,
-      data.buffer,
-      data.byteOffset,
-      count * this.instanceStrideFloats * 4,
-    );
+    writeFloat32Slice(this.queue, this.grenadeInstanceBuffer, data, count * this.instanceStrideFloats);
 
     return count;
   }
@@ -69,22 +67,5 @@ export class GrenadeRenderer {
     pass.setVertexBuffer(0, this.quadVertexBuffer);
     pass.setVertexBuffer(1, this.grenadeInstanceBuffer);
     pass.draw(6, instanceCount, 0, 0);
-  }
-}
-
-function grenadeColor(grenadeType: number): [number, number, number] {
-  switch (grenadeType) {
-    case 1:
-      return [0.95, 0.35, 0.25];
-    case 2:
-      return [0.55, 0.55, 0.58];
-    case 3:
-      return [0.98, 0.92, 0.42];
-    case 4:
-      return [0.4, 0.85, 0.95];
-    case 5:
-      return [1.0, 0.55, 0.15];
-    default:
-      return [0.9, 0.9, 0.9];
   }
 }

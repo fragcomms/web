@@ -1,9 +1,10 @@
 import type { WorldBounds } from "./types";
+import { createWorldQuadVertices } from "./quadGeometry";
 
 export class SmokeRenderer {
   private pipeline: GPURenderPipeline;
   private globalBindGroup: GPUBindGroup;
-  private smokeFieldBindGroup: GPUBindGroup | null = null;
+  private smokeFieldBindGroup: GPUBindGroup | null;
   private queue: GPUQueue;
   private quadVertexBuffer: GPUBuffer;
 
@@ -12,28 +13,38 @@ export class SmokeRenderer {
     pipeline: GPURenderPipeline,
     globalBindGroup: GPUBindGroup,
     quadVertexBuffer: GPUBuffer,
+  );
+  constructor(
+    queue: GPUQueue,
+    pipeline: GPURenderPipeline,
+    globalBindGroup: GPUBindGroup,
+    smokeFieldBindGroupOrQuadVertexBuffer: GPUBindGroup | GPUBuffer,
+    quadVertexBuffer?: GPUBuffer,
   ) {
+    let smokeFieldBindGroup: GPUBindGroup | null;
+    let resolvedQuadVertexBuffer: GPUBuffer;
+
+    if (quadVertexBuffer) {
+      smokeFieldBindGroup = smokeFieldBindGroupOrQuadVertexBuffer as GPUBindGroup;
+      resolvedQuadVertexBuffer = quadVertexBuffer;
+    } else {
+      smokeFieldBindGroup = null;
+      resolvedQuadVertexBuffer = smokeFieldBindGroupOrQuadVertexBuffer as GPUBuffer;
+    }
+
     this.queue = queue;
     this.pipeline = pipeline;
     this.globalBindGroup = globalBindGroup;
-    this.quadVertexBuffer = quadVertexBuffer;
+    this.smokeFieldBindGroup = smokeFieldBindGroup;
+    this.quadVertexBuffer = resolvedQuadVertexBuffer;
   }
 
-  setSmokeFieldBindGroup(bindGroup: GPUBindGroup) {
-    this.smokeFieldBindGroup = bindGroup;
+  setSmokeFieldBindGroup(smokeFieldBindGroup: GPUBindGroup) {
+    this.smokeFieldBindGroup = smokeFieldBindGroup;
   }
 
   setBounds(bounds: WorldBounds) {
-    const verts = new Float32Array([
-      bounds.minX, bounds.minY, 0, 1,
-      bounds.maxX, bounds.minY, 1, 1,
-      bounds.minX, bounds.maxY, 0, 0,
-      bounds.minX, bounds.maxY, 0, 0,
-      bounds.maxX, bounds.minY, 1, 1,
-      bounds.maxX, bounds.maxY, 1, 0,
-    ]);
-
-    this.queue.writeBuffer(this.quadVertexBuffer, 0, verts);
+    this.queue.writeBuffer(this.quadVertexBuffer, 0, createWorldQuadVertices(bounds));
   }
 
   draw(pass: GPURenderPassEncoder) {

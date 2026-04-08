@@ -1,12 +1,14 @@
 import type { RenderPlayer } from "./types";
 import type { WallSegment } from "./mapRenderer";
+import { getTeamColor } from "./renderPalette";
+import { writeFloat32Slice } from "./gpuBufferUtils";
 
 export class VisionRenderer {
   private queue: GPUQueue;
   private pipeline: GPURenderPipeline;
   private globalBindGroup: GPUBindGroup;
   private wallsBindGroup: GPUBindGroup;
-  private smokeFieldBindGroup: GPUBindGroup | null = null;
+  private smokeFieldBindGroup: GPUBindGroup;
   private quadVertexBuffer: GPUBuffer;
   private instanceBuffer: GPUBuffer;
   private wallBuffer: GPUBuffer;
@@ -22,6 +24,7 @@ export class VisionRenderer {
     pipeline: GPURenderPipeline,
     globalBindGroup: GPUBindGroup,
     wallsBindGroup: GPUBindGroup,
+    smokeFieldBindGroup: GPUBindGroup,
     quadVertexBuffer: GPUBuffer,
     instanceBuffer: GPUBuffer,
     wallBuffer: GPUBuffer,
@@ -32,6 +35,7 @@ export class VisionRenderer {
     this.pipeline = pipeline;
     this.globalBindGroup = globalBindGroup;
     this.wallsBindGroup = wallsBindGroup;
+    this.smokeFieldBindGroup = smokeFieldBindGroup;
     this.quadVertexBuffer = quadVertexBuffer;
     this.instanceBuffer = instanceBuffer;
     this.wallBuffer = wallBuffer;
@@ -39,10 +43,6 @@ export class VisionRenderer {
     this.maxWalls = maxWalls;
     this.instanceScratch = new Float32Array(this.maxInstances * this.instanceStrideFloats);
     this.wallScratch = new Float32Array(4 + this.maxWalls * 4);
-  }
-
-  setSmokeFieldBindGroup(bindGroup: GPUBindGroup) {
-    this.smokeFieldBindGroup = bindGroup;
   }
 
   setWalls(walls: WallSegment[]) {
@@ -58,23 +58,10 @@ export class VisionRenderer {
       this.wallScratch[base + 3] = wall.y2;
     }
 
-    this.queue.writeBuffer(
-      this.wallBuffer,
-      0,
-      this.wallScratch.buffer,
-      this.wallScratch.byteOffset,
-      (4 + count * 4) * 4,
-    );
+    writeFloat32Slice(this.queue, this.wallBuffer, this.wallScratch, 4 + count * 4);
   }
 
   upload(players: RenderPlayer[]): number {
-    const ctR = 0.2;
-    const ctG = 0.6;
-    const ctB = 1.0;
-    const tR = 1.0;
-    const tG = 0.4;
-    const tB = 0.2;
-
     let count = 0;
     const data = this.instanceScratch;
 
@@ -84,32 +71,26 @@ export class VisionRenderer {
 
       const base = count * this.instanceStrideFloats;
       const rotRad = p.rot * (Math.PI / 180);
-      const isCT = p.team === 3;
+      const [r, g, b] = getTeamColor(p.team);
 
       data[base + 0] = p.x;
       data[base + 1] = p.y;
       data[base + 2] = Math.cos(rotRad);
       data[base + 3] = Math.sin(rotRad);
-      data[base + 4] = isCT ? ctR : tR;
-      data[base + 5] = isCT ? ctG : tG;
-      data[base + 6] = isCT ? ctB : tB;
+      data[base + 4] = r;
+      data[base + 5] = g;
+      data[base + 6] = b;
       data[base + 7] = 1.0;
       count++;
     }
 
-    this.queue.writeBuffer(
-      this.instanceBuffer,
-      0,
-      data.buffer,
-      data.byteOffset,
-      count * this.instanceStrideFloats * 4,
-    );
+    writeFloat32Slice(this.queue, this.instanceBuffer, data, count * this.instanceStrideFloats);
 
     return count;
   }
 
   draw(pass: GPURenderPassEncoder, instanceCount: number) {
-    if (instanceCount <= 0 || !this.smokeFieldBindGroup) return;
+    if (instanceCount <= 0) return;
 
     pass.setPipeline(this.pipeline);
     pass.setBindGroup(0, this.globalBindGroup);

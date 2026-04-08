@@ -1,11 +1,12 @@
 import type { RenderAreaEffect } from "./types";
+import { writeFloat32Slice } from "./gpuBufferUtils";
 
 export class AreaEffectRenderer {
   private queue: GPUQueue;
 
   private pipeline: GPURenderPipeline;
   private globalBindGroup: GPUBindGroup;
-  private smokeFieldBindGroup: GPUBindGroup | null = null;
+  private smokeFieldBindGroup: GPUBindGroup;
 
   private quadVertexBuffer: GPUBuffer;
   private instanceBuffer: GPUBuffer;
@@ -19,6 +20,7 @@ export class AreaEffectRenderer {
     queue: GPUQueue,
     pipeline: GPURenderPipeline,
     globalBindGroup: GPUBindGroup,
+    smokeFieldBindGroup: GPUBindGroup,
     quadVertexBuffer: GPUBuffer,
     instanceBuffer: GPUBuffer,
     maxInstances: number,
@@ -26,14 +28,11 @@ export class AreaEffectRenderer {
     this.queue = queue;
     this.pipeline = pipeline;
     this.globalBindGroup = globalBindGroup;
+    this.smokeFieldBindGroup = smokeFieldBindGroup;
     this.quadVertexBuffer = quadVertexBuffer;
     this.instanceBuffer = instanceBuffer;
     this.maxInstances = maxInstances;
     this.instanceScratch = new Float32Array(this.maxInstances * this.instanceStrideFloats);
-  }
-
-  setSmokeFieldBindGroup(bindGroup: GPUBindGroup) {
-    this.smokeFieldBindGroup = bindGroup;
   }
 
   upload(effects: RenderAreaEffect[]) {
@@ -41,7 +40,7 @@ export class AreaEffectRenderer {
     let count = 0;
 
     for (const effect of effects) {
-      if (effect.kind !== "inferno") {
+      if (effect.kind === "smoke") {
         continue;
       }
       if (count >= this.maxInstances) {
@@ -63,13 +62,7 @@ export class AreaEffectRenderer {
       count++;
     }
 
-    this.queue.writeBuffer(
-      this.instanceBuffer,
-      0,
-      data.buffer,
-      data.byteOffset,
-      count * this.instanceStrideFloats * 4,
-    );
+    writeFloat32Slice(this.queue, this.instanceBuffer, data, count * this.instanceStrideFloats);
 
     return count;
   }
@@ -81,9 +74,7 @@ export class AreaEffectRenderer {
 
     pass.setPipeline(this.pipeline);
     pass.setBindGroup(0, this.globalBindGroup);
-    if (this.smokeFieldBindGroup) {
-      pass.setBindGroup(1, this.smokeFieldBindGroup);
-    }
+    pass.setBindGroup(1, this.smokeFieldBindGroup);
     pass.setVertexBuffer(0, this.quadVertexBuffer);
     pass.setVertexBuffer(1, this.instanceBuffer);
     pass.draw(6, instanceCount, 0, 0);

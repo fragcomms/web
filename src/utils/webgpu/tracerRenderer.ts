@@ -1,41 +1,8 @@
 import type { RenderTracer } from "./types";
 import type { WallSegment } from "./mapRenderer";
-
-type Vec2 = {
-  x: number;
-  y: number;
-};
-
-function cross(a: Vec2, b: Vec2): number {
-  return a.x * b.y - a.y * b.x;
-}
-
-function intersectRaySegment(
-  rayOrigin: Vec2,
-  rayDir: Vec2,
-  maxDistance: number,
-  seg: WallSegment,
-): number | null {
-  const p = rayOrigin;
-  const r = rayDir;
-  const q = { x: seg.x1, y: seg.y1 };
-  const s = { x: seg.x2 - seg.x1, y: seg.y2 - seg.y1 };
-
-  const rxs = cross(r, s);
-  if (Math.abs(rxs) < 1e-8) {
-    return null;
-  }
-
-  const qp = { x: q.x - p.x, y: q.y - p.y };
-  const t = cross(qp, s) / rxs;
-  const u = cross(qp, r) / rxs;
-
-  if (t >= 0 && t <= maxDistance && u >= 0 && u <= 1) {
-    return t;
-  }
-
-  return null;
-}
+import { intersectRaySegment } from "./geometry2d";
+import { getTeamColor } from "./renderPalette";
+import { writeFloat32Slice } from "./gpuBufferUtils";
 
 export class TracerRenderer {
   private queue: GPUQueue;
@@ -80,9 +47,6 @@ export class TracerRenderer {
     const count = Math.min(tracers.length, this.maxTracerInstances);
     const data = this.instanceScratch;
 
-    const ctR = 0.2, ctG = 0.6, ctB = 1.0;
-    const tR = 1.0, tG = 0.4, tB = 0.2;
-
     for (let i = 0; i < count; i++) {
       const tr = tracers[i];
       const base = i * this.instanceStrideFloats;
@@ -114,10 +78,7 @@ export class TracerRenderer {
         clippedY1 = tr.y0 + dir.y * hitDistance;
       }
 
-      const isCT = tr.team === 3;
-      const r = isCT ? ctR : tR;
-      const g = isCT ? ctG : tG;
-      const b = isCT ? ctB : tB;
+      const [r, g, b] = getTeamColor(tr.team);
 
       data[base + 0] = tr.x0;
       data[base + 1] = tr.y0;
@@ -129,13 +90,7 @@ export class TracerRenderer {
       data[base + 7] = b;
     }
 
-    this.queue.writeBuffer(
-      this.tracerInstanceBuffer,
-      0,
-      data.buffer,
-      data.byteOffset,
-      count * this.instanceStrideFloats * 4,
-    );
+    writeFloat32Slice(this.queue, this.tracerInstanceBuffer, data, count * this.instanceStrideFloats);
 
     return count;
   }

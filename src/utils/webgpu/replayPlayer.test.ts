@@ -28,6 +28,7 @@ function makeReplay(): ReplayJSON {
           [1, 100, 10, 10, 0, 90]
         ],
         g: [
+          [77, 0, 1, 150, 250, 0],
           [99, 0, 2, 100, 200, 10],
         ],
       },
@@ -38,12 +39,16 @@ function makeReplay(): ReplayJSON {
           [1, 100, 20, 10, 0, 90]
         ],
         g: [
+          [77, 0, 1, 150, 250, 0],
           [99, 0, 2, 120, 240, 10],
         ],
       },
     ],
     events: {
       weapon_fire: [],
+      hegrenade_detonate: [
+        { t: 100, id: 0, x: 150, y: 250, z: 0 },
+      ],
       smokegrenade_detonate: [
         { t: 100, id: 0, x: 300, y: 400, z: 0 },
       ],
@@ -85,8 +90,8 @@ describe("ReplayPlayer", () => {
     expect(frame!.grenades[0].eid).toBe(99);
     expect(frame!.grenades[0].x).toBe(100);
     expect(frame!.grenades[0].y).toBe(200);
-    expect(frame!.areaEffects).toHaveLength(1);
-    expect(frame!.areaEffects[0].kind).toBe("inferno");
+    expect(frame!.areaEffects).toHaveLength(2);
+    expect(frame!.areaEffects.map((effect) => effect.kind)).toEqual(["he", "inferno"]);
     expect(frame!.smokeSources).toHaveLength(1);
     expect(frame!.smokeSources[0].x).toBe(300);
     expect(frame!.smokeSources[0].y).toBe(400);
@@ -126,6 +131,7 @@ describe("ReplayPlayer", () => {
     expect(frame!.grenades[0].x).toBeCloseTo(110, 5);
     expect(frame!.grenades[0].y).toBeCloseTo(220, 5);
     expect(frame!.areaEffects).toHaveLength(1);
+    expect(frame!.areaEffects[0].kind).toBe("inferno");
     expect(frame!.smokeSources).toHaveLength(1);
 
     expect(frame!.players[0].steamid).toBe("111");
@@ -145,8 +151,17 @@ describe("ReplayPlayer", () => {
     expect(frame!.players[0].rot).toBe(0);
     expect(frame!.players[1].rot).toBe(90);
     expect(frame!.grenades[0].grenadeType).toBe(2);
-    expect(frame!.areaEffects.map((effect) => effect.kind)).toEqual(["inferno"]);
+    expect(frame!.areaEffects.map((effect) => effect.kind)).toEqual(["he", "inferno"]);
     expect(frame!.smokeSources).toHaveLength(1);
     expect(frame!.tracers).toEqual([]);
+  });
+
+  it("hides HE grenade projectiles once the detonation event has happened", () => {
+    rp.setReplay(makeReplay());
+    rp.ticksPerSecond = 10;
+
+    const frame = rp.getFrameAtElapsedSeconds(0);
+    expect(frame).not.toBeNull();
+    expect(frame!.grenades.map((grenade) => grenade.grenadeType)).toEqual([2]);
   });
 });
