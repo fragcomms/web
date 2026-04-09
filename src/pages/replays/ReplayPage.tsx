@@ -5,13 +5,14 @@ import { useParams } from "react-router-dom";
 import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
 import { useReplayEngine } from "./ReplayBackend";
 import { useReplayMedia } from "./ReplayMedia";
-import type { ReplayPlayer } from "../../utils/types/user";
-
 
 import { MuteSidebar } from "./components/MuteSidebar";
 import { TranscriptPanel } from "./components/TranscriptPanel";
 import { TransportBar } from "./components/TransportBar";
+
+import  type { ReplayPlayer } from "./components/PlayerCard";
 import PlayerCard from "./components/PlayerCard";
+import { PlayerCardPlaceholder } from "./components/PlayerCard";
 
 function getRoundFromTick(roundStartTicks: number[], currentTick: number): number {
   if (roundStartTicks.length === 0) return 1;
@@ -182,10 +183,17 @@ export default function ReplayPage() {
   const score_CT = scoreCT;
   const score_T = scoreT;
 
+  const players = frame?.players ?? [];
+  const isLoaded = frame;
+  const isLoading = !frame;
+
   const getTeamPlayers = (teamId: number): ReplayPlayer[] =>
-    (frame?.players ?? [])
+    (players)
       .filter((player) => player.team === teamId)
       .sort((a, b) => a.steamid.localeCompare(b.steamid));
+
+  const leftTeamPlayers = getTeamPlayers(leftTeamID);
+  const rightTeamPlayers = getTeamPlayers(rightTeamID);
 
   
 
@@ -218,7 +226,7 @@ export default function ReplayPage() {
 
       <div className="flex w-full items-start justify-center gap-4">
         {/* Left Health Bars */}
-        {frame && (
+        { 
           <div className="flex h-180 w-80 shrink-0 flex-col gap-3">
             {/* CT Team Container (Top Half) */}
             <div className="flex min-h-0 flex-1 flex-col justify-center rounded-lg border border-blue-300 bg-blue-50/90 p-2 dark:border-blue-900/40 dark:bg-blue-950/15">
@@ -231,14 +239,24 @@ export default function ReplayPage() {
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                {getTeamPlayers(leftTeamID).map((player) =>
-                  <PlayerCard
-                    key={player.steamid}
-                    player={player}
-                    ringColor="rgb(59 130 246)"
-                    centerTextColorClass="text-blue-700 dark:text-blue-100"
+                {isLoading
+                  ?  Array.from({ length: 5 }, (_, i) => (
+                    <PlayerCardPlaceholder 
+                      key={`ct-skeleton-${i}`}
+                      ringColor="rgb(59 130 246)"
+                      centerTextColorClass="text-blue-700 dark:text-blue-100"
                   />
-                )}
+                  )) 
+                  : leftTeamPlayers.map((player) =>(
+                    <PlayerCard // STEAM WHEN LOADED
+                      key={player.steamid}
+                      player={player}
+                      ringColor="rgb(59 130 246)"
+                      centerTextColorClass="text-blue-700 dark:text-blue-100"
+                    />
+                  ))
+                }
+                
               </div>
             </div>
 
@@ -253,18 +271,27 @@ export default function ReplayPage() {
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                {getTeamPlayers(rightTeamID).map((player) => (
-                  <PlayerCard
-                    key={player.steamid}
-                    player={player}
-                    ringColor="rgb(234 179 8)"
-                    centerTextColorClass="text-amber-700 dark:text-yellow-100"
-                  />
-                ))}
+                {isLoading
+                  ? Array.from({ length: 5 }, (_, i) => (
+                    <PlayerCardPlaceholder 
+                      key={`t-skeleton-${i}`}
+                      ringColor="rgb(234 179 8)"
+                      centerTextColorClass="text-amber-700 dark:text-yellow-100"
+                    />  
+                  )) 
+                  : rightTeamPlayers.map((player) => (
+                    <PlayerCard
+                      key={player.steamid}
+                      player={player}
+                      ringColor="rgb(234 179 8)"
+                      centerTextColorClass="text-amber-700 dark:text-yellow-100"
+                    />
+                  ))
+                }
               </div>
             </div>
           </div>
-        )}
+        }
 
         {/* Center Canvas */}
         <div className="relative w-full max-w-180 aspect-square overflow-hidden rounded-xl border border-slate-300 shrink-0 dark:border-slate-700">
