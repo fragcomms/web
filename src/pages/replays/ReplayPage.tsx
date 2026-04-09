@@ -5,10 +5,13 @@ import { useParams } from "react-router-dom";
 import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
 import { useReplayEngine } from "./ReplayBackend";
 import { useReplayMedia } from "./ReplayMedia";
+import type { ReplayPlayer } from "../../utils/types/user";
+
 
 import { MuteSidebar } from "./components/MuteSidebar";
 import { TranscriptPanel } from "./components/TranscriptPanel";
 import { TransportBar } from "./components/TransportBar";
+import PlayerCard from "./components/PlayerCard";
 
 function getRoundFromTick(roundStartTicks: number[], currentTick: number): number {
   if (roundStartTicks.length === 0) return 1;
@@ -24,14 +27,6 @@ function formatTime(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-interface ReplayPlayer {
-  team: number;
-  steamid: string;
-  name?: string;
-  hp: number;
-  alive: boolean;
 }
 
 export default function ReplayPage() {
@@ -160,7 +155,6 @@ export default function ReplayPage() {
     const elapsed = Math.min(duration, Math.max(0, currentTimeSec - startSec));
 
     
-
     return {
       activeRound: currentActiveRound,
       activeRoundStartSec: startSec,
@@ -188,44 +182,6 @@ export default function ReplayPage() {
     (frame?.players ?? [])
       .filter((player) => player.team === teamId)
       .sort((a, b) => a.steamid.localeCompare(b.steamid));
-
-  const renderPlayerCard = (
-    player: ReplayPlayer,
-    ringColor: string,
-    centerTextColorClass: string,
-  ) => {
-    const hpPercent = Math.max(0, Math.min(100, player.hp));
-
-    return (
-      <div
-        key={player.steamid}
-        className={`flex items-center justify-between gap-2 rounded-md border border-slate-300 bg-white/90 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800/70 ${player.alive ? "" : "opacity-55"}`}
-      >
-        <div
-          className="min-w-0 truncate pr-2 text-sm font-mono font-medium text-slate-700 dark:text-slate-200"
-          style={{ maxWidth: "32ch" }}
-          title={player.name || player.steamid}
-        >
-          {player.name || player.steamid}
-        </div>
-        <div className="flex items-center">
-          <div
-            className="relative h-9 w-9 shrink-0 rounded-full"
-            style={{
-              background: `conic-gradient(${ringColor} ${hpPercent}%, rgb(148 163 184) ${hpPercent}% 100%)`,
-            }}
-          >
-            <div className={`absolute inset-0.75 flex items-center justify-center rounded-full bg-white text-[10px] font-semibold dark:bg-slate-900 ${centerTextColorClass}`}>
-              {player.alive ? player.hp : "D"}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-
-  
 
   if (fetchError) {
     return (
@@ -271,7 +227,12 @@ export default function ReplayPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 {getTeamPlayers(leftTeamID).map((player) =>
-                  renderPlayerCard(player, "rgb(59 130 246)", "text-blue-700 dark:text-blue-100"),
+                  <PlayerCard
+                    key={player.steamid}
+                    player={player}
+                    ringColor="rgb(59 130 246)"
+                    centerTextColorClass="text-blue-700 dark:text-blue-100"
+                  />
                 )}
               </div>
             </div>
@@ -287,9 +248,14 @@ export default function ReplayPage() {
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                {getTeamPlayers(rightTeamID).map((player) =>
-                  renderPlayerCard(player, "rgb(234 179 8)", "text-amber-700 dark:text-yellow-100"),
-                )}
+                {getTeamPlayers(rightTeamID).map((player) => (
+                  <PlayerCard
+                    key={player.steamid}
+                    player={player}
+                    ringColor="rgb(234 179 8)"
+                    centerTextColorClass="text-amber-700 dark:text-yellow-100"
+                  />
+                ))}
               </div>
             </div>
           </div>
