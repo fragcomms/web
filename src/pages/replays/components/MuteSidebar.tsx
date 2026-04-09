@@ -15,29 +15,33 @@ export const MuteSidebar = memo(
     const paddedUsers = [...discordUsers, ...Array(6 - discordUsers.length).fill("")].slice(0, 6);
 
     return (
-      <div className={isHorizontal ? "flex w-full flex-row justify-center gap-2.5" : "flex h-180 w-36 shrink-0 flex-col gap-2.5"}>
+      <div
+        className={isHorizontal
+          ? "flex w-full flex-row justify-center gap-2.5"
+          : "flex h-180 w-36 shrink-0 flex-col gap-2.5"}
+      >
         {paddedUsers.map((discordId, index) => {
           const isEmpty = !discordId;
           const isMuted = !isEmpty && (mutedUsers[discordId] || false);
           const itemClasses = isEmpty
             ? "border-slate-600/50 bg-slate-800/30"
             : isMuted
-              ? "border-red-900/50 bg-red-950/20"
-              : "border-slate-700 bg-slate-800";
+            ? "border-red-900/50 bg-red-950/20"
+            : "border-slate-700 bg-slate-800";
           const buttonClasses = isMuted
             ? "border-red-500 bg-red-500/20 text-red-400 hover:bg-red-500/30"
             : "border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400 hover:text-white";
 
           return (
             <div key={`player-${discordId || `empty-${index}`}`} className="flex items-center gap-2.5">
-              <div className={`flex h-fit w-32 flex-col items-center gap-2 rounded-md border p-2.5 transition-colors ${itemClasses}`}>
+              <div
+                className={`flex h-fit w-32 flex-col items-center gap-2 rounded-md border p-2.5 transition-colors ${itemClasses}`}
+              >
                 <div className="flex w-full items-center justify-center gap-2">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-700">
-                    {isEmpty ? (
-                      <div className="text-xs text-slate-500">-</div>
-                    ) : (
-                      <User className="h-6 w-6 text-slate-300" />
-                    )}
+                    {isEmpty
+                      ? <div className="text-xs text-slate-500">-</div>
+                      : <User className="h-6 w-6 text-slate-300" />}
                   </div>
                   {!isEmpty && (
                     <button

@@ -1,12 +1,12 @@
-import type { MapGeometry, WorldBounds } from "../types";
-import type { MapConfig } from "../logic/mapConfig";
 import { createFloat32Buffer } from "../core/gpuBufferUtils";
+import type { MapConfig } from "../logic/mapConfig";
+import type { MapGeometry, WorldBounds } from "../types";
 
 export type WallSegment = { x1: number; y1: number; x2: number; y2: number; };
 
 export class MapRenderer {
   private device: GPUDevice;
-  
+
   // json boundaries
   private blockingSegments: WallSegment[] = [];
   private linePipeline: GPURenderPipeline;
@@ -28,12 +28,16 @@ export class MapRenderer {
     this.imagePipeline = imagePipeline;
 
     this.sampler = device.createSampler({
-      magFilter: 'linear',
-      minFilter: 'linear',
+      magFilter: "linear",
+      minFilter: "linear",
     });
   }
 
-  async loadMapImage(url: string, config: MapConfig, bounds: { minX: number, maxX: number, minY: number, maxY: number }) {
+  async loadMapImage(
+    url: string,
+    config: MapConfig,
+    bounds: { minX: number; maxX: number; minY: number; maxY: number; },
+  ) {
     const bitmap = await new Promise<ImageBitmap>((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
@@ -47,14 +51,14 @@ export class MapRenderer {
 
     const texture = this.device.createTexture({
       size: [bitmap.width, bitmap.height, 1],
-      format: 'rgba8unorm',
+      format: "rgba8unorm",
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
     this.device.queue.copyExternalImageToTexture(
-      { source: bitmap }, 
-      { texture }, 
-      [bitmap.width, bitmap.height]
+      { source: bitmap },
+      { texture },
+      [bitmap.width, bitmap.height],
     );
 
     this.imageBindGroup = this.device.createBindGroup({
@@ -66,7 +70,7 @@ export class MapRenderer {
     });
 
     const { scale, originX, originY } = config;
-    
+
     const x1 = (bounds.minX * scale) + originX;
     const x2 = (bounds.maxX * scale) + originX;
     const yTop = (bounds.maxY * scale) + originY;
@@ -81,13 +85,31 @@ export class MapRenderer {
     const vBottom = (-bounds.minY) / svgH;
 
     const verts = new Float32Array([
-      x1, yTop, u1, vTop,
-      x2, yTop, u2, vTop,
-      x1, yBottom, u1, vBottom,
+      x1,
+      yTop,
+      u1,
+      vTop,
+      x2,
+      yTop,
+      u2,
+      vTop,
+      x1,
+      yBottom,
+      u1,
+      vBottom,
 
-      x1, yBottom, u1, vBottom,
-      x2, yTop, u2, vTop,
-      x2, yBottom, u2, vBottom,
+      x1,
+      yBottom,
+      u1,
+      vBottom,
+      x2,
+      yTop,
+      u2,
+      vTop,
+      x2,
+      yBottom,
+      u2,
+      vBottom,
     ]);
 
     if (this.imageVertexBuffer) this.imageVertexBuffer.destroy();
@@ -96,7 +118,7 @@ export class MapRenderer {
       verts,
       GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     );
-    
+
     bitmap.close();
   }
 
@@ -144,7 +166,9 @@ export class MapRenderer {
     this.lineVertexCount = geometry.segments.length * 2;
   }
 
-  getBlockingSegments(): WallSegment[] { return this.blockingSegments; }
+  getBlockingSegments(): WallSegment[] {
+    return this.blockingSegments;
+  }
 
   render(pass: GPURenderPassEncoder, globalBindGroup: GPUBindGroup) {
     if (this.imageVertexBuffer && this.imageBindGroup) {

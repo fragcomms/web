@@ -1,12 +1,12 @@
-import playerShaderWGSL from "../shaders/player.wgsl?raw";
-import grenadeShaderWGSL from "../shaders/grenade.wgsl?raw";
 import areaEffectShaderWGSL from "../shaders/areaEffect.wgsl?raw";
+import grenadeShaderWGSL from "../shaders/grenade.wgsl?raw";
+import mapImageShaderWGSL from "../shaders/mapImage.wgsl?raw";
+import mapShaderWGSL from "../shaders/mapOutline.wgsl?raw";
+import playerShaderWGSL from "../shaders/player.wgsl?raw";
+import shardShaderWGSL from "../shaders/shard.wgsl?raw";
+import smokeFieldRenderShaderWGSL from "../shaders/smokeFieldRender.wgsl?raw";
 import tracerShaderWGSL from "../shaders/tracer.wgsl?raw";
 import visionShaderWGSL from "../shaders/vision.wgsl?raw";
-import mapShaderWGSL from "../shaders/mapOutline.wgsl?raw";
-import shardShaderWGSL from "../shaders/shard.wgsl?raw";
-import mapImageShaderWGSL from "../shaders/mapImage.wgsl?raw";
-import smokeFieldRenderShaderWGSL from "../shaders/smokeFieldRender.wgsl?raw";
 
 export function createGlobalLayout(device: GPUDevice) {
   return device.createBindGroupLayout({
@@ -142,7 +142,11 @@ export function createGrenadePipeline(device: GPUDevice, format: GPUTextureForma
   return { pipeline };
 }
 
-export function createAreaEffectPipeline(device: GPUDevice, format: GPUTextureFormat, globalLayout: GPUBindGroupLayout) {
+export function createAreaEffectPipeline(
+  device: GPUDevice,
+  format: GPUTextureFormat,
+  globalLayout: GPUBindGroupLayout,
+) {
   const module = device.createShaderModule({ code: areaEffectShaderWGSL });
 
   const smokeFieldLayout = device.createBindGroupLayout({
@@ -617,25 +621,26 @@ fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
     ],
   });
 
-  const createPipeline = (module: GPUShaderModule, layout: GPUBindGroupLayout) => device.createRenderPipeline({
-    layout: device.createPipelineLayout({
-      bindGroupLayouts: [layout],
-    }),
-    vertex: {
-      module,
-      entryPoint: "vs_main",
-    },
-    fragment: {
-      module,
-      entryPoint: "fs_main",
-      targets: [{
-        format: "rgba16float",
-      }],
-    },
-    primitive: {
-      topology: "triangle-list",
-    },
-  });
+  const createPipeline = (module: GPUShaderModule, layout: GPUBindGroupLayout) =>
+    device.createRenderPipeline({
+      layout: device.createPipelineLayout({
+        bindGroupLayouts: [layout],
+      }),
+      vertex: {
+        module,
+        entryPoint: "vs_main",
+      },
+      fragment: {
+        module,
+        entryPoint: "fs_main",
+        targets: [{
+          format: "rgba16float",
+        }],
+      },
+      primitive: {
+        topology: "triangle-list",
+      },
+    });
 
   return {
     velocityAdvectPipeline: createPipeline(velocityAdvectModule, velocityAdvectLayout),
@@ -867,7 +872,7 @@ export function createMapPipeline(
 export function createMapImagePipeline(
   device: GPUDevice,
   format: GPUTextureFormat,
-  globalLayout: GPUBindGroupLayout
+  globalLayout: GPUBindGroupLayout,
 ) {
   const module = device.createShaderModule({ code: mapImageShaderWGSL });
 
@@ -899,7 +904,7 @@ export function createMapImagePipeline(
         blend: {
           color: { srcFactor: "src-alpha", dstFactor: "one-minus-src-alpha", operation: "add" },
           alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
-        }
+        },
       }],
     },
     primitive: {

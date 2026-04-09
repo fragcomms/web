@@ -52,7 +52,7 @@ export function intersectSegmentWithWall(
   start: Vec2,
   end: Vec2,
   wall: WallSegment,
-): { t: number; x: number; y: number } | null {
+): { t: number; x: number; y: number; } | null {
   const p = start;
   const r = { x: end.x - start.x, y: end.y - start.y };
   const q = { x: wall.x1, y: wall.y1 };

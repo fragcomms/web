@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useCallback, useRef, useState } from "react";
 
 export function usePanZoom() {
   const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 });
@@ -6,7 +6,7 @@ export function usePanZoom() {
 
   // This multiplier matches mouse pixels to your WebGPU coordinate space (base half = 4000)
   // You may need to tweak this number (e.g., 5, 10, 20) until the drag feels exactly 1:1 with the cursor
-  const panSensitivity = 10; 
+  const panSensitivity = 10;
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);

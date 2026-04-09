@@ -1,5 +1,5 @@
-import type { RenderAreaEffect } from "../types";
 import { writeFloat32Slice } from "../core/gpuBufferUtils";
+import type { RenderAreaEffect } from "../types";
 
 export class AreaEffectRenderer {
   private queue: GPUQueue;

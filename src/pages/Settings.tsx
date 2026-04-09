@@ -31,7 +31,6 @@ export default function Settings() {
       className="mx-auto w-full max-w-2xl px-4 py-10"
       style={{ color: "var(--app-foreground)" }}
     >
-
       <h2 className="mt-8 text-xl font-semibold">Web Settings</h2>
       <div
         className="mt-6 rounded-lg border p-6"

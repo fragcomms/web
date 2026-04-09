@@ -1,30 +1,30 @@
+import { FluidSim } from "../logic/fluids/fluidSim";
+import { DefaultMapConfig, MapRegistry } from "../logic/mapConfig";
+import { createCenteredQuadVertices, createUnitQuadVertices, createWorldQuadVertices } from "../math/quadGeometry";
+import { AreaEffectRenderer } from "../renderers/areaEffectRenderer";
+import { DeathShardRenderer } from "../renderers/deathShardRenderer";
+import { GrenadeRenderer } from "../renderers/grenadeRenderer";
+import { MapRenderer } from "../renderers/mapRenderer";
+import { PlayerRenderer } from "../renderers/playerRenderer";
+import { SmokeRenderer } from "../renderers/smokeRenderer";
+import { TracerRenderer } from "../renderers/tracerRenderer";
+import { VisionRenderer } from "../renderers/visionRenderer";
+import type { MapGeometry, RenderFrame } from "../types";
+import { createDynamicBuffer, createFloat32Buffer } from "./gpuBufferUtils";
 import { initWebGPU } from "./gpuContext";
 import {
   createAreaEffectPipeline,
   createFluidSimPipelines,
-  createGrenadePipeline,
   createGlobalLayout,
-  createMapPipeline,
+  createGrenadePipeline,
   createMapImagePipeline,
+  createMapPipeline,
   createPlayerPipeline,
   createShardPipeline,
   createSmokeRenderPipeline,
   createTracerPipeline,
   createVisionPipeline,
 } from "./pipelines";
-import { AreaEffectRenderer } from "../renderers/areaEffectRenderer";
-import { GrenadeRenderer } from "../renderers/grenadeRenderer";
-import { PlayerRenderer } from "../renderers/playerRenderer";
-import { SmokeRenderer } from "../renderers/smokeRenderer";
-import { TracerRenderer } from "../renderers/tracerRenderer";
-import type { MapGeometry, RenderFrame } from "../types";
-import { VisionRenderer } from "../renderers/visionRenderer";
-import { MapRenderer } from "../renderers/mapRenderer";
-import { DeathShardRenderer } from "../renderers/deathShardRenderer";
-import { MapRegistry, DefaultMapConfig } from "../logic/mapConfig";
-import { FluidSim } from "../logic/fluidSim";
-import { createDynamicBuffer, createFloat32Buffer } from "./gpuBufferUtils";
-import { createCenteredQuadVertices, createUnitQuadVertices, createWorldQuadVertices } from "../math/quadGeometry";
 
 export class Renderer {
   private device: GPUDevice;
@@ -59,13 +59,25 @@ export class Renderer {
     const aspect = canvas.width / canvas.height;
 
     const sx = (zoom / half) / aspect;
-    const sy = (zoom / half);
+    const sy = zoom / half;
 
     const viewProj = new Float32Array([
-      sx, 0, 0, 0,
-      0, sy, 0, 0,
-      0, 0, 1, 0,
-      -(center.x + cameraX) * sx, -(center.y + cameraY) * sy, 0, 1,
+      sx,
+      0,
+      0,
+      0,
+      0,
+      sy,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      -(center.x + cameraX) * sx,
+      -(center.y + cameraY) * sy,
+      0,
+      1,
     ]);
 
     this.queue.writeBuffer(this.globalUniformBuffer, 0, viewProj);
@@ -113,7 +125,12 @@ export class Renderer {
     const fluidSimPipelines = createFluidSimPipelines(device);
     const { pipeline: playerPipeline } = createPlayerPipeline(device, format, globalLayout);
     const { pipeline: grenadePipeline } = createGrenadePipeline(device, format, globalLayout);
-    const { pipeline: visionPipeline, visionWallsLayout } = createVisionPipeline(device, format, globalLayout, smokeFieldLayout);
+    const { pipeline: visionPipeline, visionWallsLayout } = createVisionPipeline(
+      device,
+      format,
+      globalLayout,
+      smokeFieldLayout,
+    );
     const { pipeline: tracerPipeline } = createTracerPipeline(device, format, globalLayout);
     const { pipeline: shardPipeline } = createShardPipeline(device, format, globalLayout);
     const mapPipeline = createMapPipeline(device, format, globalLayout);
@@ -122,10 +139,22 @@ export class Renderer {
     const half = 4000;
     const aspect = canvas.width / canvas.height;
     const viewProj = new Float32Array([
-      (1 / half) / aspect, 0, 0, 0,
-      0, 1 / half, 0, 0,
-      0, 0, 1, 0,
-      0, 0, 0, 1,
+      (1 / half) / aspect,
+      0,
+      0,
+      0,
+      0,
+      1 / half,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
     ]);
 
     const globalUniformBuffer = device.createBuffer({
@@ -297,7 +326,7 @@ export class Renderer {
     );
 
     const mapRenderer = new MapRenderer(device, mapPipeline, mapImagePipeline);
-    
+
     return new Renderer(
       device,
       queue,
@@ -319,7 +348,7 @@ export class Renderer {
   setMapGeometry(geometry: MapGeometry, mapName: string) {
     const config = MapRegistry[mapName] || DefaultMapConfig;
     if (!MapRegistry[mapName]) {
-      console.warn(`Map config ${mapName} not found. Using de_nuke.`)
+      console.warn(`Map config ${mapName} not found. Using de_nuke.`);
     }
 
     this.mapRenderer.setMapGeometry(geometry, config);
@@ -341,17 +370,36 @@ export class Renderer {
     const sy = 1 / half;
 
     const viewProj = new Float32Array([
-      sx, 0, 0, 0,
-      0, sy, 0, 0,
-      0, 0, 1, 0,
-      -center.x * sx, -center.y * sy, 0, 1,
+      sx,
+      0,
+      0,
+      0,
+      0,
+      sy,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      -center.x * sx,
+      -center.y * sy,
+      0,
+      1,
     ]);
 
     // 3. Upload the new camera matrix to the GPU (Offset 0)
     this.queue.writeBuffer(this.globalUniformBuffer, 0, viewProj);
   }
 
-  render(frame: RenderFrame, timeSec: number) {
+  render(
+    frame: RenderFrame,
+    timeSec: number,
+    options: { skipFluidSim?: boolean; skipDeathShardEffects?: boolean; } = {},
+  ) {
+    const skipFluidSim = options.skipFluidSim ?? false;
+    const skipDeathShardEffects = options.skipDeathShardEffects ?? false;
+
     this.timeVec4[0] = timeSec;
     this.timeVec4[1] = 0;
     this.timeVec4[2] = 0;
@@ -361,11 +409,15 @@ export class Renderer {
     const dtSec = this.lastRenderTimeSec == null ? 0 : Math.max(0, timeSec - this.lastRenderTimeSec);
     this.lastRenderTimeSec = timeSec;
 
-    this.deathShardRenderer.syncDeaths(frame.players, frame.tracers);
-    this.deathShardRenderer.update(dtSec);
-    this.fluidSim.syncToFrame(frame);
+    if (!skipDeathShardEffects) {
+      this.deathShardRenderer.syncDeaths(frame.players, frame.tracers);
+      this.deathShardRenderer.update(dtSec);
+    }
+    if (!skipFluidSim) {
+      this.fluidSim.syncToFrame(frame);
+    }
     const visionCount = this.visionRenderer.upload(frame.players);
-    const shardCount = this.deathShardRenderer.upload();
+    const shardCount = skipDeathShardEffects ? 0 : this.deathShardRenderer.upload();
     const areaEffectCount = this.areaEffectRenderer.upload(frame.areaEffects);
     const grenadeCount = this.grenadeRenderer.upload(frame.grenades);
     const playerCount = this.playerRenderer.upload(frame.players);
@@ -386,10 +438,14 @@ export class Renderer {
     });
 
     this.mapRenderer.render(pass, this.globalBindGroup);
-    this.smokeRenderer.draw(pass);
+    if (!skipFluidSim) {
+      this.smokeRenderer.draw(pass);
+    }
     this.areaEffectRenderer.draw(pass, areaEffectCount);
     this.visionRenderer.draw(pass, visionCount);
-    this.deathShardRenderer.draw(pass, shardCount);
+    if (!skipDeathShardEffects) {
+      this.deathShardRenderer.draw(pass, shardCount);
+    }
     this.grenadeRenderer.draw(pass, grenadeCount);
     this.tracerRenderer.draw(pass, tracerCount);
     this.playerRenderer.draw(pass, playerCount);

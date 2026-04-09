@@ -66,7 +66,13 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
         // this makes it easier to display in the transcript panel and also ensures the audio tracks are properly loaded for all users mentioned in the transcripts
         for (const [discordId, segments] of Object.entries(transcriptJson)) {
           for (const seg of (segments as any[])) {
-            combined.push({ discordId, start: seg.start, end: seg.end, text: seg.raw_text || seg.text, clean_text: seg.clean_text });
+            combined.push({
+              discordId,
+              start: seg.start,
+              end: seg.end,
+              text: seg.raw_text || seg.text,
+              clean_text: seg.clean_text,
+            });
           }
         }
 

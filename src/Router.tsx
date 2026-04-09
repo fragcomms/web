@@ -1,5 +1,5 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { useState } from "react";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Navbar as LoggedNavbar } from "./components/AuthNavBar";
 import { Navbar as PublicNavbar } from "./components/PublicNavBar";
 import { ProtectedRoute } from "./components/RouteProtector";
@@ -45,7 +45,10 @@ export default function Router() {
         {user ? <LoggedNavbar onNavOffsetChange={setNavOffsetPx} /> : <PublicNavbar />}
 
         {/* Page Content with top padding to account for fixed navbar */}
-        <div className="flex-1 flex flex-col transition-[padding] duration-300 ease-out" style={{ paddingTop: `${navOffsetPx}px` }}>
+        <div
+          className="flex-1 flex flex-col transition-[padding] duration-300 ease-out"
+          style={{ paddingTop: `${navOffsetPx}px` }}
+        >
           {/* Add padding-top for fixed navbar height */}
           <Routes>
             {/* Default Page - Home */}

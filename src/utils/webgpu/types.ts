@@ -24,11 +24,11 @@ export type ReplayRoster = Record<string, ReplayRosterEntry>;
 
 // changed from json parsing to tuples
 // id, hp, x, y, z, rot
-export type TimelinePlayer = [number, number, number, number, number, number]
+export type TimelinePlayer = [number, number, number, number, number, number];
 
 // changed from json parsing to tuples
 // eid, id, wep, x, y, z
-export type TimelineGrenade = [number, number, number, number, number, number]
+export type TimelineGrenade = [number, number, number, number, number, number];
 
 export type TimelineTick = {
   t: number;
@@ -79,6 +79,7 @@ export type ReplayEvents = {
   inferno_extinguish?: InfernoExtinguishEvent[];
   round_start?: RoundStartEvent[];
   round_end?: RoundEndEvent[];
+  player_death?: PlayerDeathEvent[]; // NEW
 };
 
 export type ReplayJSON = {
@@ -251,4 +252,31 @@ export type WorldBounds = Bounds;
 export type MapGeometry = {
   segments: Segment[];
   bounds: Bounds;
+};
+
+export type PlayerDeathEvent = {
+  t: number;
+  vic: number; // Victim ID
+  att: number; // Attacker ID
+  ass?: number; // Assist ID (Optional)
+  wep: string;
+  hs: boolean; // Headshot
+};
+
+export type RoundChunk = {
+  roundNum: number;
+  startTick: number; // The exact tick of round_start
+  endTick: number; // The tick right before the NEXT round_start
+
+  timeline: TimelineTick[]; // ONLY the ticks for this round
+
+  events: {
+    weapon_fire: WeaponFireEvent[];
+    hegrenade_detonate: PositionedEvent[];
+    smokegrenade_detonate: PositionedEvent[];
+    inferno_startburn: PositionedEvent[];
+    inferno_expire: PositionedEvent[];
+    inferno_extinguish: InfernoExtinguishEvent[];
+    player_death: PlayerDeathEvent[];
+  };
 };

@@ -1,6 +1,6 @@
+import { XMLParser } from "fast-xml-parser";
 import fs from "node:fs";
 import path from "node:path";
-import { XMLParser } from "fast-xml-parser";
 import type { Bounds, MapGeometry, Segment, Vec2 } from "../src/utils/types/mapGeometry";
 
 const MAPS_DIR = path.resolve("public/maps");
@@ -83,7 +83,7 @@ function simplifyLineRDP(points: Vec2[], epsilon: number): Vec2[] {
 }
 
 function optimizeSegments(segments: Segment[], epsilon = 0.5): Segment[] {
-  const polylines: { points: Vec2[], meta: Partial<Segment> }[] = [];
+  const polylines: { points: Vec2[]; meta: Partial<Segment>; }[] = [];
   let current: Vec2[] = [];
   let currentMeta: Partial<Segment> = {};
 
@@ -115,7 +115,7 @@ function optimizeSegments(segments: Segment[], epsilon = 0.5): Segment[] {
         y1: simplified[i].y,
         x2: simplified[i + 1].x,
         y2: simplified[i + 1].y,
-        ...poly.meta
+        ...poly.meta,
       });
     }
   }
@@ -126,18 +126,29 @@ function optimizeSegments(segments: Segment[], epsilon = 0.5): Segment[] {
 function lineNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
   const a = getAttrs(node);
   return [{
-    x1: num(a.x1), y1: num(a.y1), x2: num(a.x2), y2: num(a.y2),
-    stroke: a.stroke, fill: a.fill, group: [...groupPath], source: "line",
+    x1: num(a.x1),
+    y1: num(a.y1),
+    x2: num(a.x2),
+    y2: num(a.y2),
+    stroke: a.stroke,
+    fill: a.fill,
+    group: [...groupPath],
+    source: "line",
   }];
 }
 
 function rectNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
   const a = getAttrs(node);
-  const x = num(a.x); const y = num(a.y);
-  const w = num(a.width); const h = num(a.height);
+  const x = num(a.x);
+  const y = num(a.y);
+  const w = num(a.width);
+  const h = num(a.height);
   const points: Vec2[] = [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }];
   return polygonToSegments(points, true, {
-    stroke: a.stroke, fill: a.fill, group: [...groupPath], source: "rect",
+    stroke: a.stroke,
+    fill: a.fill,
+    group: [...groupPath],
+    source: "rect",
   });
 }
 
@@ -145,7 +156,10 @@ function polylineNodeToSegments(node: SvgNode, closed: boolean, groupPath: strin
   const a = getAttrs(node);
   const points = parsePointsString(a.points ?? "");
   return polygonToSegments(points, closed, {
-    stroke: a.stroke, fill: a.fill, group: [...groupPath], source: closed ? "polygon" : "polyline",
+    stroke: a.stroke,
+    fill: a.fill,
+    group: [...groupPath],
+    source: closed ? "polygon" : "polyline",
   });
 }
 
@@ -157,13 +171,16 @@ function tokenizePath(d: string): string[] {
   return d.match(/[A-Za-z]|-?\d*\.?\d+(?:e[-+]?\d+)?/g) ?? [];
 }
 
-function readNumber(tokens: string[], index: { i: number }): number {
+function readNumber(tokens: string[], index: { i: number; }): number {
   return Number(tokens[index.i++]);
 }
 
 function cubicBezierPoint(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: number): Vec2 {
-  const mt = 1 - t; const mt2 = mt * mt; const mt3 = mt2 * mt;
-  const t2 = t * t; const t3 = t2 * t;
+  const mt = 1 - t;
+  const mt2 = mt * mt;
+  const mt3 = mt2 * mt;
+  const t2 = t * t;
+  const t3 = t2 * t;
   return {
     x: mt3 * p0.x + 3 * mt2 * t * p1.x + 3 * mt * t2 * p2.x + t3 * p3.x,
     y: mt3 * p0.y + 3 * mt2 * t * p1.y + 3 * mt * t2 * p2.y + t3 * p3.y,
@@ -203,29 +220,35 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[][] {
   while (idx.i < tokens.length) {
     if (isCommandToken(tokens[idx.i])) command = tokens[idx.i++];
     switch (command) {
-      case "M": case "m": {
+      case "M":
+      case "m": {
         commitShape(); // Start of a new subpath! Split it here.
-        const firstX = readNumber(tokens, idx); const firstY = readNumber(tokens, idx);
+        const firstX = readNumber(tokens, idx);
+        const firstY = readNumber(tokens, idx);
         current = command === "m" ? { x: current.x + firstX, y: current.y + firstY } : { x: firstX, y: firstY };
         subpathStart = { ...current };
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
-          const x = readNumber(tokens, idx); const y = readNumber(tokens, idx);
+          const x = readNumber(tokens, idx);
+          const y = readNumber(tokens, idx);
           const next = command === "m" ? { x: current.x + x, y: current.y + y } : { x, y };
           pushSegment(currentShape, current, next, meta);
           current = next;
         }
         break;
       }
-      case "L": case "l": {
+      case "L":
+      case "l": {
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
-          const x = readNumber(tokens, idx); const y = readNumber(tokens, idx);
+          const x = readNumber(tokens, idx);
+          const y = readNumber(tokens, idx);
           const next = command === "l" ? { x: current.x + x, y: current.y + y } : { x, y };
           pushSegment(currentShape, current, next, meta);
           current = next;
         }
         break;
       }
-      case "H": case "h": {
+      case "H":
+      case "h": {
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
           const x = readNumber(tokens, idx);
           const next = command === "h" ? { x: current.x + x, y: current.y } : { x, y: current.y };
@@ -234,7 +257,8 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[][] {
         }
         break;
       }
-      case "V": case "v": {
+      case "V":
+      case "v": {
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
           const y = readNumber(tokens, idx);
           const next = command === "v" ? { x: current.x, y: current.y + y } : { x: current.x, y };
@@ -243,7 +267,8 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[][] {
         }
         break;
       }
-      case "Z": case "z": {
+      case "Z":
+      case "z": {
         if (subpathStart) {
           pushSegment(currentShape, current, subpathStart, meta);
           current = { ...subpathStart };
@@ -251,11 +276,15 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[][] {
         commitShape();
         break;
       }
-      case "C": case "c": {
+      case "C":
+      case "c": {
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
-          const x1 = readNumber(tokens, idx); const y1 = readNumber(tokens, idx);
-          const x2 = readNumber(tokens, idx); const y2 = readNumber(tokens, idx);
-          const x = readNumber(tokens, idx); const y = readNumber(tokens, idx);
+          const x1 = readNumber(tokens, idx);
+          const y1 = readNumber(tokens, idx);
+          const x2 = readNumber(tokens, idx);
+          const y2 = readNumber(tokens, idx);
+          const x = readNumber(tokens, idx);
+          const y = readNumber(tokens, idx);
           const p0 = current;
           const p1 = command === "c" ? { x: current.x + x1, y: current.y + y1 } : { x: x1, y: y1 };
           const p2 = command === "c" ? { x: current.x + x2, y: current.y + y2 } : { x: x2, y: y2 };
@@ -265,7 +294,8 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[][] {
         }
         break;
       }
-      default: throw new Error(`Unsupported SVG path command: ${command}`);
+      default:
+        throw new Error(`Unsupported SVG path command: ${command}`);
     }
   }
   commitShape();
@@ -277,12 +307,19 @@ function flipY(segments: Segment[]): Segment[] {
 }
 
 function computeBounds(segments: Segment[]): Bounds {
-  let minX = Infinity; let minY = Infinity; let maxX = -Infinity; let maxY = -Infinity;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
   for (const s of segments) {
-    if (s.x1 < minX) minX = s.x1; if (s.x2 < minX) minX = s.x2;
-    if (s.y1 < minY) minY = s.y1; if (s.y2 < minY) minY = s.y2;
-    if (s.x1 > maxX) maxX = s.x1; if (s.x2 > maxX) maxX = s.x2;
-    if (s.y1 > maxY) maxY = s.y1; if (s.y2 > maxY) maxY = s.y2;
+    if (s.x1 < minX) minX = s.x1;
+    if (s.x2 < minX) minX = s.x2;
+    if (s.y1 < minY) minY = s.y1;
+    if (s.y2 < minY) minY = s.y2;
+    if (s.x1 > maxX) maxX = s.x1;
+    if (s.x2 > maxX) maxX = s.x2;
+    if (s.y1 > maxY) maxY = s.y1;
+    if (s.y2 > maxY) maxY = s.y2;
   }
   return { minX, minY, maxX, maxY };
 }
@@ -305,33 +342,43 @@ function extractAllShapes(node: unknown, outShapes: Segment[][], groupPath: stri
   if (!node || typeof node !== "object") return;
   const obj = node as Record<string, unknown>;
   const attrs = obj[":@ "] as Record<string, string> | undefined;
-  
+
   const id = attrs?.id ? [attrs.id] : [];
   const inkscapeLabel = attrs?.["inkscape:label"] ? [attrs["inkscape:label"]] : [];
-  
+
   const currentPath = [...groupPath, ...id, ...inkscapeLabel];
 
-  if (obj.path) for (const child of toArray(obj.path as SvgNode | SvgNode[])) {
-    const subShapes = pathNodeToSegments(child, currentPath);
-    for (const shape of subShapes) {
-      if (shape.length > 0) outShapes.push(shape);
+  if (obj.path) {
+    for (const child of toArray(obj.path as SvgNode | SvgNode[])) {
+      const subShapes = pathNodeToSegments(child, currentPath);
+      for (const shape of subShapes) {
+        if (shape.length > 0) outShapes.push(shape);
+      }
     }
   }
-  if (obj.rect) for (const child of toArray(obj.rect as SvgNode | SvgNode[])) {
-    const segments = rectNodeToSegments(child, currentPath);
-    if (segments.length > 0) outShapes.push(segments);
+  if (obj.rect) {
+    for (const child of toArray(obj.rect as SvgNode | SvgNode[])) {
+      const segments = rectNodeToSegments(child, currentPath);
+      if (segments.length > 0) outShapes.push(segments);
+    }
   }
-  if (obj.polygon) for (const child of toArray(obj.polygon as SvgNode | SvgNode[])) {
-    const segments = polylineNodeToSegments(child, true, currentPath);
-    if (segments.length > 0) outShapes.push(segments);
+  if (obj.polygon) {
+    for (const child of toArray(obj.polygon as SvgNode | SvgNode[])) {
+      const segments = polylineNodeToSegments(child, true, currentPath);
+      if (segments.length > 0) outShapes.push(segments);
+    }
   }
-  if (obj.polyline) for (const child of toArray(obj.polyline as SvgNode | SvgNode[])) {
-    const segments = polylineNodeToSegments(child, false, currentPath);
-    if (segments.length > 0) outShapes.push(segments);
+  if (obj.polyline) {
+    for (const child of toArray(obj.polyline as SvgNode | SvgNode[])) {
+      const segments = polylineNodeToSegments(child, false, currentPath);
+      if (segments.length > 0) outShapes.push(segments);
+    }
   }
-  if (obj.line) for (const child of toArray(obj.line as SvgNode | SvgNode[])) {
-    const segments = lineNodeToSegments(child, currentPath);
-    if (segments.length > 0) outShapes.push(segments);
+  if (obj.line) {
+    for (const child of toArray(obj.line as SvgNode | SvgNode[])) {
+      const segments = lineNodeToSegments(child, currentPath);
+      if (segments.length > 0) outShapes.push(segments);
+    }
   }
 
   for (const [key, value] of Object.entries(obj)) {

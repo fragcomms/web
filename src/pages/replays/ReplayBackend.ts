@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
 import { Renderer } from "../../utils/webgpu/core/renderer";
 import { ReplayEngine } from "../../utils/webgpu/logic/engine/replayEngine";
-import type { ReplayJSON, RenderFrame, RoundEndEvent, ReplayMeta } from "../../utils/webgpu/types";
-import { MapRegistry, DefaultMapConfig } from "../../utils/webgpu/logic/mapConfig";
+import { DefaultMapConfig, MapRegistry } from "../../utils/webgpu/logic/mapConfig";
 import { usePanZoom } from "../../utils/webgpu/math/panZoom";
+import type { RenderFrame, ReplayJSON, ReplayMeta, RoundEndEvent } from "../../utils/webgpu/types";
 
 type ReplayAudioSyncConfig = {
   audioStartOffsetSec: number;
@@ -24,6 +24,8 @@ export function useReplayEngine(
   const lastTimeRef = useRef<number | null>(null);
   const isPlayingRef = useRef(false);
   const currentTimeRef = useRef(0);
+  const lastRenderedTickRef = useRef<number>(-1);
+  const isScrubbingRef = useRef(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
@@ -78,13 +80,11 @@ export function useReplayEngine(
 
   // compute live score
   const { scoreCT, scoreT } = useMemo(() => {
-
     if (!roundEndEvents) return { score_ct: 0, score_t: 0 };
     // start at 0-0
-    let ct = 0;   //
-    let t = 0;    //
-    let round = 1; // starts at first round 
-
+    let ct = 0; //
+    let t = 0; //
+    let round = 1; // starts at first round
 
     // increment score based on round end winner @ current tick
     for (const event of roundEndEvents) {
@@ -92,13 +92,13 @@ export function useReplayEngine(
       const isFirstHalf = round <= 12; // team swap indicator (halftime)
       if (eventSec <= currentTimeSec) {
         if (event.winner === "CT") {
-          isFirstHalf ? ct++ : t++; //since the sides swap, the oringinal ct team becomes t and gets the points when they win
-          //console.log("round " + round + " ended, winner: " + event.winner + ", score is now CT " + ct + " - T " + t); 
+          isFirstHalf ? ct++ : t++; // since the sides swap, the oringinal ct team becomes t and gets the points when they win
+          // console.log("round " + round + " ended, winner: " + event.winner + ", score is now CT " + ct + " - T " + t);
           round++;
         }
         if (event.winner === "T") {
           isFirstHalf ? t++ : ct++; // same logic as ct  winner, but flipped
-          //console.log("round " + round + " ended, winner: " + event.winner + ", score is now CT " + ct + " - T " + t); 
+          // console.log("round " + round + " ended, winner: " + event.winner + ", score is now CT " + ct + " - T " + t);
           round++;
         }
       } else {
@@ -149,7 +149,7 @@ export function useReplayEngine(
     return () => {
       cancelled = true;
     };
-  }, [canvasRef])
+  }, [canvasRef]);
 
   // data fetch and loop initialization
   useEffect(() => {
@@ -162,7 +162,7 @@ export function useReplayEngine(
 
       try {
         const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/${id}/json`, { credentials: "include" });
-        if (!res.ok) throw new Error (`Server error ${res.status}`);
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
 
         const data: ReplayJSON = await res.json();
         if (cancelled) return;
@@ -197,7 +197,9 @@ export function useReplayEngine(
 
         setTicksPerSecond(player.ticksPerSecond);
         setReplayStartTick(data.timeline[0]?.t ?? 0);
-        setRoundStartTicks((data.events?.round_start ?? []).map(r => r.t).filter(Number.isFinite).sort((a, b) => a - b),);
+        setRoundStartTicks(
+          (data.events?.round_start ?? []).map(r => r.t).filter(Number.isFinite).sort((a, b) => a - b),
+        );
         setDurationSec(player.getDurationSeconds());
         setCurrentTimeSec(0);
 
@@ -215,11 +217,16 @@ export function useReplayEngine(
 
           const currentCamera = cameraRef.current;
           rendererRef.current.updateCamera(currentCamera.x, currentCamera.y, currentCamera.zoom);
-          
+
           if (lastTimeRef.current === null) lastTimeRef.current = nowMs;
 
           const dtSec = (nowMs - lastTimeRef.current) / 1000;
           lastTimeRef.current = nowMs;
+
+          if (isScrubbingRef.current) {
+            rafRef.current = requestAnimationFrame(loop);
+            return;
+          }
 
           let frame = null;
           const currentEffectiveDuration = effectiveDurationSecRef.current;
@@ -241,43 +248,73 @@ export function useReplayEngine(
 
           if (frame) {
             rendererRef.current.render(frame, playerRef.current.getCurrentElapsedSeconds());
-            setFrame(frame);
+            if (frame.tick !== lastRenderedTickRef.current) {
+              setFrame(frame);
+              lastRenderedTickRef.current = frame.tick;
+            }
           }
           rafRef.current = requestAnimationFrame(loop);
         };
         rafRef.current = requestAnimationFrame(loop);
       } catch (err: any) {
         if (!cancelled) {
-          setFetchError(err.message || "Failed to load replay.")
+          setFetchError(err.message || "Failed to load replay.");
           setIsFetching(false);
         }
       }
     })();
-    
+
     return () => {
       cancelled = true;
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, [id, isRendererReady])
+  }, [id, isRendererReady]);
 
   const handleSeek = useCallback((sec: number) => {
     if (!playerRef.current || !rendererRef.current) return;
+
     const clampedSec = Math.max(0, Math.min(sec, effectiveDurationSec));
-    const frame = playerRef.current.seekToElapsedSeconds(clampedSec);
     setCurrentTimeSec(clampedSec);
-    if (frame) {
+
+    const frame = playerRef.current.seekToElapsedSeconds(clampedSec);
+
+    requestAnimationFrame(() => {
+      if (!rendererRef.current || !frame) return;
+
       rendererRef.current.render(frame, clampedSec);
       setFrame(frame);
-    }
-    if (isPlayingRef.current) {
-      syncAudioForReplayTime(clampedSec);
-    }
+      lastRenderedTickRef.current = frame.tick;
+
+      if (isPlayingRef.current) {
+        syncAudioForReplayTime(clampedSec);
+      }
+    });
   }, [effectiveDurationSec, syncAudioForReplayTime]);
+
+  const handlePreviewSeek = useCallback((sec: number) => {
+    if (!playerRef.current || !rendererRef.current) return;
+    const clampedSec = Math.max(0, Math.min(sec, effectiveDurationSec));
+    setCurrentTimeSec(clampedSec);
+
+    requestAnimationFrame(() => {
+      if (!playerRef.current || !rendererRef.current) return;
+      const frame = playerRef.current.seekToElapsedSeconds(clampedSec);
+      if (frame) {
+        rendererRef.current.render(frame, clampedSec, {
+          skipFluidSim: false,
+          skipDeathShardEffects: false,
+        });
+        setFrame(frame);
+        lastRenderedTickRef.current = frame.tick;
+      }
+    });
+  }, [effectiveDurationSec]);
 
   return {
     frame,
     isPlaying,
     setIsPlaying,
+    setIsScrubbing: (val: boolean) => { isScrubbingRef.current = val; },
     currentTimeSec,
     durationSec: effectiveDurationSec,
     replayStartTick,
@@ -286,6 +323,7 @@ export function useReplayEngine(
     isFetching,
     fetchError,
     handleSeek,
+    handlePreviewSeek,
     scoreCT,
     scoreT,
     replayMeta,
@@ -293,7 +331,7 @@ export function useReplayEngine(
       onPointerDown: handlePointerDown,
       onPointerMove: handlePointerMove,
       onPointerUp: handlePointerUp,
-      onWheel: handleWheel
-    }
+      onWheel: handleWheel,
+    },
   };
 }

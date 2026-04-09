@@ -25,7 +25,9 @@ export const TranscriptPanel = memo(function TranscriptPanel(
               {transcripts.map((t, i) => (
                 <div key={i} className={`flex flex-col ${mutedUsers[t.discordId] ? "opacity-30" : ""}`}>
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs text-slate-500 font-mono">[{formatTime(t.start)} - {formatTime(t.end)}]</span>
+                    <span className="text-xs text-slate-500 font-mono">
+                      [{formatTime(t.start)} - {formatTime(t.end)}]
+                    </span>
                     <span className="font-semibold text-blue-400 text-xs truncate max-w-[150px]">
                       {discordNames[t.discordId] || t.discordId}
                     </span>

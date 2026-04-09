@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
 import { useReplayEngine } from "./ReplayBackend";
@@ -62,9 +62,10 @@ export default function ReplayPage() {
 
   // initialize the replay engine and media (transcripts + audio) using the replay ID from URL
   const {
-    frame,    // get current frame data to show player stats on page
+    frame, // get current frame data to show player stats on page
     isPlaying,
     setIsPlaying,
+    setIsScrubbing,
     currentTimeSec,
     durationSec,
     replayStartTick,
@@ -73,10 +74,11 @@ export default function ReplayPage() {
     isFetching,
     fetchError,
     handleSeek,
+    handlePreviewSeek,
     scoreCT,
     scoreT,
     canvasHandlers,
-    //replayMeta, // check final score (testing)
+    // replayMeta, // check final score (testing)
   } = useReplayEngine(id, canvasRef, audioPlayerRef, {
     audioStartOffsetSec,
     audioDurationSec,
@@ -84,7 +86,7 @@ export default function ReplayPage() {
   });
 
   // check final score in logs
-  //console.log("Final Score should be ", replayMeta?.final_score);
+  // console.log("Final Score should be ", replayMeta?.final_score);
 
   // Handle round selection from the transport bar
   // TODO: logic is kinda screwed, should pause once round is finished
@@ -92,7 +94,9 @@ export default function ReplayPage() {
   const handleRoundSelect = useCallback((roundIndex: number) => {
     const seekSec = Math.max(0, ((roundStartTicks[roundIndex] + 12) - replayStartTick) / ticksPerSecond);
     setIsPlaying(true);
-    handleSeek(seekSec);
+    startTransition(() => {
+      handleSeek(seekSec);
+    });
   }, [roundStartTicks, replayStartTick, ticksPerSecond, setIsPlaying, handleSeek]);
 
   useEffect(() => {
@@ -107,7 +111,7 @@ export default function ReplayPage() {
     };
 
     canvas.addEventListener("wheel", handleNativeWheel, { passive: false });
-    
+
     return () => {
       canvas.removeEventListener("wheel", handleNativeWheel);
     };
@@ -154,12 +158,10 @@ export default function ReplayPage() {
 
     const startSec = Math.max(0, (activeRoundStartTick - replayStartTick) / ticksPerSecond);
     const endSec = Math.max(startSec, (activeRoundEndTick - replayStartTick) / ticksPerSecond);
-    
+
     // fleshed out concept of duration
     const duration = endSec - startSec;
     const elapsed = Math.min(duration, Math.max(0, currentTimeSec - startSec));
-
-    
 
     return {
       activeRound: currentActiveRound,
@@ -168,7 +170,7 @@ export default function ReplayPage() {
       activeRoundElapsedSec: elapsed,
     };
   }, [currentTimeSec, roundStartTicks, replayStartTick, ticksPerSecond, durationSec]);
-  
+
   // halftime
   const isSecondHalf = activeRound > 12; // needs to be declared after activeRound
 
@@ -199,7 +201,9 @@ export default function ReplayPage() {
     return (
       <div
         key={player.steamid}
-        className={`flex items-center justify-between gap-2 rounded-md border border-slate-300 bg-white/90 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800/70 ${player.alive ? "" : "opacity-55"}`}
+        className={`flex items-center justify-between gap-2 rounded-md border border-slate-300 bg-white/90 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800/70 ${
+          player.alive ? "" : "opacity-55"
+        }`}
       >
         <div
           className="min-w-0 truncate pr-2 text-sm font-mono font-medium text-slate-700 dark:text-slate-200"
@@ -215,7 +219,9 @@ export default function ReplayPage() {
               background: `conic-gradient(${ringColor} ${hpPercent}%, rgb(148 163 184) ${hpPercent}% 100%)`,
             }}
           >
-            <div className={`absolute inset-0.75 flex items-center justify-center rounded-full bg-white text-[10px] font-semibold dark:bg-slate-900 ${centerTextColorClass}`}>
+            <div
+              className={`absolute inset-0.75 flex items-center justify-center rounded-full bg-white text-[10px] font-semibold dark:bg-slate-900 ${centerTextColorClass}`}
+            >
               {player.alive ? player.hp : "D"}
             </div>
           </div>
@@ -223,9 +229,6 @@ export default function ReplayPage() {
       </div>
     );
   };
-
-
-  
 
   if (fetchError) {
     return (
@@ -255,7 +258,6 @@ export default function ReplayPage() {
       </div>
 
       <div className="flex w-full items-start justify-center gap-4">
-
         {/* Left Health Bars */}
         {frame && (
           <div className="flex h-180 w-80 shrink-0 flex-col gap-3">
@@ -271,7 +273,7 @@ export default function ReplayPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 {getTeamPlayers(leftTeamID).map((player) =>
-                  renderPlayerCard(player, "rgb(59 130 246)", "text-blue-700 dark:text-blue-100"),
+                  renderPlayerCard(player, "rgb(59 130 246)", "text-blue-700 dark:text-blue-100")
                 )}
               </div>
             </div>
@@ -288,7 +290,7 @@ export default function ReplayPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 {getTeamPlayers(rightTeamID).map((player) =>
-                  renderPlayerCard(player, "rgb(234 179 8)", "text-amber-700 dark:text-yellow-100"),
+                  renderPlayerCard(player, "rgb(234 179 8)", "text-amber-700 dark:text-yellow-100")
                 )}
               </div>
             </div>
@@ -300,9 +302,9 @@ export default function ReplayPage() {
           <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-md border border-slate-300 bg-white/90 px-2.5 py-1 text-xs font-semibold tracking-wide text-slate-700 dark:border-slate-600/80 dark:bg-slate-900/75 dark:text-slate-100">
             Replay #{id ?? "Unknown"}
           </div>
-          <canvas 
-            ref={canvasRef} 
-            className="block w-full h-full cursor-grab active:cursor-grabbing" 
+          <canvas
+            ref={canvasRef}
+            className="block w-full h-full cursor-grab active:cursor-grabbing"
             {...canvasHandlers}
             style={{ touchAction: "none" }}
           />
@@ -318,22 +320,21 @@ export default function ReplayPage() {
         />
       </div>
 
-
-
       {/* Bottom Transport Bar with round selection and seek controls */}
       <TransportBar
         isPlaying={isPlaying}
         setIsPlaying={setIsPlaying}
+        setIsScrubbing={setIsScrubbing}
         isFetching={isFetching}
         activeRoundDurationSec={activeRoundDurationSec}
         activeRoundElapsedSec={activeRoundElapsedSec}
         activeRoundStartSec={activeRoundStartSec}
         handleSeek={handleSeek}
+        handlePreviewSeek={handlePreviewSeek}
         roundStartTicks={roundStartTicks}
         activeRound={activeRound}
         handleRoundSelect={handleRoundSelect}
         formatTime={formatTime}
-        
       />
 
       {/* Bottom Score Display */}

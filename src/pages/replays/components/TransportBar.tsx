@@ -1,14 +1,16 @@
 import { ArrowLeftRight, Clock3, Pause, Play } from "lucide-react";
-import { memo, useState, useCallback, startTransition } from "react"; // <-- Import startTransition
+import { memo, startTransition, useCallback, useState } from "react"; // <-- Import startTransition
 
 interface TransportBarProps {
   isPlaying: boolean;
   setIsPlaying: (playing: boolean | ((p: boolean) => boolean)) => void;
+  setIsScrubbing: (val: boolean) => void;
   isFetching: boolean;
   activeRoundDurationSec: number;
   activeRoundElapsedSec: number;
   activeRoundStartSec: number;
   handleSeek: (sec: number) => void;
+  handlePreviewSeek: (sec: number) => void;
   roundStartTicks: number[];
   activeRound: number;
   handleRoundSelect: (index: number) => void;
@@ -18,17 +20,18 @@ interface TransportBarProps {
 export const TransportBar = memo(function TransportBar({
   isPlaying,
   setIsPlaying,
+  setIsScrubbing,
   isFetching,
   activeRoundDurationSec,
   activeRoundElapsedSec,
   activeRoundStartSec,
   handleSeek,
+  handlePreviewSeek,
   roundStartTicks,
   activeRound,
   handleRoundSelect,
   formatTime,
 }: TransportBarProps) {
-  
   // Track dragging state and the temporary visual value
   const [isDragging, setIsDragging] = useState(false);
   const [dragValue, setDragValue] = useState(0);
@@ -39,25 +42,33 @@ export const TransportBar = memo(function TransportBar({
   const handlePointerDown = useCallback(() => {
     setIsPlaying(false);
     setIsDragging(true);
+    setIsScrubbing(true);
     setDragValue(activeRoundElapsedSec);
-  }, [setIsPlaying, activeRoundElapsedSec]);
+  }, [setIsPlaying, setIsScrubbing, activeRoundElapsedSec]);
 
   const handlePointerUp = useCallback(() => {
     setIsDragging(false);
-    // Final high-priority seek when they let go of the mouse
-    handleSeek(activeRoundStartSec + dragValue);
-  }, [handleSeek, activeRoundStartSec, dragValue]);
+    setIsScrubbing(false);
+    startTransition(() => {
+      handleSeek(activeRoundStartSec + dragValue);
+    });
+  }, [handleSeek, setIsScrubbing, activeRoundStartSec, dragValue]);
 
   const handleSliderChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = Number(e.target.value);
-    
-    setDragValue(val); 
-
+    setDragValue(val);
     startTransition(() => {
-      handleSeek(activeRoundStartSec + val);
+      handlePreviewSeek(activeRoundStartSec + val);
     });
-    
-  }, [activeRoundStartSec, handleSeek]);
+  }, [activeRoundStartSec, handlePreviewSeek]);
+
+  const handleSliderCancel = useCallback(() => {
+    setIsDragging(false);
+    setIsScrubbing(false);
+    startTransition(() => {
+      handleSeek(activeRoundStartSec + dragValue);
+    });
+  }, [handleSeek, setIsScrubbing, activeRoundStartSec, dragValue]);
 
   return (
     <div className="w-full flex flex-col items-center gap-1.5 self-center">
@@ -76,10 +87,11 @@ export const TransportBar = memo(function TransportBar({
           type="range"
           min={0}
           max={activeRoundDurationSec}
-          step={0.01}
-          value={displayValue} 
+          step={0.1875}
+          value={displayValue}
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
+          onPointerCancel={handleSliderCancel}
           onChange={handleSliderChange}
           className="flex-1 cursor-pointer"
           disabled={isFetching}
@@ -91,36 +103,36 @@ export const TransportBar = memo(function TransportBar({
 
       <div className="w-full max-w-300 self-center">
         <div className="flex w-full flex-nowrap justify-center gap-2 overflow-hidden">
-        {roundStartTicks.map((_, index) => {
-          const roundNumber = index + 1;
-          const isCurrent = roundNumber === activeRound;
-          return (
-            <div key={roundNumber} className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleRoundSelect(index)}
-                className={`h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center transition-colors ${
-                  isCurrent
-                    ? "bg-blue-500 border-blue-400 text-white"
-                    : "bg-white border-slate-300 text-slate-700 hover:border-slate-500 dark:bg-slate-900 dark:border-slate-600 dark:text-slate-200 dark:hover:border-slate-400 dark:hover:text-white"
-                }`}
-                disabled={isFetching}
-              >
-                {roundNumber}
-              </button>
-              {roundNumber === 12 && roundStartTicks.length > 12 && (
-                <div className="flex h-7 w-7 items-center justify-center text-slate-500 dark:text-slate-300">
-                  <ArrowLeftRight className="h-4 w-4" />
-                </div>
-              )}
-              {roundNumber === 24 && roundStartTicks.length > 25 && (
-                <div className="flex h-7 w-7 items-center justify-center text-slate-500 dark:text-slate-300">
-                  <Clock3 className="h-4 w-4" />
-                </div>
-              )}
-            </div>
-          );
-        })}
+          {roundStartTicks.map((_, index) => {
+            const roundNumber = index + 1;
+            const isCurrent = roundNumber === activeRound;
+            return (
+              <div key={roundNumber} className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleRoundSelect(index)}
+                  className={`h-7 w-7 rounded-full border text-xs font-semibold flex items-center justify-center transition-colors ${
+                    isCurrent
+                      ? "bg-blue-500 border-blue-400 text-white"
+                      : "bg-white border-slate-300 text-slate-700 hover:border-slate-500 dark:bg-slate-900 dark:border-slate-600 dark:text-slate-200 dark:hover:border-slate-400 dark:hover:text-white"
+                  }`}
+                  disabled={isFetching}
+                >
+                  {roundNumber}
+                </button>
+                {roundNumber === 12 && roundStartTicks.length > 12 && (
+                  <div className="flex h-7 w-7 items-center justify-center text-slate-500 dark:text-slate-300">
+                    <ArrowLeftRight className="h-4 w-4" />
+                  </div>
+                )}
+                {roundNumber === 24 && roundStartTicks.length > 25 && (
+                  <div className="flex h-7 w-7 items-center justify-center text-slate-500 dark:text-slate-300">
+                    <Clock3 className="h-4 w-4" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

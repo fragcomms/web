@@ -106,7 +106,6 @@ export function ReplayLibrary() {
               ))}
           </div>
         )}
-
     </div>
   );
 }
@@ -120,7 +119,6 @@ function ReplayCard({ replay, onDelete }: { replay: Replay; onDelete: (replayId:
       <Card className="bg-slate-800/50 border-slate-700 transition-all duration-200 group-hover:bg-slate-800 group-hover:border-slate-600 group-hover:shadow-lg border-l-4 border-l-blue-500">
         {/* Main flex container - distributes left content and right action buttons */}
         <div className="flex items-center justify-between gap-4 p-4">
-          
           {/* LEFT SECTION: Replay metadata/info */}
           <div className="flex flex-col gap-2 flex-1">
             {/* Replay name */}
@@ -155,9 +153,12 @@ function ReplayCard({ replay, onDelete }: { replay: Replay; onDelete: (replayId:
 
             {/* Linked recording users */}
             <span className="text-xs text-slate-400">
-              Users Recorded: <span className="text-slate-300">{replay.linked_recording_users?.length
-                ? replay.linked_recording_users.join(", ")
-                : "N/A"}</span>
+              Users Recorded:{" "}
+              <span className="text-slate-300">
+                {replay.linked_recording_users?.length
+                  ? replay.linked_recording_users.join(", ")
+                  : "N/A"}
+              </span>
             </span>
           </div>
 
@@ -176,7 +177,7 @@ function ReplayCard({ replay, onDelete }: { replay: Replay; onDelete: (replayId:
             >
               <Play className="h-4 w-4" />
             </button>
-            
+
             {/* Delete button - stops event propagation to prevent Link navigation */}
             <button
               type="button"

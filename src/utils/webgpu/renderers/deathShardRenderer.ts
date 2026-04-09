@@ -1,8 +1,8 @@
-import type { WallSegment } from "./mapRenderer";
-import type { RenderPlayer, RenderTracer } from "../types";
-import { intersectSegmentWithWall, normalizeVec2, type Vec2 } from "../math/geometry2d";
-import { getTeamColor } from "../core/renderPalette";
 import { writeFloat32Slice } from "../core/gpuBufferUtils";
+import { getTeamColor } from "../core/renderPalette";
+import { intersectSegmentWithWall, normalizeVec2, type Vec2 } from "../math/geometry2d";
+import type { RenderPlayer, RenderTracer } from "../types";
+import type { WallSegment } from "./mapRenderer";
 
 type Shard = {
   x: number;
@@ -100,7 +100,7 @@ export class DeathShardRenderer {
       const nextX = shard.x + shard.vx * dt;
       const nextY = shard.y + shard.vy * dt;
 
-      let nearestHit: { t: number; x: number; y: number; wall: WallSegment } | null = null;
+      let nearestHit: { t: number; x: number; y: number; wall: WallSegment; } | null = null;
       for (const wall of this.walls) {
         const hit = intersectSegmentWithWall(
           { x: shard.x, y: shard.y },
