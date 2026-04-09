@@ -57,15 +57,6 @@ export class ReplayEngine {
       round.events.inferno_expire,
       round.events.inferno_extinguish
     );
-
-    if (this.fluidSim) {
-      this.fluidSim.prepareRoundMemory(
-        round.startTick, 
-        round.endTick, 
-        round.events.smokegrenade_detonate, 
-        this.ticksPerSecond
-      );
-    }
   }
 
   private syncActiveRound(targetTick: number) {
@@ -153,6 +144,13 @@ export class ReplayEngine {
     if (!bracket) return null;
     
     return this.makeRenderFrame(targetTick, bracket.prev, bracket.next);
+  }
+
+  getActiveRoundChunk(): RoundChunk | null {
+    if (this.activeRoundIndex >= 0 && this.activeRoundIndex < this.rounds.length) {
+      return this.rounds[this.activeRoundIndex];
+    }
+    return null;
   }
 
   private bracketTick(targetTick: number): { prev: TimelineTick; next: TimelineTick; } | null {
