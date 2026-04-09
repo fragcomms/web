@@ -1,6 +1,6 @@
-import type { RenderGrenade } from "./types";
-import { getGrenadeColor } from "./renderPalette";
-import { writeFloat32Slice } from "./gpuBufferUtils";
+import type { RenderGrenade } from "../types";
+import { getGrenadeColor } from "../core/renderPalette";
+import { writeFloat32Slice } from "../core/gpuBufferUtils";
 
 export class GrenadeRenderer {
   private queue: GPUQueue;

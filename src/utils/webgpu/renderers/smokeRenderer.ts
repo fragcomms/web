@@ -1,5 +1,5 @@
-import type { WorldBounds } from "./types";
-import { createWorldQuadVertices } from "./quadGeometry";
+import type { WorldBounds } from "../types";
+import { createWorldQuadVertices } from "../math/quadGeometry";
 
 export class SmokeRenderer {
   private pipeline: GPURenderPipeline;

@@ -2,7 +2,7 @@ import type {
   RenderFrame,
   ReplayTickSource,
   WorldBounds,
-} from "./types";
+} from "../types";
 
 type FluidSimPipelineSet = {
   velocityAdvectPipeline: GPURenderPipeline;

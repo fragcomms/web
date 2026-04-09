@@ -1,6 +1,6 @@
-import type { RenderPlayer } from "./types";
-import { getPlayerColor } from "./renderPalette";
-import { writeFloat32Slice } from "./gpuBufferUtils";
+import type { RenderPlayer } from "../types";
+import { getPlayerColor } from "../core/renderPalette";
+import { writeFloat32Slice } from "../core/gpuBufferUtils";
 
 export class PlayerRenderer {
   private queue: GPUQueue;

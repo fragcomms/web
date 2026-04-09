@@ -1,4 +1,4 @@
-import type { Team } from "./types";
+import type { Team } from "../types";
 
 const CT_COLOR: [number, number, number] = [0.2, 0.6, 1.0];
 const T_COLOR: [number, number, number] = [1.0, 0.4, 0.2];

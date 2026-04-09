@@ -1,4 +1,4 @@
-import type { WorldBounds } from "./types";
+import type { WorldBounds } from "../types";
 
 export function createCenteredQuadVertices(halfWidth: number, halfHeight = halfWidth): Float32Array {
   return new Float32Array([

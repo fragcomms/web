@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { ReplayPlayer } from "./replayPlayer";
+import { ReplayPlayer } from "./logic/replayPlayer";
 import type { ReplayJSON } from "./types";
 
 function makeReplay(): ReplayJSON {

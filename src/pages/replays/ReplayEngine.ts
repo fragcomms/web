@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
-import { Renderer } from "../../utils/webgpu/renderer";
-import { ReplayPlayer } from "../../utils/webgpu/replayPlayer";
+import { Renderer } from "../../utils/webgpu/core/renderer";
+import { ReplayPlayer } from "../../utils/webgpu/logic/replayPlayer";
 import type { ReplayJSON, RenderFrame, RoundEndEvent, ReplayMeta } from "../../utils/webgpu/types";
-import { MapRegistry, DefaultMapConfig } from "../../utils/webgpu/mapConfig";
-import { usePanZoom } from "../../utils/webgpu/panZoom";
+import { MapRegistry, DefaultMapConfig } from "../../utils/webgpu/logic/mapConfig";
+import { usePanZoom } from "../../utils/webgpu/math/panZoom";
 
 type ReplayAudioSyncConfig = {
   audioStartOffsetSec: number;

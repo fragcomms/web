@@ -1,4 +1,4 @@
-import type { WallSegment } from "./mapRenderer";
+import type { WallSegment } from "../renderers/mapRenderer";
 
 export type Vec2 = {
   x: number;

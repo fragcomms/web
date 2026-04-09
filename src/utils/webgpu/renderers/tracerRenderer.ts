@@ -1,8 +1,8 @@
-import type { RenderTracer } from "./types";
+import type { RenderTracer } from "../types";
 import type { WallSegment } from "./mapRenderer";
-import { intersectRaySegment } from "./geometry2d";
-import { getTeamColor } from "./renderPalette";
-import { writeFloat32Slice } from "./gpuBufferUtils";
+import { intersectRaySegment } from "../math/geometry2d";
+import { getTeamColor } from "../core/renderPalette";
+import { writeFloat32Slice } from "../core/gpuBufferUtils";
 
 export class TracerRenderer {
   private queue: GPUQueue;

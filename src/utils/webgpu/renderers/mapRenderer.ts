@@ -1,6 +1,6 @@
-import type { MapGeometry, WorldBounds } from "./types";
-import type { MapConfig } from "./mapConfig";
-import { createFloat32Buffer } from "./gpuBufferUtils";
+import type { MapGeometry, WorldBounds } from "../types";
+import type { MapConfig } from "../logic/mapConfig";
+import { createFloat32Buffer } from "../core/gpuBufferUtils";
 
 export type WallSegment = { x1: number; y1: number; x2: number; y2: number; };
 
@@ -153,7 +153,7 @@ export class MapRenderer {
       pass.setBindGroup(1, this.imageBindGroup);
       pass.setVertexBuffer(0, this.imageVertexBuffer);
       pass.draw(6);
-      return;
+      return; // COMMENT THIS TO DEBUG WALLS
     }
 
     if (this.lineVertexBuffer && this.lineVertexCount > 0) {

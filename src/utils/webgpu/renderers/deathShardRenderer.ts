@@ -1,8 +1,8 @@
 import type { WallSegment } from "./mapRenderer";
-import type { RenderPlayer, RenderTracer } from "./types";
-import { intersectSegmentWithWall, normalizeVec2, type Vec2 } from "./geometry2d";
-import { getTeamColor } from "./renderPalette";
-import { writeFloat32Slice } from "./gpuBufferUtils";
+import type { RenderPlayer, RenderTracer } from "../types";
+import { intersectSegmentWithWall, normalizeVec2, type Vec2 } from "../math/geometry2d";
+import { getTeamColor } from "../core/renderPalette";
+import { writeFloat32Slice } from "../core/gpuBufferUtils";
 
 type Shard = {
   x: number;

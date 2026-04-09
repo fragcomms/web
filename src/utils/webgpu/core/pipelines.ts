@@ -1,12 +1,12 @@
-import playerShaderWGSL from "./shaders/player.wgsl?raw";
-import grenadeShaderWGSL from "./shaders/grenade.wgsl?raw";
-import areaEffectShaderWGSL from "./shaders/areaEffect.wgsl?raw";
-import tracerShaderWGSL from "./shaders/tracer.wgsl?raw";
-import visionShaderWGSL from "./shaders/vision.wgsl?raw";
-import mapShaderWGSL from "./shaders/mapOutline.wgsl?raw";
-import shardShaderWGSL from "./shaders/shard.wgsl?raw";
-import mapImageShaderWGSL from "./shaders/mapImage.wgsl?raw";
-import smokeFieldRenderShaderWGSL from "./shaders/smokeFieldRender.wgsl?raw";
+import playerShaderWGSL from "../shaders/player.wgsl?raw";
+import grenadeShaderWGSL from "../shaders/grenade.wgsl?raw";
+import areaEffectShaderWGSL from "../shaders/areaEffect.wgsl?raw";
+import tracerShaderWGSL from "../shaders/tracer.wgsl?raw";
+import visionShaderWGSL from "../shaders/vision.wgsl?raw";
+import mapShaderWGSL from "../shaders/mapOutline.wgsl?raw";
+import shardShaderWGSL from "../shaders/shard.wgsl?raw";
+import mapImageShaderWGSL from "../shaders/mapImage.wgsl?raw";
+import smokeFieldRenderShaderWGSL from "../shaders/smokeFieldRender.wgsl?raw";
 
 export function createGlobalLayout(device: GPUDevice) {
   return device.createBindGroupLayout({

@@ -1,7 +1,7 @@
-import type { RenderPlayer } from "./types";
+import type { RenderPlayer } from "../types";
 import type { WallSegment } from "./mapRenderer";
-import { getTeamColor } from "./renderPalette";
-import { writeFloat32Slice } from "./gpuBufferUtils";
+import { getTeamColor } from "../core/renderPalette";
+import { writeFloat32Slice } from "../core/gpuBufferUtils";
 
 export class VisionRenderer {
   private queue: GPUQueue;

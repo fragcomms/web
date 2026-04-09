@@ -14,7 +14,7 @@ import type {
   TimelinePlayer,
   TimelineTick,
   WeaponFireEvent,
-} from "./types";
+} from "../types";
 
 type RosterInfo = { steamid: SteamID; team: Team; name: string; };
 type TimedAreaEffect = {

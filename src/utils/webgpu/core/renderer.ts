@@ -12,19 +12,19 @@ import {
   createTracerPipeline,
   createVisionPipeline,
 } from "./pipelines";
-import { AreaEffectRenderer } from "./areaEffectRenderer";
-import { GrenadeRenderer } from "./grenadeRenderer";
-import { PlayerRenderer } from "./playerRenderer";
-import { SmokeRenderer } from "./smokeRenderer";
-import { TracerRenderer } from "./tracerRenderer";
-import type { MapGeometry, RenderFrame } from "./types";
-import { VisionRenderer } from "./visionRenderer";
-import { MapRenderer } from "./mapRenderer";
-import { DeathShardRenderer } from "./deathShardRenderer";
-import { MapRegistry, DefaultMapConfig } from "./mapConfig";
-import { FluidSim } from "./fluidSim";
+import { AreaEffectRenderer } from "../renderers/areaEffectRenderer";
+import { GrenadeRenderer } from "../renderers/grenadeRenderer";
+import { PlayerRenderer } from "../renderers/playerRenderer";
+import { SmokeRenderer } from "../renderers/smokeRenderer";
+import { TracerRenderer } from "../renderers/tracerRenderer";
+import type { MapGeometry, RenderFrame } from "../types";
+import { VisionRenderer } from "../renderers/visionRenderer";
+import { MapRenderer } from "../renderers/mapRenderer";
+import { DeathShardRenderer } from "../renderers/deathShardRenderer";
+import { MapRegistry, DefaultMapConfig } from "../logic/mapConfig";
+import { FluidSim } from "../logic/fluidSim";
 import { createDynamicBuffer, createFloat32Buffer } from "./gpuBufferUtils";
-import { createCenteredQuadVertices, createUnitQuadVertices, createWorldQuadVertices } from "./quadGeometry";
+import { createCenteredQuadVertices, createUnitQuadVertices, createWorldQuadVertices } from "../math/quadGeometry";
 
 export class Renderer {
   private device: GPUDevice;
