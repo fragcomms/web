@@ -5,10 +5,13 @@ import { useParams } from "react-router-dom";
 import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
 import { useReplayEngine } from "./ReplayBackend";
 import { useReplayMedia } from "./ReplayMedia";
+import type { ReplayPlayer } from "../../utils/types/user";
+
 
 import { MuteSidebar } from "./components/MuteSidebar";
 import { TranscriptPanel } from "./components/TranscriptPanel";
 import { TransportBar } from "./components/TransportBar";
+import PlayerCard from "./components/PlayerCard";
 
 function getRoundFromTick(roundStartTicks: number[], currentTick: number): number {
   if (roundStartTicks.length === 0) return 1;
@@ -24,14 +27,6 @@ function formatTime(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-interface ReplayPlayer {
-  team: number;
-  steamid: string;
-  name?: string;
-  hp: number;
-  alive: boolean;
 }
 
 export default function ReplayPage() {
@@ -163,6 +158,10 @@ export default function ReplayPage() {
     const duration = endSec - startSec;
     const elapsed = Math.min(duration, Math.max(0, currentTimeSec - startSec));
 
+<<<<<<< HEAD
+=======
+    
+>>>>>>> 780e2b40863dc809d2a652cb827d69e40fbc5939
     return {
       activeRound: currentActiveRound,
       activeRoundStartSec: startSec,
@@ -191,6 +190,7 @@ export default function ReplayPage() {
       .filter((player) => player.team === teamId)
       .sort((a, b) => a.steamid.localeCompare(b.steamid));
 
+<<<<<<< HEAD
   const renderPlayerCard = (
     player: ReplayPlayer,
     ringColor: string,
@@ -230,6 +230,8 @@ export default function ReplayPage() {
     );
   };
 
+=======
+>>>>>>> 780e2b40863dc809d2a652cb827d69e40fbc5939
   if (fetchError) {
     return (
       <div className="w-full flex-1 flex items-center justify-center text-red-400 p-8">
@@ -273,7 +275,16 @@ export default function ReplayPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 {getTeamPlayers(leftTeamID).map((player) =>
+<<<<<<< HEAD
                   renderPlayerCard(player, "rgb(59 130 246)", "text-blue-700 dark:text-blue-100")
+=======
+                  <PlayerCard
+                    key={player.steamid}
+                    player={player}
+                    ringColor="rgb(59 130 246)"
+                    centerTextColorClass="text-blue-700 dark:text-blue-100"
+                  />
+>>>>>>> 780e2b40863dc809d2a652cb827d69e40fbc5939
                 )}
               </div>
             </div>
@@ -289,9 +300,20 @@ export default function ReplayPage() {
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
+<<<<<<< HEAD
                 {getTeamPlayers(rightTeamID).map((player) =>
                   renderPlayerCard(player, "rgb(234 179 8)", "text-amber-700 dark:text-yellow-100")
                 )}
+=======
+                {getTeamPlayers(rightTeamID).map((player) => (
+                  <PlayerCard
+                    key={player.steamid}
+                    player={player}
+                    ringColor="rgb(234 179 8)"
+                    centerTextColorClass="text-amber-700 dark:text-yellow-100"
+                  />
+                ))}
+>>>>>>> 780e2b40863dc809d2a652cb827d69e40fbc5939
               </div>
             </div>
           </div>

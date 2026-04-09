@@ -246,7 +246,7 @@ router.get("/jobs/:jobId", ensureAuth, async (_req, res) => {
 //     }
 
 //     const demoFilePath = result.rows[0].file_path;
-    
+
 //   }
 // })
 

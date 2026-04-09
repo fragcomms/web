@@ -47,7 +47,11 @@ export function Navbar({ onNavOffsetChange }: NavbarProps) {
             ? "-translate-y-full opacity-0 pointer-events-none"
             : "translate-y-0 opacity-100"
         }`}
-        style={{ backgroundColor: "var(--app-surface)", borderColor: "var(--app-border)", color: "var(--app-foreground)" }}
+        style={{
+          backgroundColor: "var(--app-surface)",
+          borderColor: "var(--app-border)",
+          color: "var(--app-foreground)",
+        }}
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-20 items-center justify-between">
@@ -59,7 +63,7 @@ export function Navbar({ onNavOffsetChange }: NavbarProps) {
                     key={item.to}
                     to={item.to}
                     className={navLinkClassName}
-                      style={{ color: "var(--app-muted)" }}
+                    style={{ color: "var(--app-muted)" }}
                   >
                     {item.label}
                   </Link>
@@ -94,7 +98,11 @@ export function Navbar({ onNavOffsetChange }: NavbarProps) {
           className={`fixed right-6 z-50 rounded-b-lg border border-t-0 px-3 py-1.5 transition-all duration-300 ease-out hover:opacity-90 ${
             isCollapsed ? "top-0" : "top-20"
           }`}
-          style={{ backgroundColor: "var(--app-surface)", borderColor: "var(--app-border)", color: "var(--app-foreground)" }}
+          style={{
+            backgroundColor: "var(--app-surface)",
+            borderColor: "var(--app-border)",
+            color: "var(--app-foreground)",
+          }}
         >
           {isCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
         </button>
