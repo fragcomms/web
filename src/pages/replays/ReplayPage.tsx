@@ -187,44 +187,7 @@ export default function ReplayPage() {
       .filter((player) => player.team === teamId)
       .sort((a, b) => a.steamid.localeCompare(b.steamid));
 
-  const renderPlayerCard = (
-    player: ReplayPlayer,
-    ringColor: string,
-    centerTextColorClass: string,
-  ) => {
-    const hpPercent = Math.max(0, Math.min(100, player.hp));
-
-    return (
-      <div
-        key={player.steamid}
-        className={`flex items-center justify-between gap-2 rounded-md border border-slate-300 bg-white/90 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800/70 ${
-          player.alive ? "" : "opacity-55"
-        }`}
-      >
-        <div
-          className="min-w-0 truncate pr-2 text-sm font-mono font-medium text-slate-700 dark:text-slate-200"
-          style={{ maxWidth: "32ch" }}
-          title={player.name || player.steamid}
-        >
-          {player.name || player.steamid}
-        </div>
-        <div className="flex items-center">
-          <div
-            className="relative h-9 w-9 shrink-0 rounded-full"
-            style={{
-              background: `conic-gradient(${ringColor} ${hpPercent}%, rgb(148 163 184) ${hpPercent}% 100%)`,
-            }}
-          >
-            <div
-              className={`absolute inset-0.75 flex items-center justify-center rounded-full bg-white text-[10px] font-semibold dark:bg-slate-900 ${centerTextColorClass}`}
-            >
-              {player.alive ? player.hp : "D"}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  
 
   if (fetchError) {
     return (
