@@ -222,7 +222,7 @@ export class FluidGPU {
   }
 
   private createBindGroups() {
-    const createBG = (layout: GPUBindGroupLayout, entries: Iterable<GPUBindGroupEntry>) => this.device.createBindGroup({ layout, entries });
+    const createBG = (layout: GPUBindGroupLayout, entries: GPUBindGroupEntry[]) => this.device.createBindGroup({ layout, entries });
     this.sampleBindGroup = createBG(this.sampleLayout, [ { binding: 0, resource: this.linearSampler }, { binding: 1, resource: this.densityView }, { binding: 2, resource: { buffer: this.sampleParamsBuffer } }]);
     this.velocityAdvectBindGroup = createBG(this.pipelines.velocityAdvectLayout, [ { binding: 0, resource: this.linearSampler }, { binding: 1, resource: this.velocityView }, { binding: 2, resource: { buffer: this.uniformBuffer } }]);
     this.forceInjectBindGroup = createBG(this.pipelines.forceInjectLayout, [ { binding: 0, resource: this.linearSampler }, { binding: 1, resource: this.velocityScratchView }, { binding: 2, resource: { buffer: this.uniformBuffer } }, { binding: 3, resource: { buffer: this.playerBuffer } }, { binding: 4, resource: { buffer: this.tracerBuffer } }, { binding: 5, resource: { buffer: this.smokeBuffer } }]);
