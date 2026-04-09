@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
 import { Renderer } from "../../utils/webgpu/core/renderer";
-import { ReplayPlayer } from "../../utils/webgpu/logic/replayPlayer";
+import { ReplayEngine } from "../../utils/webgpu/logic/engine/replayEngine";
 import type { ReplayJSON, RenderFrame, RoundEndEvent, ReplayMeta } from "../../utils/webgpu/types";
 import { MapRegistry, DefaultMapConfig } from "../../utils/webgpu/logic/mapConfig";
 import { usePanZoom } from "../../utils/webgpu/math/panZoom";
@@ -19,7 +19,7 @@ export function useReplayEngine(
   audioSyncConfig: ReplayAudioSyncConfig,
 ) {
   const rendererRef = useRef<Renderer | null>(null);
-  const playerRef = useRef<ReplayPlayer | null>(null);
+  const playerRef = useRef<ReplayEngine | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
   const isPlayingRef = useRef(false);
@@ -188,7 +188,7 @@ export function useReplayEngine(
           }
         }
 
-        const player = new ReplayPlayer();
+        const player = new ReplayEngine();
         player.setReplay(data);
         playerRef.current = player;
 

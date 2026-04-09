@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
-import { useReplayEngine } from "./ReplayEngine";
+import { useReplayEngine } from "./ReplayBackend";
 import { useReplayMedia } from "./ReplayMedia";
 
 import { MuteSidebar } from "./components/MuteSidebar";

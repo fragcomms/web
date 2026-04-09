@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { ReplayPlayer } from "./logic/replayPlayer";
+import { ReplayEngine } from "./logic/engine/replayEngine";
 import type { ReplayJSON } from "./types";
 
 function makeReplay(): ReplayJSON {
@@ -58,15 +58,16 @@ function makeReplay(): ReplayJSON {
       inferno_expire: [
         { t: 108, id: 7, x: 500, y: 600, z: 0 },
       ],
+      inferno_extinguish: [], // Added this just to perfectly match ReplayJSON type requirements if strict
     },
   };
 }
 
-describe("ReplayPlayer", () => {
-  let rp: ReplayPlayer;
+describe("ReplayEngine", () => {
+  let rp: ReplayEngine;
 
   beforeEach(() => {
-    rp = new ReplayPlayer();
+    rp = new ReplayEngine();
   });
 
   it("returns null if no replay has been set", () => {
@@ -75,8 +76,8 @@ describe("ReplayPlayer", () => {
   });
 
   it("brackets to first tick if negative elapsed time", () => {
+    rp.ticksPerSecond = 10; // MUST be set before setReplay
     rp.setReplay(makeReplay());
-    rp.ticksPerSecond = 10;
 
     const frame = rp.getFrameAtElapsedSeconds(-1);
     expect(frame).not.toBeNull();
@@ -99,8 +100,8 @@ describe("ReplayPlayer", () => {
   });
 
   it("brackets to last tick if elapsed time after end of demo", () => {
-    rp.setReplay(makeReplay());
     rp.ticksPerSecond = 10;
+    rp.setReplay(makeReplay());
 
     const frame = rp.getFrameAtElapsedSeconds(999);
     expect(frame).not.toBeNull();
@@ -117,8 +118,8 @@ describe("ReplayPlayer", () => {
   });
 
   it("interpolates player positions between two ticks", () => {
-    rp.setReplay(makeReplay());
     rp.ticksPerSecond = 10;
+    rp.setReplay(makeReplay());
 
     const frame = rp.getFrameAtElapsedSeconds(0.5);
     expect(frame).not.toBeNull();
@@ -140,8 +141,8 @@ describe("ReplayPlayer", () => {
   });
 
   it("returns exact tick info when target tick is non interpolated", () => {
-    rp.setReplay(makeReplay());
     rp.ticksPerSecond = 10;
+    rp.setReplay(makeReplay());
 
     const frame = rp.getFrameAtElapsedSeconds(0);
     expect(frame).not.toBeNull();
@@ -157,8 +158,8 @@ describe("ReplayPlayer", () => {
   });
 
   it("hides HE grenade projectiles once the detonation event has happened", () => {
-    rp.setReplay(makeReplay());
     rp.ticksPerSecond = 10;
+    rp.setReplay(makeReplay());
 
     const frame = rp.getFrameAtElapsedSeconds(0);
     expect(frame).not.toBeNull();
