@@ -12,10 +12,10 @@ export class PlayerManager {
     for (const [tinyIdStr, info] of Object.entries(playersData)) {
       const sidNum = Number(tinyIdStr);
       if (Number.isFinite(sidNum)) {
-        this.rosterBySid.set(sidNum, { 
-          steamid: info.sid, 
-          team: info.team, 
-          name: info.name 
+        this.rosterBySid.set(sidNum, {
+          steamid: info.sid,
+          team: info.team,
+          name: info.name,
         });
       }
     }

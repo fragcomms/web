@@ -206,7 +206,6 @@ export class ReplayEngine {
       next.g ?? [], 
       alpha, 
       targetTick, 
-      currentRound.startTick, 
       currentRound.events.hegrenade_detonate
     );
 

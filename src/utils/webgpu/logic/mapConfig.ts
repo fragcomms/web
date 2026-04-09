@@ -48,6 +48,6 @@ export const MapRegistry: Record<string, MapConfig> = {
     originX: -3451.4,
     originY: 2884.5,
   },
-}
+};
 
 export const DefaultMapConfig: MapConfig = MapRegistry["de_nuke"];

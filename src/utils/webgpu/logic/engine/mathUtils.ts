@@ -16,7 +16,7 @@ export function wrapDeg(d: number): number {
   return x;
 }
 
-export function lowerBoundWeaponFire<T extends { t: number }>(arr: T[], tick: number): number {
+export function lowerBoundWeaponFire<T extends { t: number; }>(arr: T[], tick: number): number {
   let lo = 0, hi = arr.length;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;

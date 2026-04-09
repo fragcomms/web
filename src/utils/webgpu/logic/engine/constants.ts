@@ -9,5 +9,5 @@ export const ENGINE_CONFIG = {
     HE_DURATION_SEC: 0.16,
     SMOKE_DURATION_SEC: 21,
     INFERNO_FALLBACK_SEC: 7,
-  }
+  },
 } as const;
