@@ -27,7 +27,7 @@ export class SmokeRenderer {
   }
 
   setBounds(bounds: WorldBounds) {
-    this.queue.writeBuffer(this.quadVertexBuffer, 0, createWorldQuadVertices(bounds));
+    this.queue.writeBuffer(this.quadVertexBuffer, 0, createWorldQuadVertices(bounds) as any);
   }
 
   draw(pass: GPURenderPassEncoder) {

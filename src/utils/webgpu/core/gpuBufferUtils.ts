@@ -27,5 +27,5 @@ export function writeFloat32Slice(
   data: Float32Array,
   floatCount = data.length,
 ) {
-  queue.writeBuffer(buffer, 0, data as ArrayBufferView, 0, floatCount);
+  queue.writeBuffer(buffer, 0, data as any, 0, floatCount);
 }
