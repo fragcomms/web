@@ -82,7 +82,7 @@ function simplifyLineRDP(points: Vec2[], epsilon: number): Vec2[] {
   }
 }
 
-function optimizeSegments(segments: Segment[], epsilon = 1.0): Segment[] {
+function optimizeSegments(segments: Segment[], epsilon = 0.5): Segment[] {
   const polylines: { points: Vec2[], meta: Partial<Segment> }[] = [];
   let current: Vec2[] = [];
   let currentMeta: Partial<Segment> = {};
@@ -93,8 +93,10 @@ function optimizeSegments(segments: Segment[], epsilon = 1.0): Segment[] {
       currentMeta = { group: s.group, stroke: s.stroke, fill: s.fill, source: s.source };
     } else {
       const last = current[current.length - 1];
-      if (Math.abs(last.x - s.x1) < 0.001 && Math.abs(last.y - s.y1) < 0.001) {
+      if (Math.abs(last.x - s.x1) < 1.0 && Math.abs(last.y - s.y1) < 1.0) {
         current.push({ x: s.x2, y: s.y2 });
+      } else if (Math.abs(last.x - s.x2) < 1.0 && Math.abs(last.y - s.y2) < 1.0) {
+        current.push({ x: s.x1, y: s.y1 });
       } else {
         polylines.push({ points: current, meta: currentMeta });
         current = [{ x: s.x1, y: s.y1 }, { x: s.x2, y: s.y2 }];
@@ -180,27 +182,36 @@ function flattenCubicBezier(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, meta: Partia
   return out;
 }
 
-function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
+function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[][] {
   const a = getAttrs(node);
   const tokens = tokenizePath(a.d ?? "");
   const meta: Partial<Segment> = { stroke: a.stroke, fill: a.fill, group: [...groupPath], source: "path" };
-  const out: Segment[] = [];
+  const shapes: Segment[][] = [];
+  let currentShape: Segment[] = [];
   const idx = { i: 0 };
   let current: Vec2 = { x: 0, y: 0 };
   let subpathStart: Vec2 | null = null;
   let command = "";
 
+  const commitShape = () => {
+    if (currentShape.length > 0) {
+      shapes.push(currentShape);
+      currentShape = [];
+    }
+  };
+
   while (idx.i < tokens.length) {
     if (isCommandToken(tokens[idx.i])) command = tokens[idx.i++];
     switch (command) {
       case "M": case "m": {
+        commitShape(); // Start of a new subpath! Split it here.
         const firstX = readNumber(tokens, idx); const firstY = readNumber(tokens, idx);
         current = command === "m" ? { x: current.x + firstX, y: current.y + firstY } : { x: firstX, y: firstY };
         subpathStart = { ...current };
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
           const x = readNumber(tokens, idx); const y = readNumber(tokens, idx);
           const next = command === "m" ? { x: current.x + x, y: current.y + y } : { x, y };
-          pushSegment(out, current, next, meta);
+          pushSegment(currentShape, current, next, meta);
           current = next;
         }
         break;
@@ -209,7 +220,7 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
           const x = readNumber(tokens, idx); const y = readNumber(tokens, idx);
           const next = command === "l" ? { x: current.x + x, y: current.y + y } : { x, y };
-          pushSegment(out, current, next, meta);
+          pushSegment(currentShape, current, next, meta);
           current = next;
         }
         break;
@@ -218,7 +229,7 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
           const x = readNumber(tokens, idx);
           const next = command === "h" ? { x: current.x + x, y: current.y } : { x, y: current.y };
-          pushSegment(out, current, next, meta);
+          pushSegment(currentShape, current, next, meta);
           current = next;
         }
         break;
@@ -227,16 +238,17 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
         while (idx.i < tokens.length && !isCommandToken(tokens[idx.i])) {
           const y = readNumber(tokens, idx);
           const next = command === "v" ? { x: current.x, y: current.y + y } : { x: current.x, y };
-          pushSegment(out, current, next, meta);
+          pushSegment(currentShape, current, next, meta);
           current = next;
         }
         break;
       }
       case "Z": case "z": {
         if (subpathStart) {
-          pushSegment(out, current, subpathStart, meta);
+          pushSegment(currentShape, current, subpathStart, meta);
           current = { ...subpathStart };
         }
+        commitShape();
         break;
       }
       case "C": case "c": {
@@ -248,7 +260,7 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
           const p1 = command === "c" ? { x: current.x + x1, y: current.y + y1 } : { x: x1, y: y1 };
           const p2 = command === "c" ? { x: current.x + x2, y: current.y + y2 } : { x: x2, y: y2 };
           const p3 = command === "c" ? { x: current.x + x, y: current.y + y } : { x, y };
-          out.push(...flattenCubicBezier(p0, p1, p2, p3, meta, 3));
+          currentShape.push(...flattenCubicBezier(p0, p1, p2, p3, meta, 3));
           current = p3;
         }
         break;
@@ -256,7 +268,8 @@ function pathNodeToSegments(node: SvgNode, groupPath: string[]): Segment[] {
       default: throw new Error(`Unsupported SVG path command: ${command}`);
     }
   }
-  return out;
+  commitShape();
+  return shapes;
 }
 
 function flipY(segments: Segment[]): Segment[] {
@@ -299,8 +312,10 @@ function extractAllShapes(node: unknown, outShapes: Segment[][], groupPath: stri
   const currentPath = [...groupPath, ...id, ...inkscapeLabel];
 
   if (obj.path) for (const child of toArray(obj.path as SvgNode | SvgNode[])) {
-    const segments = pathNodeToSegments(child, currentPath);
-    if (segments.length > 0) outShapes.push(segments);
+    const subShapes = pathNodeToSegments(child, currentPath);
+    for (const shape of subShapes) {
+      if (shape.length > 0) outShapes.push(shape);
+    }
   }
   if (obj.rect) for (const child of toArray(obj.rect as SvgNode | SvgNode[])) {
     const segments = rectNodeToSegments(child, currentPath);
@@ -356,7 +371,7 @@ function processSvgFile(inputPath: string, mapName: string) {
     }
 
     let segments = dedupeSegments(flipY(outlineSegments));
-    segments = optimizeSegments(segments, 1.5);
+    segments = optimizeSegments(segments, 0.5);
     const bounds = computeBounds(segments);
 
     const geometry: MapGeometry = {
@@ -387,9 +402,7 @@ function main() {
   for (const file of files) {
     if (file.endsWith(".svg")) {
       const inputPath = path.join(MAPS_DIR, file);
-      
       const mapName = file.replace(/\.radar\.svg$/, "").replace(/\.svg$/, "");
-      
       processSvgFile(inputPath, mapName);
       processedCount++;
     }
