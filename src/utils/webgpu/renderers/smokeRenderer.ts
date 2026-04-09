@@ -4,7 +4,7 @@ import type { WorldBounds } from "../types";
 export class SmokeRenderer {
   private pipeline: GPURenderPipeline;
   private globalBindGroup: GPUBindGroup;
-  private smokeFieldBindGroup: GPUBindGroup | null;
+  private smokeFieldBindGroup: GPUBindGroup;
   private queue: GPUQueue;
   private quadVertexBuffer: GPUBuffer;
 
@@ -12,31 +12,14 @@ export class SmokeRenderer {
     queue: GPUQueue,
     pipeline: GPURenderPipeline,
     globalBindGroup: GPUBindGroup,
+    smokeFieldBindGroup: GPUBindGroup,
     quadVertexBuffer: GPUBuffer,
-  );
-  constructor(
-    queue: GPUQueue,
-    pipeline: GPURenderPipeline,
-    globalBindGroup: GPUBindGroup,
-    smokeFieldBindGroupOrQuadVertexBuffer: GPUBindGroup | GPUBuffer,
-    quadVertexBuffer?: GPUBuffer,
   ) {
-    let smokeFieldBindGroup: GPUBindGroup | null;
-    let resolvedQuadVertexBuffer: GPUBuffer;
-
-    if (quadVertexBuffer) {
-      smokeFieldBindGroup = smokeFieldBindGroupOrQuadVertexBuffer as GPUBindGroup;
-      resolvedQuadVertexBuffer = quadVertexBuffer;
-    } else {
-      smokeFieldBindGroup = null;
-      resolvedQuadVertexBuffer = smokeFieldBindGroupOrQuadVertexBuffer as GPUBuffer;
-    }
-
     this.queue = queue;
     this.pipeline = pipeline;
     this.globalBindGroup = globalBindGroup;
     this.smokeFieldBindGroup = smokeFieldBindGroup;
-    this.quadVertexBuffer = resolvedQuadVertexBuffer;
+    this.quadVertexBuffer = quadVertexBuffer;
   }
 
   setSmokeFieldBindGroup(smokeFieldBindGroup: GPUBindGroup) {
