@@ -1,6 +1,6 @@
-import HPBarUpdate from "./HPBar";
+import HPBar from "./HPBar";
 
-interface ReplayPlayer {
+export interface ReplayPlayer {
     team: number
     steamid: string
     name?: string
@@ -13,6 +13,7 @@ interface PlayerCardProps {
     ringColor: string
     centerTextColorClass: string
 }
+
 
 export default function PlayerCard({
     player,
@@ -34,7 +35,7 @@ export default function PlayerCard({
             </div>
 
             <div className="flex items-center">
-                <HPBarUpdate
+                <HPBar
                 hp={player.hp}
                 alive={player.alive}
                 ringColor={ringColor}
@@ -44,4 +45,32 @@ export default function PlayerCard({
             </div>
     )
 }
-        
+
+interface PlayerCardPlaceholderProps {
+    ringColor: string
+    centerTextColorClass: string
+}
+
+export function PlayerCardPlaceholder({
+    ringColor,
+}: PlayerCardPlaceholderProps) {
+    return (
+     <div className="flex items-center justify-between gap-2 rounded-md border border-slate-300 bg-white/90 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800/70 opacity-60 animate-pulse">
+      
+       {/* player name placeholder */}
+        <div className="flex-1 pr-2 animate-pulse">
+            <div className="h-4 w-full rounded bg-slate-300 dark:bg-slate-600" />
+        </div>
+
+      {/* Fake HP Ring */}
+      <div className="flex items-center">
+        <div
+          className="h-8 w-8 rounded-full border"
+          style={{ borderColor: ringColor }}
+        />
+      </div>
+
+    </div>
+  )
+}
+
