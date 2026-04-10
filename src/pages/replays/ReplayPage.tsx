@@ -10,6 +10,8 @@ import { MuteSidebar } from "./components/MuteSidebar";
 import { TranscriptPanel } from "./components/TranscriptPanel";
 import { TransportBar } from "./components/TransportBar";
 
+import { useKDA } from "./components/useKDA";
+
 import  type { ReplayPlayer } from "./components/PlayerCard";
 import PlayerCard from "./components/PlayerCard";
 import { PlayerCardPlaceholder } from "./components/PlayerCard";
@@ -72,7 +74,9 @@ export default function ReplayPage() {
     handleSeek,
     handlePreviewSeek,
     scoreCT,
-    scoreT,
+    scoreT, 
+    deathEvents,
+    slotToSteamid,
     canvasHandlers,
     // replayMeta, // check final score (testing)
   } = useReplayEngine(id, canvasRef, audioPlayerRef, {
@@ -137,6 +141,42 @@ export default function ReplayPage() {
     return () => window.removeEventListener("keydown", handleSpacebarToggle);
   }, [setIsPlaying]);
 
+  //testing
+  useEffect(() => {
+    console.log("deathEvents length:", deathEvents.length);
+  }, [deathEvents]);
+
+  //testing
+  useEffect(() => {
+    if (deathEvents.length > 0) {
+      console.log("first death vic slot:", deathEvents[0].vic);
+      console.log("slotToSteamid at that slot:", slotToSteamid[deathEvents[0].vic]);
+      console.log("n0te steamid:", frame?.players.find(p => p.name === "n0te ★")?.steamid);
+    }
+  }, [deathEvents, slotToSteamid, frame]);
+
+  //testing
+  useEffect(() => {
+    if (frame?.players) {
+      console.log("full player objects:", frame.players);
+    }
+  }, [frame]);
+
+  //testing
+  useEffect(() => {
+    if (frame?.players && deathEvents.length > 0) {
+      console.log("players with indices:", frame.players.map((p, i) => ({ index: i, steamid: p.steamid, name: p.name })));
+      console.log("first few death events:", deathEvents.slice(0, 3));
+    }
+  }, [frame, deathEvents]);
+  
+  //testing
+  useEffect(() => {
+    if (deathEvents.length > 0) {
+      console.log("first death event raw:", deathEvents[0]);
+    }
+  }, [deathEvents]);
+
   // Calculate active round and its timing info based on the current replay time
   const { activeRound, activeRoundStartSec, activeRoundDurationSec, activeRoundElapsedSec } = useMemo(() => {
     const currentActiveRound = roundStartTicks.length > 0
@@ -184,7 +224,8 @@ export default function ReplayPage() {
   const score_T = scoreT;
 
   const players = frame?.players ?? [];
-  const isLoaded = frame;
+  console.log("first player raw:", frame?.players?.[0]);
+
   const isLoading = !frame;
 
   const getTeamPlayers = (teamId: number): ReplayPlayer[] =>
@@ -196,6 +237,19 @@ export default function ReplayPage() {
   const rightTeamPlayers = getTeamPlayers(rightTeamID);
 
   
+
+  const playerKDA = useKDA(
+    deathEvents,
+    slotToSteamid,
+    currentTimeSec, 
+    replayStartTick, 
+    ticksPerSecond
+  );
+
+  //testing
+  console.log("slotToSteamid:", slotToSteamid);
+console.log("playerKDA:", playerKDA);
+
 
   if (fetchError) {
     return (
@@ -225,7 +279,6 @@ export default function ReplayPage() {
       </div>
 
       <div className="flex w-full items-start justify-center gap-4">
-        {/* Left Health Bars */}
         { 
           <div className="flex h-180 w-80 shrink-0 flex-col gap-3">
             {/* CT Team Container (Top Half) */}
@@ -251,6 +304,7 @@ export default function ReplayPage() {
                     <PlayerCard // STEAM WHEN LOADED
                       key={player.steamid}
                       player={player}
+                      kda={playerKDA[player.steamid]}
                       ringColor="rgb(59 130 246)"
                       centerTextColorClass="text-blue-700 dark:text-blue-100"
                     />
@@ -283,6 +337,7 @@ export default function ReplayPage() {
                     <PlayerCard
                       key={player.steamid}
                       player={player}
+                      kda={playerKDA[player.steamid]}
                       ringColor="rgb(234 179 8)"
                       centerTextColorClass="text-amber-700 dark:text-yellow-100"
                     />
