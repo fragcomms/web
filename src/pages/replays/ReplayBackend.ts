@@ -27,6 +27,7 @@ export function useReplayEngine(
   const currentTimeRef = useRef(0);
   const lastRenderedTickRef = useRef<number>(-1);
   const isScrubbingRef = useRef(false);
+  const isSecondHalfRef = useRef(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
@@ -274,7 +275,9 @@ export function useReplayEngine(
           }
 
           if (frame) {
-            rendererRef.current.render(frame, playerRef.current.getCurrentElapsedSeconds());
+            rendererRef.current.render(frame, playerRef.current.getCurrentElapsedSeconds(), {
+              isSecondHalf: isSecondHalfRef.current,
+            });
             if (frame.tick !== lastRenderedTickRef.current) {
 
 
@@ -310,7 +313,9 @@ export function useReplayEngine(
     requestAnimationFrame(() => {
       if (!rendererRef.current || !frame) return;
 
-      rendererRef.current.render(frame, clampedSec);
+      rendererRef.current.render(frame, clampedSec, {
+        isSecondHalf: isSecondHalfRef.current,
+      });
       setFrame(frame);
       lastRenderedTickRef.current = frame.tick;
 
@@ -331,8 +336,10 @@ export function useReplayEngine(
       const frame = playerRef.current.seekToElapsedSeconds(clampedSec);
       if (frame) {
         rendererRef.current.render(frame, clampedSec, {
+          isSecondHalf: isSecondHalfRef.current,
           skipFluidSim: false,
           skipDeathShardEffects: false,
+          
         });
         setFrame(frame);
         lastRenderedTickRef.current = frame.tick;
@@ -345,6 +352,7 @@ export function useReplayEngine(
     isPlaying,
     setIsPlaying,
     setIsScrubbing: (val: boolean) => { isScrubbingRef.current = val; },
+    setIsSecondHalf: (val: boolean) => { isSecondHalfRef.current = val; },
     currentTimeSec,
     durationSec: effectiveDurationSec,
     replayStartTick,
