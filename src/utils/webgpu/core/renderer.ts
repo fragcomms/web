@@ -395,10 +395,16 @@ export class Renderer {
   render(
     frame: RenderFrame,
     timeSec: number,
-    options: { skipFluidSim?: boolean; skipDeathShardEffects?: boolean; } = {},
+    options: { 
+      skipFluidSim?: boolean; 
+      skipDeathShardEffects?: 
+      boolean; 
+      isSecondHalf?: boolean; 
+    } = {},
   ) {
     const skipFluidSim = options.skipFluidSim ?? false;
     const skipDeathShardEffects = options.skipDeathShardEffects ?? false;
+    const isSecondHalf = options.isSecondHalf ?? false;
 
     this.timeVec4[0] = timeSec;
     this.timeVec4[1] = 0;
@@ -416,12 +422,12 @@ export class Renderer {
     if (!skipFluidSim) {
       this.fluidSim.syncToFrame(frame);
     }
-    const visionCount = this.visionRenderer.upload(frame.players);
+    const visionCount = this.visionRenderer.upload(frame.players, isSecondHalf);
     const shardCount = skipDeathShardEffects ? 0 : this.deathShardRenderer.upload();
     const areaEffectCount = this.areaEffectRenderer.upload(frame.areaEffects);
     const grenadeCount = this.grenadeRenderer.upload(frame.grenades);
-    const playerCount = this.playerRenderer.upload(frame.players);
-    const tracerCount = this.tracerRenderer.upload(frame.tracers);
+    const playerCount = this.playerRenderer.upload(frame.players, isSecondHalf);
+    const tracerCount = this.tracerRenderer.upload(frame.tracers, isSecondHalf);
 
     const encoder = this.device.createCommandEncoder();
     const textureView = this.context.getCurrentTexture().createView();

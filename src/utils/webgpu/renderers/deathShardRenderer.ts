@@ -192,7 +192,7 @@ export class DeathShardRenderer {
   }
 
   private spawnBurst(player: RenderPlayer, tracers: RenderTracer[]) {
-    const [baseR, baseG, baseB] = getTeamColor(player.team);
+    const [baseR, baseG, baseB] = getTeamColor(player.team, false);
     const impactDir = this.findImpactDirection(player, tracers);
     const baseAngle = Math.atan2(impactDir.y, impactDir.x);
 

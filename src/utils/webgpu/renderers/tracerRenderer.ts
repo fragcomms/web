@@ -43,7 +43,7 @@ export class TracerRenderer {
     this.walls = walls;
   }
 
-  upload(tracers: RenderTracer[]): number {
+  upload(tracers: RenderTracer[], isSecondHalf: boolean): number {
     const count = Math.min(tracers.length, this.maxTracerInstances);
     const data = this.instanceScratch;
 
@@ -78,7 +78,7 @@ export class TracerRenderer {
         clippedY1 = tr.y0 + dir.y * hitDistance;
       }
 
-      const [r, g, b] = getTeamColor(tr.team);
+      const [r, g, b] = getTeamColor(tr.team, isSecondHalf);
 
       data[base + 0] = tr.x0;
       data[base + 1] = tr.y0;
