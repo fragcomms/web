@@ -78,6 +78,7 @@ export default function ReplayPage() {
     deathEvents,
     slotToSteamid,
     canvasHandlers,
+    setIsSecondHalf,
     // replayMeta, // check final score (testing)
   } = useReplayEngine(id, canvasRef, audioPlayerRef, {
     audioStartOffsetSec,
@@ -98,6 +99,8 @@ export default function ReplayPage() {
       handleSeek(seekSec);
     });
   }, [roundStartTicks, replayStartTick, ticksPerSecond, setIsPlaying, handleSeek]);
+
+ 
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -141,41 +144,15 @@ export default function ReplayPage() {
     return () => window.removeEventListener("keydown", handleSpacebarToggle);
   }, [setIsPlaying]);
 
-  //testing
-  useEffect(() => {
-    console.log("deathEvents length:", deathEvents.length);
-  }, [deathEvents]);
-
-  //testing
-  useEffect(() => {
-    if (deathEvents.length > 0) {
-      console.log("first death vic slot:", deathEvents[0].vic);
-      console.log("slotToSteamid at that slot:", slotToSteamid[deathEvents[0].vic]);
-      console.log("n0te steamid:", frame?.players.find(p => p.name === "n0te ★")?.steamid);
-    }
-  }, [deathEvents, slotToSteamid, frame]);
-
-  //testing
-  useEffect(() => {
-    if (frame?.players) {
-      console.log("full player objects:", frame.players);
-    }
-  }, [frame]);
-
-  //testing
-  useEffect(() => {
-    if (frame?.players && deathEvents.length > 0) {
-      console.log("players with indices:", frame.players.map((p, i) => ({ index: i, steamid: p.steamid, name: p.name })));
-      console.log("first few death events:", deathEvents.slice(0, 3));
-    }
-  }, [frame, deathEvents]);
   
-  //testing
-  useEffect(() => {
-    if (deathEvents.length > 0) {
-      console.log("first death event raw:", deathEvents[0]);
-    }
-  }, [deathEvents]);
+
+  
+
+  
+
+  
+  
+  
 
   // Calculate active round and its timing info based on the current replay time
   const { activeRound, activeRoundStartSec, activeRoundDurationSec, activeRoundElapsedSec } = useMemo(() => {
@@ -210,6 +187,11 @@ export default function ReplayPage() {
 
   // halftime
   const isSecondHalf = activeRound > 12; // needs to be declared after activeRound
+  
+  useEffect(() => {
+    setIsSecondHalf(isSecondHalf);
+  }, [isSecondHalf, setIsSecondHalf]);
+
 
   // Team IDs (needed for switch after halftime)
   const leftTeamID = isSecondHalf ? 2 : 3; // team IDs are switched in second half
@@ -224,7 +206,7 @@ export default function ReplayPage() {
   const score_T = scoreT;
 
   const players = frame?.players ?? [];
-  console.log("first player raw:", frame?.players?.[0]);
+  // console.log("first player raw:", frame?.players?.[0]);
 
   const isLoading = !frame;
 
@@ -246,9 +228,9 @@ export default function ReplayPage() {
     ticksPerSecond
   );
 
-  //testing
-  console.log("slotToSteamid:", slotToSteamid);
-console.log("playerKDA:", playerKDA);
+  
+  // console.log("slotToSteamid:", slotToSteamid);
+  // console.log("playerKDA:", playerKDA);
 
 
   if (fetchError) {
