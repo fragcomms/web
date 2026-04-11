@@ -416,7 +416,7 @@ export class Renderer {
     this.lastRenderTimeSec = timeSec;
 
     if (!skipDeathShardEffects) {
-      this.deathShardRenderer.syncDeaths(frame.players, frame.tracers);
+      this.deathShardRenderer.syncDeaths(frame.players, frame.tracers, isSecondHalf);
       this.deathShardRenderer.update(dtSec);
     }
     if (!skipFluidSim) {

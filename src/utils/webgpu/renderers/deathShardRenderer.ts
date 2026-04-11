@@ -72,11 +72,11 @@ export class DeathShardRenderer {
     this.walls = walls;
   }
 
-  syncDeaths(players: RenderPlayer[], tracers: RenderTracer[]) {
+  syncDeaths(players: RenderPlayer[], tracers: RenderTracer[], isSecondHalf: boolean) {
     for (const player of players) {
       const wasAlive = this.prevAliveBySteamId.get(player.steamid) ?? player.alive;
       if (wasAlive && !player.alive) {
-        this.spawnBurst(player, tracers);
+        this.spawnBurst(player, tracers, isSecondHalf);
       }
       this.prevAliveBySteamId.set(player.steamid, player.alive);
     }
@@ -191,8 +191,8 @@ export class DeathShardRenderer {
     pass.draw(6, instanceCount, 0, 0);
   }
 
-  private spawnBurst(player: RenderPlayer, tracers: RenderTracer[]) {
-    const [baseR, baseG, baseB] = getTeamColor(player.team, false);
+  private spawnBurst(player: RenderPlayer, tracers: RenderTracer[], isSecondHalf: boolean) {
+    const [baseR, baseG, baseB] = getTeamColor(player.team, isSecondHalf);
     const impactDir = this.findImpactDirection(player, tracers);
     const baseAngle = Math.atan2(impactDir.y, impactDir.x);
 
