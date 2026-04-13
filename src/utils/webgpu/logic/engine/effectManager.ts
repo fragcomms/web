@@ -90,6 +90,7 @@ export class EffectManager {
 
     for (let i = startIdx; i < this.timedAreaEffects.length; i++) {
       const effect = this.timedAreaEffects[i];
+      if (effect.kind === "smoke") continue;
       if (effect.startTick > targetTick) break;
       if (effect.endTick <= targetTick) continue;
 

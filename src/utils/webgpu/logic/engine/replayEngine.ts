@@ -137,7 +137,8 @@ export class ReplayEngine {
 
   getFrameAtElapsedSeconds(elapsedSec: number): RenderFrame | null {
     if (this.rounds.length === 0) return null;
-    const targetTick = this.startTick + elapsedSec * this.ticksPerSecond;
+    let targetTick = this.startTick + elapsedSec * this.ticksPerSecond;
+    targetTick = Math.max(this.startTick, Math.min(targetTick, this.endTick));
     
     this.syncActiveRound(targetTick);
     const bracket = this.bracketTick(targetTick);
