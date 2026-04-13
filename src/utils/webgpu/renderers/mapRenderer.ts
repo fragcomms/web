@@ -38,19 +38,30 @@ export class MapRenderer {
     config: MapConfig,
     bounds: { minX: number; maxX: number; minY: number; maxY: number; },
   ) {
+    const RESOLUTION = 4096;
+    let svgW = 1024;
+    let svgH = 1024;
+    
     const bitmap = await new Promise<ImageBitmap>((resolve, reject) => {
       const img = new Image();
+      img.crossOrigin = "anonymous";
       img.onload = () => {
-        createImageBitmap(img)
-          .then(resolve)
-          .catch(reject);
+        svgW = img.naturalWidth;
+        svgH = img.naturalHeight;
+        createImageBitmap(img, {
+          resizeWidth: RESOLUTION,
+          resizeHeight: RESOLUTION,
+          resizeQuality: "high"
+        })
+        .then(resolve)
+        .catch(reject);
       };
-      img.onerror = () => reject(new Error(`Failed to load SVG from: ${url}`));
+      img.onerror = () => reject(new Error(`Failed to load SVG: ${url}`));
       img.src = url;
     });
 
     const texture = this.device.createTexture({
-      size: [bitmap.width, bitmap.height, 1],
+      size: [RESOLUTION, RESOLUTION, 1],
       format: "rgba8unorm",
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
     });
@@ -58,7 +69,7 @@ export class MapRenderer {
     this.device.queue.copyExternalImageToTexture(
       { source: bitmap },
       { texture },
-      [bitmap.width, bitmap.height],
+      [RESOLUTION, RESOLUTION],
     );
 
     this.imageBindGroup = this.device.createBindGroup({
@@ -69,6 +80,7 @@ export class MapRenderer {
       ],
     });
 
+    // use original dimensions to map the UV
     const { scale, originX, originY } = config;
 
     const x1 = (bounds.minX * scale) + originX;
@@ -76,48 +88,28 @@ export class MapRenderer {
     const yTop = (bounds.maxY * scale) + originY;
     const yBottom = (bounds.minY * scale) + originY;
 
-    const svgW = bitmap.width;
-    const svgH = bitmap.height;
-
     const u1 = bounds.minX / svgW;
     const u2 = bounds.maxX / svgW;
     const vTop = (-bounds.maxY) / svgH;
     const vBottom = (-bounds.minY) / svgH;
 
     const verts = new Float32Array([
-      x1,
-      yTop,
-      u1,
-      vTop,
-      x2,
-      yTop,
-      u2,
-      vTop,
-      x1,
-      yBottom,
-      u1,
-      vBottom,
+      x1, yTop, u1, vTop,
+      x2, yTop, u2, vTop,
+      x1, yBottom, u1, vBottom,
 
-      x1,
-      yBottom,
-      u1,
-      vBottom,
-      x2,
-      yTop,
-      u2,
-      vTop,
-      x2,
-      yBottom,
-      u2,
-      vBottom,
+      x1, yBottom, u1, vBottom,
+      x2, yTop, u2, vTop,
+      x2, yBottom, u2, vBottom,
     ]);
 
     if (this.imageVertexBuffer) this.imageVertexBuffer.destroy();
+
     this.imageVertexBuffer = createFloat32Buffer(
       this.device,
       verts,
       GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-    );
+    )
 
     bitmap.close();
   }
@@ -125,27 +117,27 @@ export class MapRenderer {
   setMapGeometry(geometry: MapGeometry, config: MapConfig) {
     const { scale, originX, originY } = config;
 
-    const svgCenterX = (geometry.bounds.minX + geometry.bounds.maxX) / 2;
-    const svgCenterY = (geometry.bounds.minY + geometry.bounds.maxY) / 2;
-
-    this.mapCenter.x = (svgCenterX * scale) + originX;
-    this.mapCenter.y = (svgCenterY * scale) + originY;
+    const worldSize = 1024 * scale;
     this.worldBounds = {
-      minX: (geometry.bounds.minX * scale) + originX,
-      minY: (geometry.bounds.minY * scale) + originY,
-      maxX: (geometry.bounds.maxX * scale) + originX,
-      maxY: (geometry.bounds.maxY * scale) + originY,
+      minX: originX,
+      minY: originY - worldSize,
+      maxX: originX + worldSize,
+      maxY: originY,
     };
 
-    this.blockingSegments = []; // Clear old walls
+    this.mapCenter.x = originX + (worldSize / 2);
+    this.mapCenter.y = originY - (worldSize / 2);
+
+    this.blockingSegments = [];
     const lineVerts = new Float32Array(geometry.segments.length * 4);
     let lineOffset = 0;
 
     for (const s of geometry.segments) {
-      const x1 = (s.x1 * scale) + originX;
-      const x2 = (s.x2 * scale) + originX;
-      const y1 = (s.y1 * scale) + originY;
-      const y2 = (s.y2 * scale) + originY;
+      const x1 = originX + (s.x1 * scale);
+      const x2 = originX + (s.x2 * scale);
+
+      const y1 = originY + (s.y1 * scale);
+      const y2 = originY + (s.y2 * scale);
 
       this.blockingSegments.push({ x1, y1, x2, y2 });
       lineVerts[lineOffset + 0] = x1;
@@ -155,9 +147,7 @@ export class MapRenderer {
       lineOffset += 4;
     }
 
-    if (this.lineVertexBuffer) {
-      this.lineVertexBuffer.destroy();
-    }
+    if (this.lineVertexBuffer) this.lineVertexBuffer.destroy();
     this.lineVertexBuffer = createFloat32Buffer(
       this.device,
       lineVerts,
@@ -177,7 +167,7 @@ export class MapRenderer {
       pass.setBindGroup(1, this.imageBindGroup);
       pass.setVertexBuffer(0, this.imageVertexBuffer);
       pass.draw(6);
-      return; // COMMENT THIS TO DEBUG WALLS
+      // return; // COMMENT THIS TO DEBUG WALLS
     }
 
     if (this.lineVertexBuffer && this.lineVertexCount > 0) {
