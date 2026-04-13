@@ -34,7 +34,7 @@ export class PlayerRenderer {
     this.instanceScratch = new Float32Array(this.maxPlayerInstances * this.instanceStrideFloats);
   }
 
-  upload(players: RenderPlayer[]) {
+  upload(players: RenderPlayer[], isSecondHalf: boolean): number {
     const count = Math.min(players.length, this.maxPlayerInstances);
     const data = this.instanceScratch;
 
@@ -45,7 +45,7 @@ export class PlayerRenderer {
       data[base + 0] = p.x;
       data[base + 1] = p.y;
 
-      const [r, g, b] = getPlayerColor(p.team, p.alive);
+      const [r, g, b] = getPlayerColor(p.team, p.alive, isSecondHalf);
       data[base + 2] = r;
       data[base + 3] = g;
       data[base + 4] = b;

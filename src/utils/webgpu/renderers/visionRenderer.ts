@@ -61,7 +61,7 @@ export class VisionRenderer {
     writeFloat32Slice(this.queue, this.wallBuffer, this.wallScratch, 4 + count * 4);
   }
 
-  upload(players: RenderPlayer[]): number {
+  upload(players: RenderPlayer[], isSecondHalf: boolean): number {
     let count = 0;
     const data = this.instanceScratch;
 
@@ -71,7 +71,7 @@ export class VisionRenderer {
 
       const base = count * this.instanceStrideFloats;
       const rotRad = p.rot * (Math.PI / 180);
-      const [r, g, b] = getTeamColor(p.team);
+      const [r, g, b] = getTeamColor(p.team, isSecondHalf);
 
       data[base + 0] = p.x;
       data[base + 1] = p.y;

@@ -1,5 +1,5 @@
 // hp bar interface
-interface HPBar {
+interface HPBarProps {
     hp: number;
     alive: boolean;
     ringColor: string;
@@ -7,12 +7,12 @@ interface HPBar {
 }
 
 // function for updating hp bar
-export default function HPBarUpdate({
+export default function HPBar({
     hp,
     alive,
     ringColor,
     centerTextColorClass,
-}: HPBar) {
+}: HPBarProps) {
     const hpPercent = Math.max(0, Math.min(100, hp));
     return (
         <div

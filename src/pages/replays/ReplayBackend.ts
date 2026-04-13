@@ -4,6 +4,7 @@ import { Renderer } from "../../utils/webgpu/core/renderer";
 import { ReplayEngine } from "../../utils/webgpu/logic/engine/replayEngine";
 import { DefaultMapConfig, MapRegistry } from "../../utils/webgpu/logic/mapConfig";
 import { usePanZoom } from "../../utils/webgpu/math/panZoom";
+import type { PlayerDeathEvent } from "../../utils/webgpu/types";
 import type { RenderFrame, ReplayJSON, ReplayMeta, RoundEndEvent } from "../../utils/webgpu/types";
 
 type ReplayAudioSyncConfig = {
@@ -26,6 +27,7 @@ export function useReplayEngine(
   const currentTimeRef = useRef(0);
   const lastRenderedTickRef = useRef<number>(-1);
   const isScrubbingRef = useRef(false);
+  const isSecondHalfRef = useRef(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
@@ -41,6 +43,9 @@ export function useReplayEngine(
   const [isRendererReady, setIsRendererReady] = useState(false);
   const { camera, handlePointerDown, handlePointerMove, handlePointerUp, handleWheel } = usePanZoom();
   const cameraRef = useRef(camera);
+  const [deathEvents, setDeathEvents] = useState<PlayerDeathEvent[]>([]); // for KDA and other stats
+  const [slotToSteamid, setSlotToSteamid] = useState<Record<number, string>>({});
+  
 
   const effectiveDurationSec = useMemo(() => {
     if (audioSyncConfig.audioSyncDisabled || audioSyncConfig.audioDurationSec === null) {
@@ -108,6 +113,11 @@ export function useReplayEngine(
     return { scoreCT: ct, scoreT: t };
   }, [roundEndEvents, currentTimeSec, replayStartTick, ticksPerSecond]);
 
+
+
+
+
+
   // Sync state to refs for the RAF loop & handle Audio transport
   useEffect(() => {
     isPlayingRef.current = isPlaying;
@@ -165,6 +175,8 @@ export function useReplayEngine(
         if (!res.ok) throw new Error(`Server error ${res.status}`);
 
         const data: ReplayJSON = await res.json();
+        console.log("raw timeline tick keys:", Object.keys(data.timeline[0]));
+        console.log("raw timeline tick:", data.timeline[0]);
         if (cancelled) return;
 
         // loading the map
@@ -194,6 +206,12 @@ export function useReplayEngine(
 
         if (data.meta) setReplayMeta(data.meta);
         if (data.events?.round_end) setRoundEndEvents(data.events.round_end);
+        
+        if (data.events?.player_death) {
+          const sorted = [...data.events.player_death].sort((a, b) => a.t - b.t);
+
+          setDeathEvents(sorted);
+        }
 
         setTicksPerSecond(player.ticksPerSecond);
         setReplayStartTick(data.timeline[0]?.t ?? 0);
@@ -204,10 +222,20 @@ export function useReplayEngine(
         setCurrentTimeSec(0);
 
         const firstFrame = player.seekToElapsedSeconds(0);
-        if (firstFrame) {
-          rendererRef.current?.render(firstFrame, 0);
-          setFrame(firstFrame);
-        }
+          if (firstFrame) {
+            const map: Record<number, string> = {};
+            
+            // p[i][0] is the actual slot number, indexes were a bit messed up with the sorting
+            (data.timeline[0] as any).p.forEach((rawPlayer: number[], arrayIndex: number) => {
+              const slot = rawPlayer[0];
+              const steamid = firstFrame.players[arrayIndex].steamid;
+              map[slot] = steamid;
+            });
+            
+            setSlotToSteamid(map);
+            rendererRef.current?.render(firstFrame, 0);
+            setFrame(firstFrame);
+          }
 
         setIsFetching(false);
 
@@ -247,8 +275,12 @@ export function useReplayEngine(
           }
 
           if (frame) {
-            rendererRef.current.render(frame, playerRef.current.getCurrentElapsedSeconds());
+            rendererRef.current.render(frame, playerRef.current.getCurrentElapsedSeconds(), {
+              isSecondHalf: isSecondHalfRef.current,
+            });
             if (frame.tick !== lastRenderedTickRef.current) {
+
+
               setFrame(frame);
               lastRenderedTickRef.current = frame.tick;
             }
@@ -281,9 +313,12 @@ export function useReplayEngine(
     requestAnimationFrame(() => {
       if (!rendererRef.current || !frame) return;
 
-      rendererRef.current.render(frame, clampedSec);
+      rendererRef.current.render(frame, clampedSec, {
+        isSecondHalf: isSecondHalfRef.current,
+      });
       setFrame(frame);
       lastRenderedTickRef.current = frame.tick;
+
 
       if (isPlayingRef.current) {
         syncAudioForReplayTime(clampedSec);
@@ -301,8 +336,10 @@ export function useReplayEngine(
       const frame = playerRef.current.seekToElapsedSeconds(clampedSec);
       if (frame) {
         rendererRef.current.render(frame, clampedSec, {
+          isSecondHalf: isSecondHalfRef.current,
           skipFluidSim: false,
           skipDeathShardEffects: false,
+          
         });
         setFrame(frame);
         lastRenderedTickRef.current = frame.tick;
@@ -315,6 +352,7 @@ export function useReplayEngine(
     isPlaying,
     setIsPlaying,
     setIsScrubbing: (val: boolean) => { isScrubbingRef.current = val; },
+    setIsSecondHalf: (val: boolean) => { isSecondHalfRef.current = val; },
     currentTimeSec,
     durationSec: effectiveDurationSec,
     replayStartTick,
@@ -327,6 +365,9 @@ export function useReplayEngine(
     scoreCT,
     scoreT,
     replayMeta,
+    deathEvents,
+    slotToSteamid,
+    
     canvasHandlers: {
       onPointerDown: handlePointerDown,
       onPointerMove: handlePointerMove,

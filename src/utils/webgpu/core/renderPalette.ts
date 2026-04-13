@@ -4,12 +4,13 @@ const CT_COLOR: [number, number, number] = [0.2, 0.6, 1.0];
 const T_COLOR: [number, number, number] = [1.0, 0.4, 0.2];
 const DIM_COLOR: [number, number, number] = [0.2, 0.2, 0.2];
 
-export function getTeamColor(team: Team): [number, number, number] {
-  return team === 3 ? CT_COLOR : T_COLOR;
+export function getTeamColor(team: Team, isSecondHalf: boolean): [number, number, number] {
+  const isCT = isSecondHalf ? team === 2 : team === 3;
+  return isCT ? CT_COLOR : T_COLOR;
 }
 
-export function getPlayerColor(team: Team, alive: boolean): [number, number, number] {
-  return alive ? getTeamColor(team) : DIM_COLOR;
+export function getPlayerColor(team: Team, alive: boolean, isSecondHalf: boolean): [number, number, number] {
+  return alive ? getTeamColor(team, isSecondHalf) : DIM_COLOR;
 }
 
 export function getGrenadeColor(grenadeType: number): [number, number, number] {
