@@ -48,12 +48,15 @@ export function useReplayEngine(
   
 
   const effectiveDurationSec = useMemo(() => {
-    if (audioSyncConfig.audioSyncDisabled || audioSyncConfig.audioDurationSec === null) {
-      return durationSec;
-    }
 
-    const audioEndSec = audioSyncConfig.audioStartOffsetSec + audioSyncConfig.audioDurationSec;
-    return Math.max(0, Math.min(durationSec, audioEndSec));
+    /* */
+    // if (audioSyncConfig.audioSyncDisabled || audioSyncConfig.audioDurationSec === null) {
+    //   return durationSec;
+    // }
+
+    // const audioEndSec = audioSyncConfig.audioStartOffsetSec + audioSyncConfig.audioDurationSec;
+    // return Math.max(0, Math.min(durationSec, audioEndSec));
+    return durationSec;
   }, [audioSyncConfig, durationSec]);
 
   const effectiveDurationSecRef = useRef(effectiveDurationSec);
@@ -123,12 +126,17 @@ export function useReplayEngine(
     isPlayingRef.current = isPlaying;
     if (audioPlayerRef.current) {
       if (isPlaying) {
-        syncAudioForReplayTime(currentTimeRef.current);
-      } else {
+        const audioSeekSec = currentTimeSec - audioSyncConfig.audioStartOffsetSec;
+        const audioIsOver = audioSyncConfig.audioDurationSec !== null && audioSeekSec >= audioSyncConfig.audioDurationSec;
+
+        if(!audioIsOver) { //sync audio if it's not already over
+          syncAudioForReplayTime(currentTimeRef.current);
+        }
+      } else { //if !isPlaying, stop the audio
         audioPlayerRef.current.stop();
       }
     }
-  }, [isPlaying, audioPlayerRef, syncAudioForReplayTime]);
+  }, [isPlaying, audioPlayerRef, syncAudioForReplayTime, audioSyncConfig]);
 
   useEffect(() => {
     currentTimeRef.current = currentTimeSec;
