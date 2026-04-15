@@ -49,7 +49,7 @@ export function useReplayEngine(
 
   const effectiveDurationSec = useMemo(() => {
 
-    /* */
+    /*****replay won't auto pause when the audio is finished*****/
     // if (audioSyncConfig.audioSyncDisabled || audioSyncConfig.audioDurationSec === null) {
     //   return durationSec;
     // }
@@ -124,6 +124,7 @@ export function useReplayEngine(
   // Sync state to refs for the RAF loop & handle Audio transport
   useEffect(() => {
     isPlayingRef.current = isPlaying;
+    /*  while  replay is playing, only worry about audio sync if audio is actually playing*/
     if (audioPlayerRef.current) {
       if (isPlaying) {
         const audioSeekSec = currentTimeSec - audioSyncConfig.audioStartOffsetSec;
@@ -132,8 +133,10 @@ export function useReplayEngine(
         if(!audioIsOver) { //sync audio if it's not already over
           syncAudioForReplayTime(currentTimeRef.current);
         }
-      } else { //if !isPlaying, stop the audio
-        audioPlayerRef.current.stop();
+
+      //else if !isPlaying, stop the audio
+      } else { 
+        audioPlayerRef.current.stop(); 
       }
     }
   }, [isPlaying, audioPlayerRef, syncAudioForReplayTime, audioSyncConfig]);
