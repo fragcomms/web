@@ -30,18 +30,20 @@ export default function PlayerCard({
                player.alive ? "" : "opacity-55"
             }`}
         > 
-            {/* name */}
-            <div
-                className="min-w-0 truncate pr-2 text-sm font-mono font-medium text-slate-700 dark:text-slate-200"
-                style={{ maxWidth: "32ch" }}
-                title={player.name || player.steamid}
-            >
-                {player.name || player.steamid}
-            </div>
+            <div className="min-w-0 flex-1 pr-2">
+                {/* name */}
+                <div
+                    className="truncate text-sm font-mono font-medium text-slate-700 dark:text-slate-200"
+                    style={{ maxWidth: "32ch" }}
+                    title={player.name || player.steamid}
+                >
+                    {player.name || player.steamid}
+                </div>
 
-            {/* KDA */}
-            <div className="text-xs font-mono text-slate-400">
-                {kda?.kills ?? 0} / {kda?.deaths ?? 0} / {kda?.assists ?? 0}
+                {/* KDA */}
+                <div className="text-xs font-mono text-slate-400">
+                    {kda?.kills ?? 0} / {kda?.deaths ?? 0} / {kda?.assists ?? 0}
+                </div>
             </div>
 
             <div className="flex items-center">

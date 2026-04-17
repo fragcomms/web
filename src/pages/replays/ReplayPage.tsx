@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
 import { useReplayEngine } from "./ReplayBackend";
@@ -38,6 +38,7 @@ export default function ReplayPage() {
   // Canvas target where WebGPU renders each replay frame
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioPlayerRef = useRef<AudioSyncPlayer | null>(null);
+  const [showAudioSyncWarning, setShowAudioSyncWarning] = useState(true);
 
   // initialize the AudioSyncPlayer once on mount and clean up on unmount
   useEffect(() => {
@@ -57,6 +58,10 @@ export default function ReplayPage() {
     audioDurationSec,
     audioSyncWarning,
   } = useReplayMedia(id, audioPlayerRef);
+
+  useEffect(() => {
+    setShowAudioSyncWarning(Boolean(audioSyncWarning));
+  }, [audioSyncWarning]);
 
   // initialize the replay engine and media (transcripts + audio) using the replay ID from URL
   const {
@@ -243,9 +248,22 @@ export default function ReplayPage() {
 
   return (
     <div className="w-full overflow-x-hidden flex flex-col gap-4">
-      {audioSyncWarning && (
-        <div className="mx-auto w-full max-w-300 rounded-md border border-amber-600/60 bg-amber-900/20 px-4 py-2 text-sm text-amber-200">
-          {audioSyncWarning}
+      {audioSyncWarning && showAudioSyncWarning && (
+        <div className="fixed left-1/2 top-20 z-50 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 rounded-lg border border-amber-500/70 bg-slate-950/95 px-4 py-3 text-sm text-amber-100 shadow-2xl shadow-black/40 backdrop-blur-sm">
+          <div className="flex items-start gap-3">
+            <p className="min-w-0 flex-1 leading-snug">
+              {audioSyncWarning}
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowAudioSyncWarning(false)}
+              className="-mr-1 -mt-1 inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-100/80 transition hover:bg-amber-400/15 hover:text-amber-50"
+              aria-label="Dismiss audio sync warning"
+              title="Dismiss"
+            >
+              X
+            </button>
+          </div>
         </div>
       )}
 
@@ -350,6 +368,7 @@ export default function ReplayPage() {
           discordNames={discordNames}
           transcriptText={transcriptText}
           formatTime={formatTime}
+          currentTimeSec={currentTimeSec}
         />
       </div>
 
