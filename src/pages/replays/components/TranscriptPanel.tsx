@@ -1,4 +1,11 @@
 import { memo, useEffect, useMemo, useRef } from "react";
+import { ArrowDownToLine, EllipsisVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../../components/ui/dropdown-menu";
 import type { TranscriptSegment } from "../ReplayMedia";
 
 interface TranscriptPanelProps {
@@ -42,7 +49,31 @@ export const TranscriptPanel = memo(function TranscriptPanel(
 
   return (
     <aside className="w-full max-w-[320px] h-180 rounded-xl border border-slate-700 bg-slate-900/90 p-3 flex flex-col">
-      <div className="mb-2 shrink-0 text-sm font-semibold text-slate-200">Match Communications:</div>
+      <div className="mb-2 shrink-0 flex items-center justify-between gap-2">
+        <div className="text-sm font-semibold text-slate-200">Match Communications:</div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-700 bg-slate-900 text-slate-300 transition hover:bg-slate-800 hover:text-slate-100"
+              aria-label="Transcript actions"
+              title="Transcript actions"
+            >
+              <EllipsisVertical className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 bg-slate-900 border-slate-700 text-slate-200">
+            <DropdownMenuItem className="cursor-pointer gap-2 whitespace-nowrap">
+              <span>Download Audio</span>
+              <ArrowDownToLine className="ml-auto h-4 w-4" />
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer gap-2 whitespace-nowrap">
+              <span>Download Transcript</span>
+              <ArrowDownToLine className="ml-auto h-4 w-4" />
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       <div
         className="min-h-0 flex-1 overflow-y-auto rounded-md border border-slate-800 bg-slate-950/50 p-2 text-sm text-slate-300"
         aria-live="polite"
