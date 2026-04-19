@@ -48,7 +48,7 @@ export const TranscriptPanel = memo(function TranscriptPanel(
   }, [firstActiveIndex]);
 
   return (
-    <aside className="w-full max-w-[320px] h-180 rounded-xl border border-slate-700 bg-slate-900/90 p-3 flex flex-col">
+    <aside className="w-full max-w-96 h-180 rounded-xl border border-slate-700 bg-slate-900/90 p-3 flex flex-col">
       <div className="mb-2 shrink-0 flex items-center justify-between gap-2">
         <div className="text-sm font-semibold text-slate-200">Match Communications:</div>
         <DropdownMenu>
@@ -80,7 +80,7 @@ export const TranscriptPanel = memo(function TranscriptPanel(
       >
         {transcripts.length > 0
           ? (
-            <div ref={transcriptContainerRef} className="flex flex-col gap-3">
+            <div ref={transcriptContainerRef} className="flex flex-col">
               {transcripts.map((t, i) => (
                 <div
                   key={i}
