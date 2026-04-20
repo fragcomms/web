@@ -121,6 +121,12 @@ export class AudioSyncPlayer {
     this.isPlaying = false;
   }
 
+  // expose buffers for download
+  getBuffers(): Map<string, AudioBuffer> {
+    return this.buffers;
+  }
+
+
   /**
    * Allows the UI to mute or unmute a specific player without stopping playback.
    */
