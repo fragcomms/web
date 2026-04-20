@@ -24,6 +24,7 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
   const [audioStartOffsetSec, setAudioStartOffsetSec] = useState(0);
   const [audioDurationSec, setAudioDurationSec] = useState<number | null>(null);
   const [audioSyncWarning, setAudioSyncWarning] = useState<string | null>(null);
+  const [audioId, setAudioId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,6 +39,7 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
         const replayMetadata = (await replayRes.json()) as ReplayMediaMetadata;
         const audioId = replayMetadata.audio_id;
         if (!audioId) return setTranscriptText("No audio linked to this replay.");
+        setAudioId(audioId);
 
         const offsetMs = replayMetadata.audio_offset;
         if (typeof offsetMs === "number" && Number.isFinite(offsetMs)) {
@@ -63,7 +65,7 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
 
         const combined: TranscriptSegment[] = [];
         // Combine all transcripts into one array and sort by start time
-        // this makes it easier to display in the transcript panel and also ensures the audio tracks are properly loaded for all users mentioned in the transcripts
+        // makes it easier to display in the transcript panel & ensures audio tracks are properly loaded for all users mentioned in the transcripts
         for (const [discordId, segments] of Object.entries(transcriptJson)) {
           for (const seg of (segments as any[])) {
             combined.push({
@@ -136,5 +138,6 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
     audioStartOffsetSec,
     audioDurationSec,
     audioSyncWarning,
+    audioId,
   };
 }
