@@ -59,7 +59,7 @@ router.get("/:id/track/:identifier", ensureAuth, async (req, res) => {
       "-c:a",
       "libopus",
       "-b:a",
-      "96k",
+      "96k", // upgraded from 20k to make audio download not so lossy
       "-f",
       "webm",
       "pipe:1",
