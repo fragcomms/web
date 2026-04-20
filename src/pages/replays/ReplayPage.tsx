@@ -16,6 +16,7 @@ import  type { ReplayPlayer } from "./components/PlayerCard";
 import PlayerCard from "./components/PlayerCard";
 import { PlayerCardPlaceholder } from "./components/PlayerCard";
 import { downloadTranscript } from "../../utils/media/downloadTranscript";
+import { downloadAudio } from "../../utils/media/downloadAudio";
 
 function getRoundFromTick(roundStartTicks: number[], currentTick: number): number {
   if (roundStartTicks.length === 0) return 1;
@@ -58,6 +59,7 @@ export default function ReplayPage() {
     audioStartOffsetSec,
     audioDurationSec,
     audioSyncWarning,
+    audioId,
   } = useReplayMedia(id, audioPlayerRef);
 
   useEffect(() => {
@@ -370,7 +372,14 @@ export default function ReplayPage() {
           transcriptText={transcriptText}
           formatTime={formatTime}
           currentTimeSec={currentTimeSec}
-          onDownloadTranscript={() => downloadTranscript(transcripts, discordNames, id)}
+          onDownloadTranscript={
+            () => downloadTranscript(transcripts, discordNames, id)
+          }
+          onDownloadAudio={
+            () => {
+              if(audioId && id) downloadAudio(discordUsers, discordNames, audioId, import.meta.env.VITE_API_URL, id)
+              }
+          }
         />
       </div>
 
