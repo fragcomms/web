@@ -59,7 +59,7 @@ router.get("/:id/track/:identifier", ensureAuth, async (req, res) => {
       "-c:a",
       "libopus",
       "-b:a",
-      "20k",
+      "96k",
       "-f",
       "webm",
       "pipe:1",
@@ -72,6 +72,49 @@ router.get("/:id/track/:identifier", ensureAuth, async (req, res) => {
     });
   } catch (e) {
     console.error("Audio track extraction error: ", e);
+    res.status(500).send("Server error");
+  }
+});
+
+// /api/audio/:id/track/:identifier/download
+router.get("/:id/track/:identifier/download", ensureAuth, async (req, res) => {
+  const user = req.user as User;
+  if (!user) return res.status(401).send("Unauthorized");
+
+  try {
+    const query = `
+      SELECT a.file_path
+      FROM audios a
+      JOIN media_access ma ON a.audio_id = ma.audio_id
+      WHERE a.audio_id = $1 AND ma.discord_id = $2
+    `;
+    const result = await pool.query(query, [req.params.id, user.discord_id]);
+
+    if (result.rows.length === 0) return res.status(404).send("Audio not found");
+
+    const remotePath = result.rows[0].file_path;
+    const identifier = req.params.identifier;
+
+    const remoteAudioUrl = `${REPLAY_PIPELINE_URL}/get_audio?filepath=${encodeURIComponent(remotePath)}`;
+
+    res.setHeader("Content-Type", "audio/x-matroska");
+    res.setHeader("Content-Disposition", `attachment; filename="${identifier}.mka"`);
+
+    const ffmpeg = spawn("ffmpeg", [
+      "-i", remoteAudioUrl,
+      "-map", `0:m:title:${identifier}`,
+      "-c:a", "copy",  // no transcode, just remux the raw PCM track
+      "-f", "matroska",
+      "pipe:1",
+    ]);
+
+    ffmpeg.stdout.pipe(res);
+
+    req.on("close", () => {
+      ffmpeg.kill("SIGKILL");
+    });
+  } catch (e) {
+    console.error("Audio download error: ", e);
     res.status(500).send("Server error");
   }
 });
