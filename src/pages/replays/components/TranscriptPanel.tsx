@@ -16,10 +16,11 @@ interface TranscriptPanelProps {
   formatTime: (sec: number) => string;
   currentTimeSec: number;
   onDownloadTranscript: () => void;
+  onDownloadAudio: () => void;
 }
 
 export const TranscriptPanel = memo(function TranscriptPanel(
-  { transcripts, mutedUsers, discordNames, transcriptText, formatTime, currentTimeSec, onDownloadTranscript }: TranscriptPanelProps,
+  { transcripts, mutedUsers, discordNames, transcriptText, formatTime, currentTimeSec, onDownloadTranscript, onDownloadAudio }: TranscriptPanelProps,
 ) {
   const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -64,7 +65,11 @@ export const TranscriptPanel = memo(function TranscriptPanel(
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 bg-slate-900 border-slate-700 text-slate-200">
-            <DropdownMenuItem className="cursor-pointer gap-2 whitespace-nowrap">
+            <DropdownMenuItem 
+            className="cursor-pointer gap-2 whitespace-nowrap"
+              onClick={onDownloadAudio}
+              disabled={transcripts.length === 0}
+            >
               <span>Download Audio</span>
               <ArrowDownToLine className="ml-auto h-4 w-4" />
             </DropdownMenuItem>
