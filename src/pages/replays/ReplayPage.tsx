@@ -15,6 +15,7 @@ import { useKDA } from "./components/useKDA";
 import  type { ReplayPlayer } from "./components/PlayerCard";
 import PlayerCard from "./components/PlayerCard";
 import { PlayerCardPlaceholder } from "./components/PlayerCard";
+import { downloadTranscript } from "../../utils/media/downloadTranscript";
 
 function getRoundFromTick(roundStartTicks: number[], currentTick: number): number {
   if (roundStartTicks.length === 0) return 1;
@@ -369,6 +370,7 @@ export default function ReplayPage() {
           transcriptText={transcriptText}
           formatTime={formatTime}
           currentTimeSec={currentTimeSec}
+          onDownloadTranscript={() => downloadTranscript(transcripts, discordNames, id)}
         />
       </div>
 
