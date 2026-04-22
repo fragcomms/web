@@ -61,15 +61,15 @@ export function ReplayLibrary() {
   }
 
   if (isLoading) {
-    return <div className="text-white text-center mt-10">Loading replays...</div>;
+    return <div className="text-slate-900 dark:text-white text-center mt-10">Loading replays...</div>;
   }
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white mb-1">Replay Library</h1>
-          <p className="text-slate-400 text-sm">Browse and manage your replays.</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Replay Library</h1>
+          <p className="text-slate-600 dark:text-slate-400 text-sm">Browse and manage your replays.</p>
         </div>
         <Button
           className="bg-[#5865F2] hover:bg-[#4752C4] text-white transition-colors"
@@ -82,11 +82,11 @@ export function ReplayLibrary() {
 
       {replays.length === 0
         ? (
-          <div className="text-slate-400 text-center py-10 bg-slate-800/30 rounded-xl border border-slate-700/50">
+          <div className="text-slate-600 dark:text-slate-400 text-center py-10 bg-slate-100 dark:bg-slate-800/30 rounded-xl border border-slate-300 dark:border-slate-700/50">
             <p className="mb-4">No replays found.</p>
             <Button
               variant="outline"
-              className="text-slate-300 border-slate-600 hover:text-white"
+              className="text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:text-slate-900 dark:hover:text-white"
               onClick={() => navigate("/replays/import")}
             >
               Upload your first match!
@@ -116,45 +116,45 @@ function ReplayCard({ replay, onDelete }: { replay: Replay; onDelete: (replayId:
   return (
     <Link to={`/replays/${replay.replay_id}`} className="block group">
       {/* Card container with styling - changes appearance on hover */}
-      <Card className="bg-slate-800/50 border-slate-700 transition-all duration-200 group-hover:bg-slate-800 group-hover:border-slate-600 group-hover:shadow-lg border-l-4 border-l-blue-500">
+      <Card className="bg-white dark:bg-slate-800/50 border-slate-300 dark:border-slate-700 transition-all duration-200 group-hover:bg-slate-50 dark:group-hover:bg-slate-800 group-hover:border-slate-400 dark:group-hover:border-slate-600 group-hover:shadow-lg border-l-4 border-l-blue-500">
         {/* Main flex container - distributes left content and right action buttons */}
         <div className="flex items-center justify-between gap-4 p-4">
           {/* LEFT SECTION: Replay metadata/info */}
           <div className="flex flex-col gap-2 flex-1">
             {/* Replay name */}
-            <span className="text-sm font-semibold text-slate-100">{replay.name || `#${replay.replay_id}`}</span>
+            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{replay.name || `#${replay.replay_id}`}</span>
 
             {/* Stable metadata: 4 items in visual boxes */}
-            <div className="flex flex-wrap gap-2 text-xs text-slate-400">
-              <div className="flex items-center rounded bg-slate-700/30 px-2 py-1">
+            <div className="flex flex-wrap gap-2 text-xs text-slate-600 dark:text-slate-400">
+              <div className="flex items-center rounded bg-slate-200/70 dark:bg-slate-700/30 px-2 py-1">
                 <span className="w-10 shrink-0">ID:</span>
-                <span className="text-slate-300 tabular-nums">{replay.replay_id}</span>
+                <span className="text-slate-700 dark:text-slate-300 tabular-nums">{replay.replay_id}</span>
               </div>
 
-              <div className="flex items-center rounded bg-slate-700/30 px-2 py-1">
+              <div className="flex items-center rounded bg-slate-200/70 dark:bg-slate-700/30 px-2 py-1">
                 <span className="w-15 shrink-0">Duration:</span>
-                <span className="text-slate-300 tabular-nums">
+                <span className="text-slate-700 dark:text-slate-300 tabular-nums">
                   {replay.length_ticks != null ? `${Math.round(replay.length_ticks / 64 / 60)} min` : "N/A"}
                 </span>
               </div>
 
-              <div className="flex items-center rounded bg-slate-700/30 px-2 py-1">
+              <div className="flex items-center rounded bg-slate-200/70 dark:bg-slate-700/30 px-2 py-1">
                 <span className="w-12 shrink-0">Score:</span>
                 <span className="text-orange-300 font-bold tabular-nums">{replay.score_t ?? "?"}</span>
-                <span className="px-1 text-slate-400">-</span>
+                <span className="px-1 text-slate-500 dark:text-slate-400">-</span>
                 <span className="text-blue-300 font-bold tabular-nums">{replay.score_ct ?? "?"}</span>
               </div>
 
-              <div className="flex items-center rounded bg-slate-700/30 px-2 py-1">
+              <div className="flex items-center rounded bg-slate-200/70 dark:bg-slate-700/30 px-2 py-1">
                 <span className="w-10 shrink-0">Map:</span>
-                <span className="truncate text-slate-300 font-medium">{replay.map || "Unknown map"}</span>
+                <span className="truncate text-slate-700 dark:text-slate-300 font-medium">{replay.map || "Unknown map"}</span>
               </div>
             </div>
 
             {/* Linked recording users */}
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-slate-600 dark:text-slate-400">
               Users Recorded:{" "}
-              <span className="text-slate-300">
+              <span className="text-slate-700 dark:text-slate-300">
                 {replay.linked_recording_users?.length
                   ? replay.linked_recording_users.join(", ")
                   : "N/A"}
@@ -167,7 +167,7 @@ function ReplayCard({ replay, onDelete }: { replay: Replay; onDelete: (replayId:
             {/* Play button - navigates to replay detail */}
             <button
               type="button"
-              className="inline-flex h-9 w-9 items-center justify-center rounded bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 transition-colors"
+              className="inline-flex h-9 w-9 items-center justify-center rounded bg-blue-100 dark:bg-blue-600/20 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-600/30 transition-colors"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -181,7 +181,7 @@ function ReplayCard({ replay, onDelete }: { replay: Replay; onDelete: (replayId:
             {/* Delete button - stops event propagation to prevent Link navigation */}
             <button
               type="button"
-              className="inline-flex h-9 w-9 items-center justify-center rounded bg-red-600/20 text-red-300 hover:bg-red-600/30 transition-colors"
+              className="inline-flex h-9 w-9 items-center justify-center rounded bg-red-100 dark:bg-red-600/20 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-600/30 transition-colors"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();

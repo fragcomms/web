@@ -43,7 +43,7 @@ export default function InviteBot() {
   };
 
   return (
-    <div className="w-full h-full flex flex-1 flex-col items-center justify-center text-white px-4">
+    <div className="w-full h-full flex flex-1 flex-col items-center justify-center text-slate-900 dark:text-white px-4">
       <img
         src="/logo.svg"
         alt="FragComms Bot"
@@ -51,7 +51,7 @@ export default function InviteBot() {
       />
 
       <h1 className="text-4xl font-bold mb-4 text-center">Invite Bot to Server</h1>
-      <p className="text-lg mb-8 text-center max-w-md">
+      <p className="text-lg mb-8 text-center max-w-md text-slate-600 dark:text-slate-300">
         Add the FragComms Audio Recording Bot to your Discord server.
       </p>
 
@@ -65,8 +65,8 @@ export default function InviteBot() {
         rel="noopener noreferrer"
         className={`${
           inviteLink
-            ? "bg-gray-700 hover:bg-gray-600"
-            : "bg-gray-700 cursor-not-allowed"
+            ? "bg-slate-800 dark:bg-gray-700 hover:bg-slate-700 dark:hover:bg-gray-600"
+            : "bg-slate-500 dark:bg-gray-700 cursor-not-allowed"
         } text-white font-bold px-6 py-3 rounded-lg mb-4 transition-colors duration-200`}
       >
         {loading ? "Loading..." : "Invite Bot"}
@@ -78,8 +78,8 @@ export default function InviteBot() {
         disabled={!inviteLink}
         className={`flex items-center gap-2 ${
           inviteLink
-            ? "bg-gray-700 hover:bg-gray-600"
-            : "bg-gray-700 cursor-not-allowed"
+            ? "bg-slate-800 dark:bg-gray-700 hover:bg-slate-700 dark:hover:bg-gray-600"
+            : "bg-slate-500 dark:bg-gray-700 cursor-not-allowed"
         } text-white font-semibold px-6 py-2 rounded-lg transition-colors duration-200`}
       >
         {copied

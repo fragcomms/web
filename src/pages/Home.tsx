@@ -10,19 +10,19 @@ export default function Home() {
   return (
     <>
       <h1
-        className="text-6xl mb-6 text-white text-center"
+        className="text-6xl mb-6 text-slate-900 dark:text-white text-center"
         style={{
           fontFamily: "Impact, Haettenschweiler, \"Arial Narrow Bold\", sans-serif",
         }}
       >
         FragComms
       </h1>
-      <p className="text-xl text-gray-300 mb-8 text-center">Replays reimagined</p>
+      <p className="text-xl text-slate-600 dark:text-gray-300 mb-8 text-center">Replays reimagined</p>
 
       <div className="flex gap-4 justify-center mb-16">
         <Link
           to={target}
-          className="bg-gray-700 hover:bg-gray-600 text-white font-bold text-lg px-8 py-3 rounded-lg transition-colors duration-200"
+          className="bg-slate-800 dark:bg-gray-700 hover:bg-slate-700 dark:hover:bg-gray-600 text-white font-bold text-lg px-8 py-3 rounded-lg transition-colors duration-200"
         >
           {buttonText}
         </Link>
