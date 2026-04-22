@@ -108,8 +108,8 @@ router.get("/:id/track/:identifier", ensureAuth, async (req, res) => {
   // }
 });
 
-// /api/audio/:id/track/:identifier/download
-router.get("/:id/track/:identifier/download", ensureAuth, async (req, res) => {
+// /api/audio/:id/download
+router.get("/:id/download", ensureAuth, async (req, res) => {
   const user = req.user as User;
   if (!user) return res.status(401).send("Unauthorized");
 
@@ -126,6 +126,9 @@ router.get("/:id/track/:identifier/download", ensureAuth, async (req, res) => {
 
     const remotePath = result.rows[0].file_path;
     const remoteAudioUrl = `${REPLAY_PIPELINE_URL}/get_audio?filepath=${encodeURIComponent(remotePath)}`;
+
+    // console.log(`[DEBUG] DB File Path for Audio ${req.params.id}:`, remotePath);
+    // console.log(`[DEBUG] Fetching from FastAPI:`, remoteAudioUrl);
 
     res.setHeader("Content-Type", "audio/x-matroska");
     res.setHeader("Content-Disposition", `attachment; filename="match_${req.params.id}_full.mka"`);
