@@ -3,6 +3,7 @@ import { Router } from "express";
 import pool from "../config/db.js";
 import { ensureAuth } from "../middleware/authentication.js";
 import { DiscordProfile as User } from "../types/user.js";
+import { Readable } from "stream";
 
 const router = Router();
 const REPLAY_PIPELINE_URL = "http://" + process.env.REMOTE_HOST + ":" + process.env.REMOTE_PORT;
@@ -44,36 +45,67 @@ router.get("/:id/track/:identifier", ensureAuth, async (req, res) => {
     if (result.rows.length === 0) return res.status(404).send("Audio not found");
 
     const remotePath = result.rows[0].file_path;
-    const remoteAudioUrl = `${REPLAY_PIPELINE_URL}/get_audio?filepath=${encodeURIComponent(remotePath)}`;
+    // const remoteAudioUrl = `${REPLAY_PIPELINE_URL}/get_audio?filepath=${encodeURIComponent(remotePath)}`;
     const identifier = req.params.identifier;
 
-    // instead of mka, we use webm for serving it to users
-    // because webm is more compatible than mka for websites
-    res.setHeader("Content-Type", "audio/webm");
+    const basePath = remotePath.substring(0, remotePath.lastIndexOf('.'));
+    const webmPath = `${basePath}_${identifier}.webm`;
 
-    const ffmpeg = spawn("ffmpeg", [
-      "-i",
-      remoteAudioUrl,
-      "-map",
-      `0:m:title:${identifier}`,
-      "-c:a",
-      "libopus",
-      "-b:a",
-      "96k", // upgraded from 20k to make audio download not so lossy
-      "-f",
-      "webm",
-      "pipe:1",
-    ]);
+    const remoteWebmUrl = `${REPLAY_PIPELINE_URL}/get_webm?filepath=${encodeURIComponent(webmPath)}`;
 
-    ffmpeg.stdout.pipe(res);
+    const fetchOptions: RequestInit = { headers: {} };
+    if (req.headers.range) {
+      (fetchOptions.headers as Record<string, string>)['range'] = req.headers.range;
+    }
 
-    req.on("close", () => {
-      ffmpeg.kill("SIGKILL");
+    const remoteResponse = await fetch(remoteWebmUrl, fetchOptions);
+
+    if (!remoteResponse.ok) {
+      if (remoteResponse.status === 404) {
+        return res.status(404).send("WebM track not processed yet");
+      }
+      console.error("FastAPI Error:", await remoteResponse.text());
+      return res.status(remoteResponse.status).send("Failed to stream WebM from processing server");
+    }
+
+    res.status(remoteResponse.status);
+    remoteResponse.headers.forEach((val, key) => {
+      res.setHeader(key, val);
     });
+
+    if (remoteResponse.body) {
+      Readable.fromWeb(remoteResponse.body as any).pipe(res);
+    } else {
+      res.end();
+    }
   } catch (e) {
-    console.error("Audio track extraction error: ", e);
+    console.error("Audio track proxy error: ", e);
     res.status(500).send("Server error");
   }
+
+    // const ffmpeg = spawn("ffmpeg", [
+    //   "-i",
+    //   remoteAudioUrl,
+    //   "-map",
+    //   `0:m:title:${identifier}`,
+    //   "-c:a",
+    //   "libopus",
+    //   "-b:a",
+    //   "96k", // upgraded from 20k to make audio download not so lossy
+    //   "-f",
+    //   "webm",
+    //   "pipe:1",
+    // ]);
+
+  //   ffmpeg.stdout.pipe(res);
+
+  //   req.on("close", () => {
+  //     ffmpeg.kill("SIGKILL");
+  //   });
+  // } catch (e) {
+  //   console.error("Audio track extraction error: ", e);
+  //   res.status(500).send("Server error");
+  // }
 });
 
 // /api/audio/:id/track/:identifier/download
