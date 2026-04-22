@@ -232,6 +232,8 @@ export default function ReplayPage() {
   );
 
   
+
+  
   // console.log("slotToSteamid:", slotToSteamid);
   // console.log("playerKDA:", playerKDA);
 
@@ -370,11 +372,11 @@ export default function ReplayPage() {
           onDownloadTranscript={
             () => downloadTranscript(transcripts, discordNames, id)
           }
-          onDownloadAudio={
-            () => {
-              if(audioId && id) downloadAudio(discordUsers, discordNames, audioId, import.meta.env.VITE_API_URL, id)
-              }
-          }
+          onDownloadAudio={() => {
+            if (audioId) {
+              downloadAudio(audioId, import.meta.env.VITE_API_URL, id);
+            }
+          }}
         />
       </div>
 
