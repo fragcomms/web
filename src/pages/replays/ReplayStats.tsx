@@ -2,10 +2,6 @@ import { useMemo } from "react";
 import type { ReplayPlayer } from "./components/PlayerCard";
 
 interface ReplayStatsProps {
-	leftTeamName: string;
-	rightTeamName: string;
-	leftScore: number;
-	rightScore: number;
 	leftTeamPlayers: ReplayPlayer[];
 	rightTeamPlayers: ReplayPlayer[];
 }
@@ -32,10 +28,6 @@ const matchStatColumns = [
 ] as const;
 
 export default function ReplayStats({
-	leftTeamName,
-	rightTeamName,
-	leftScore,
-	rightScore,
 	leftTeamPlayers,
 	rightTeamPlayers,
 }: ReplayStatsProps) {
@@ -50,17 +42,6 @@ export default function ReplayStats({
 
 	return (
 		<div className="w-full border-t border-slate-700 mt-6 pt-4 pb-6 text-white text-sm">
-			<div className="max-w-300 mx-auto flex justify-center gap-16 px-6">
-				<div className="text-center">
-					<div className="text-blue-400 font-semibold">{leftTeamName}</div>
-					<div className="text-blue-300 text-2xl font-semibold">{leftScore}</div>
-				</div>
-				<div className="text-center">
-					<div className="text-yellow-400 font-semibold">{rightTeamName}</div>
-					<div className="text-yellow-300 text-2xl font-semibold">{rightScore}</div>
-				</div>
-			</div>
-
 			<div className="max-w-[95vw] mx-auto mt-6 px-4">
 				<div className="mb-2 text-center text-base font-semibold tracking-wide text-slate-200">
 					Match Stats

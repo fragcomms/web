@@ -400,10 +400,6 @@ export default function ReplayPage() {
       {/* Bottom Score Display */}
       {frame && (
         <ReplayStats
-          leftTeamName={leftTeamName}
-          rightTeamName={rightTeamName}
-          leftScore={isSecondHalf ? score_T : score_CT}
-          rightScore={isSecondHalf ? score_CT : score_T}
           leftTeamPlayers={leftTeamPlayers}
           rightTeamPlayers={rightTeamPlayers}
         />
