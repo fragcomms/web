@@ -133,14 +133,8 @@ export default function ReplayPage() {
       if (event.code !== "Space") return;
 
       const target = event.target as HTMLElement | null;
-      if (
-        target
-        && (
-          target.tagName === "INPUT"
-          || target.tagName === "TEXTAREA"
-          || target.isContentEditable
-        )
-      ) {
+      const isTextEntryTarget = Boolean(target?.closest("input[type='text'], input[type='search'], input[type='email'], input[type='password'], input[type='tel'], input[type='url'], textarea, [contenteditable='true']"));
+      if (isTextEntryTarget) {
         return;
       }
 
@@ -148,8 +142,8 @@ export default function ReplayPage() {
       setIsPlaying((playing) => !playing);
     }
 
-    window.addEventListener("keydown", handleSpacebarToggle);
-    return () => window.removeEventListener("keydown", handleSpacebarToggle);
+    window.addEventListener("keydown", handleSpacebarToggle, { capture: true });
+    return () => window.removeEventListener("keydown", handleSpacebarToggle, { capture: true });
   }, [setIsPlaying]);
 
   
