@@ -5,6 +5,7 @@ import { useParams } from "react-router-dom";
 import { AudioSyncPlayer } from "../../utils/media/AudioSyncPlayer";
 import { useReplayEngine } from "./ReplayBackend";
 import { useReplayMedia } from "./ReplayMedia";
+import ReplayStats from "./ReplayStats";
 
 import { MuteSidebar } from "./components/MuteSidebar";
 import { TranscriptPanel } from "./components/TranscriptPanel";
@@ -204,8 +205,8 @@ export default function ReplayPage() {
   const rightTeamName = "Terrorists";
 
   // scores
-  const score_CT = scoreCT;
-  const score_T = scoreT;
+  const score_CT = scoreCT ?? 0;
+  const score_T = scoreT ?? 0;
 
   const players = frame?.players ?? [];
   // console.log("first player raw:", frame?.players?.[0]);
@@ -396,18 +397,14 @@ export default function ReplayPage() {
 
       {/* Bottom Score Display */}
       {frame && (
-        <div className="w-full border-t border-slate-700 mt-6 pt-4 pb-6 text-white text-sm">
-          <div className="max-w-300 mx-auto flex justify-center gap-16 px-6">
-            <div className="text-center">
-              <div className="text-blue-400 font-semibold">{leftTeamName}</div>
-              <div className="text-blue-300 text-2xl font-semibold">{isSecondHalf ? score_T : score_CT}</div>
-            </div>
-            <div className="text-center">
-              <div className="text-yellow-400 font-semibold">{rightTeamName}</div>
-              <div className="text-yellow-300 text-2xl font-semibold">{isSecondHalf ? score_CT : score_T}</div>
-            </div>
-          </div>
-        </div>
+        <ReplayStats
+          leftTeamName={leftTeamName}
+          rightTeamName={rightTeamName}
+          leftScore={isSecondHalf ? score_T : score_CT}
+          rightScore={isSecondHalf ? score_CT : score_T}
+          leftTeamPlayers={leftTeamPlayers}
+          rightTeamPlayers={rightTeamPlayers}
+        />
       )}
     </div>
   );
