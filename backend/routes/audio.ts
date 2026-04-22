@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+// import { spawn } from "child_process";
 import { Router } from "express";
 import pool from "../config/db.js";
 import { ensureAuth } from "../middleware/authentication.js";
@@ -125,26 +125,18 @@ router.get("/:id/track/:identifier/download", ensureAuth, async (req, res) => {
     if (result.rows.length === 0) return res.status(404).send("Audio not found");
 
     const remotePath = result.rows[0].file_path;
-    const identifier = req.params.identifier;
-
     const remoteAudioUrl = `${REPLAY_PIPELINE_URL}/get_audio?filepath=${encodeURIComponent(remotePath)}`;
 
     res.setHeader("Content-Type", "audio/x-matroska");
-    res.setHeader("Content-Disposition", `attachment; filename="${identifier}.mka"`);
+    res.setHeader("Content-Disposition", `attachment; filename="match_${req.params.id}_full.mka"`);
 
-    const ffmpeg = spawn("ffmpeg", [
-      "-i", remoteAudioUrl,
-      "-map", `0:m:title:${identifier}`,
-      "-c:a", "copy",  // no transcode, just remux the raw PCM track
-      "-f", "matroska",
-      "pipe:1",
-    ]);
+    const remoteResponse = await fetch(remoteAudioUrl);
 
-    ffmpeg.stdout.pipe(res);
+    if (!remoteResponse.ok || !remoteResponse.body) {
+      return res.status(remoteResponse.status).send("Failed to fetch master audio");
+    }
 
-    req.on("close", () => {
-      ffmpeg.kill("SIGKILL");
-    });
+    Readable.fromWeb(remoteResponse.body as any).pipe(res);
   } catch (e) {
     console.error("Audio download error: ", e);
     res.status(500).send("Server error");
