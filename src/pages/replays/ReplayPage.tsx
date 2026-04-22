@@ -92,7 +92,7 @@ export default function ReplayPage() {
   } = useReplayEngine(id, canvasRef, audioPlayerRef, {
     audioStartOffsetSec,
     audioDurationSec,
-    audioSyncDisabled: audioSyncWarning !== null,
+    audioSyncDisabled: false,
   });
 
   // check final score in logs

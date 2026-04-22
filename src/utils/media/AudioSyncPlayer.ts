@@ -4,18 +4,24 @@ export class AudioSyncPlayer {
   private gainNodes: Map<string, GainNode> = new Map();
   private buffers: Map<string, AudioBuffer> = new Map();
   private loadedAudioId: string | null = null;
+  
   public isPlaying: boolean = false;
+  public isReady: boolean = false;
+  
+  private syncOffsetSec: number = 0;
+  private syncStartsFirst: boolean = true;
 
   constructor() {
-    // Initialize the master hardware clock
     this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
   }
 
-  /**
-   * Fetches all requested Discord ID tracks from your Express backend concurrently
-   * and decodes them into raw PCM memory buffers.
-   */
-  async loadTracks(audioId: string, discordIds: string[], apiUrl: string) {
+  async loadTracks(
+    audioId: string, 
+    discordIds: string[], 
+    apiUrl: string, 
+    offsetSec: number = 0, 
+    startsFirst: boolean = true
+  ) {
     if (this.loadedAudioId !== audioId) {
       this.stop();
       this.sources.clear();
@@ -24,16 +30,24 @@ export class AudioSyncPlayer {
       this.loadedAudioId = audioId;
     }
 
-    // If we already loaded this specific match's audio, skip
-    if (this.buffers.size > 0) return;
+    this.syncOffsetSec = offsetSec;
+    this.syncStartsFirst = startsFirst;
+    this.isReady = false;
+
+    // If we already loaded this specific match's audio, skip fetching
+    if (this.buffers.size > 0 && this.buffers.size === discordIds.length) {
+      this.isReady = true;
+      return;
+    }
 
     const promises = discordIds.map(async (id) => {
       try {
+
         const res = await fetch(`${apiUrl}/audio/${audioId}/track/${id}`, {
           credentials: "include",
         });
 
-        if (!res.ok) throw new Error(`Failed to fetch track ${id}`);
+        if (!res.ok) throw new Error(`Failed to fetch track ${id} (Status: ${res.status})`);
 
         const arrayBuffer = await res.arrayBuffer();
         const decodedData = await this.ctx.decodeAudioData(arrayBuffer);
@@ -46,12 +60,15 @@ export class AudioSyncPlayer {
     });
 
     await Promise.all(promises);
+    this.isReady = true;
+    console.log(`[AudioSync] Player READY. Offset: ${this.syncOffsetSec}s | StartsFirst: ${this.syncStartsFirst}`);
   }
 
   /**
    * Locks all loaded tracks together and starts them at the specified second.
    */
-  play(seekSeconds: number = 0) {
+  play(demoTimeSec: number = 0) {
+    if (!this.isReady) return;
     if (this.isPlaying) this.stop();
 
     // Browsers suspend audio contexts until the user interacts with the page.
@@ -59,13 +76,21 @@ export class AudioSyncPlayer {
 
     this.sources.clear();
 
+    const fileSeekTime = this.syncStartsFirst 
+      ? demoTimeSec + this.syncOffsetSec 
+      : demoTimeSec - this.syncOffsetSec;
+
+    const shouldBeSilent = !this.syncStartsFirst && demoTimeSec < this.syncOffsetSec;
+
+    if (shouldBeSilent || fileSeekTime < 0) return;
+
     // Schedule playback 50ms in the future so the CPU has time to queue all
     // tracks and hit the hardware DAC at the exact same millisecond.
     const startTime = this.ctx.currentTime + 0.05;
     let startedSources = 0;
 
     for (const [id, buffer] of this.buffers.entries()) {
-      if (seekSeconds >= buffer.duration) {
+      if (fileSeekTime >= buffer.duration) {
         continue;
       }
 
@@ -83,7 +108,7 @@ export class AudioSyncPlayer {
       source.connect(gainNode);
 
       // start(whenToStartHardwareClock, whereToStartInTheFile)
-      source.start(startTime, seekSeconds);
+      source.start(startTime, fileSeekTime);
       this.sources.set(id, source);
       startedSources += 1;
     }
@@ -101,9 +126,6 @@ export class AudioSyncPlayer {
     return longest;
   }
 
-  /**
-   * Instantly halts all active source nodes.
-   */
   stop() {
     if (!this.isPlaying) return;
 
@@ -113,7 +135,7 @@ export class AudioSyncPlayer {
         source.disconnect();
       } catch (e) {
         // Ignore nodes that might have already finished playing
-        console.log(e);
+        console.log(`skip ${e}`)
       }
     }
 
@@ -126,10 +148,6 @@ export class AudioSyncPlayer {
     return this.buffers;
   }
 
-
-  /**
-   * Allows the UI to mute or unmute a specific player without stopping playback.
-   */
   setTrackMute(discordId: string, muted: boolean) {
     const gainNode = this.gainNodes.get(discordId);
     if (gainNode) {
