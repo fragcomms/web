@@ -391,7 +391,15 @@ function extractAllShapes(node: unknown, outShapes: Segment[][], groupPath: stri
 
 function processSvgFile(inputPath: string, mapName: string) {
   try {
-    const svgText = fs.readFileSync(inputPath, "utf8");
+    let svgText = fs.readFileSync(inputPath, "utf8");
+
+    const outlineMatch = svgText.match(/<g[^>]*?(?:id|inkscape:label)="map-outline"[^]*?<\/g>/);
+
+    if (outlineMatch) {
+      svgText = `<svg xmlns="http://www.w3.org/2000/svg">${outlineMatch[0]}</svg>`
+    } else {
+      console.warn(`[!] No 'map-outline' group found via Regex in ${mapName}, attempting full parse...`);
+    }
 
     const parser = new XMLParser({
       ignoreAttributes: false,
