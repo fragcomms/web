@@ -413,6 +413,7 @@ export default function ReplayPage() {
       {/* Bottom Score Display */}
       {frame && (
         <ReplayStats
+          replayId={id}
           leftTeamPlayers={leftTeamPlayers}
           rightTeamPlayers={rightTeamPlayers}
         />

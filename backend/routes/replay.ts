@@ -8,6 +8,15 @@ import { validateSharecode } from "../utils/sharecode.js";
 const router = Router();
 const REPLAY_PIPELINE_URL = "http://" + process.env.REMOTE_HOST + ":" + process.env.REMOTE_PORT;
 
+type ReplayPlayerStats = {
+  name?: string;
+  team?: number;
+  sid?: string;
+  advanced_stats?: Record<string, number>;
+};
+
+type ReplayPlayersMap = Record<string, ReplayPlayerStats>;
+
 // /api/replays
 router.get("/", ensureAuth, async (req, res) => {
   const user = req.user as User;
@@ -105,6 +114,61 @@ router.get("/:id/json", ensureAuth, async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).send("Database error");
+  }
+});
+
+// /api/replays/:id/player-stats
+router.get("/:id/player-stats", ensureAuth, async (req, res) => {
+  const user = req.user as User;
+  if (!user) return res.status(401).send("Unauthorized");
+
+  try {
+    const query = `
+      SELECT d.file_path
+      FROM replays r
+      JOIN demos d ON d.demo_id = r.demo_id
+      JOIN media_access ma ON ma.audio_id = r.audio_id
+      WHERE r.replay_id = $1 AND ma.discord_id = $2
+    `;
+
+    const result = await pool.query(query, [req.params.id, user.discord_id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Replay not found or unauthorized" });
+    }
+
+    const jsonFilePath = result.rows[0].file_path;
+    const remoteResponse = await fetch(
+      `${REPLAY_PIPELINE_URL}/get_json?filepath=${encodeURIComponent(jsonFilePath)}`,
+    );
+
+    if (!remoteResponse.ok) {
+      const err = await remoteResponse.text();
+      console.error("Python server error while fetching player stats:", err);
+      return res.status(remoteResponse.status).json({
+        error: "Failed to retrieve replay JSON from processing server",
+      });
+    }
+
+    const replayJson = await remoteResponse.json() as { players?: ReplayPlayersMap };
+    const players = replayJson.players ?? {};
+
+    const playerStats = Object.entries(players).map(([playerId, player]) => ({
+      player_id: playerId,
+      name: player.name ?? null,
+      sid: player.sid ?? null,
+      team: player.team ?? null,
+      advanced_stats: player.advanced_stats ?? null,
+    }));
+
+    return res.json({
+      replay_id: req.params.id,
+      player_count: playerStats.length,
+      players: playerStats,
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Server error while loading player stats" });
   }
 });
 
