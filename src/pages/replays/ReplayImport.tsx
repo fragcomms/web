@@ -19,6 +19,12 @@ type SubmitErrorState = {
   details: string[];
 };
 
+type ReplayJobStatus = {
+  status?: string;
+  reason?: string;
+  error?: string;
+};
+
 function parseDetailLines(value: unknown): string[] {
   if (typeof value === "string") {
     return value
@@ -84,6 +90,46 @@ function formatSubmitError(
   }
 
   return { title: fallbackTitle, details: [] };
+}
+
+const JOB_POLL_INTERVAL_MS = 2500;
+const JOB_POLL_TIMEOUT_MS = 5 * 60 * 1000;
+
+async function waitForReplayBuild(jobId: string): Promise<ReplayJobStatus> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < JOB_POLL_TIMEOUT_MS) {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/jobs/${encodeURIComponent(jobId)}`, {
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null);
+      const message = payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string"
+        ? payload.error
+        : `Failed to check replay status (${res.status} ${res.statusText})`;
+      throw new Error(message);
+    }
+
+    const statusPayload = await res.json() as ReplayJobStatus;
+    const status = (statusPayload.status ?? "").toLowerCase();
+
+    if (status === "completed") {
+      return statusPayload;
+    }
+
+    if (status === "failed") {
+      return statusPayload;
+    }
+
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, JOB_POLL_INTERVAL_MS);
+    });
+  }
+
+  return {
+    status: "timeout",
+  };
 }
 
 export function AudioLibrary() {
@@ -188,7 +234,26 @@ export function AudioLibrary() {
         return;
       }
 
-      navigate("/replays");
+      const jobStatus = await waitForReplayBuild(data.job_id);
+      const status = (jobStatus.status ?? "").toLowerCase();
+
+      if (status === "completed") {
+        navigate("/replays");
+        return;
+      }
+
+      if (status === "failed") {
+        setSubmitError({
+          title: "Replay processing failed.",
+          details: [jobStatus.reason || jobStatus.error || "The pipeline reported a failure."],
+        });
+        return;
+      }
+
+      setSubmitError({
+        title: "Replay is still processing.",
+        details: ["It is taking longer than expected. You can check your replay library in a moment."],
+      });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to process replay";
       setSubmitError({ title: message, details: [] });

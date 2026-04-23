@@ -382,15 +382,6 @@ export default function ReplayPage() {
           }}
         />
 
-        {/* Right Mic Usage Panel, only shows up if more than one user being recorded */}
-        {discordUsers.length > 1 && (
-          <MicUsagePanel
-            transcripts={transcripts}
-            discordNames={discordNames}
-            discordUsers={discordUsers}
-          />
-        )}
-
       </div>
 
       {/* Bottom Transport Bar with round selection and seek controls */}
@@ -418,6 +409,22 @@ export default function ReplayPage() {
           rightTeamPlayers={rightTeamPlayers}
         />
       )}
+
+      <div className="w-full border-t border-slate-700 pt-4 pb-4 text-white text-sm">
+        <div className="max-w-[95vw] mx-auto px-4">
+          <div className="mb-2 text-center text-2xl font-semibold tracking-wide text-slate-200">
+            Audio Stats
+          </div>
+          <div className="flex justify-center">
+            {/* TODO: This panel used to be gated by `discordUsers.length > 1`; keep visible even for a single user for now. */}
+            <MicUsagePanel
+              transcripts={transcripts}
+              discordNames={discordNames}
+              discordUsers={discordUsers}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

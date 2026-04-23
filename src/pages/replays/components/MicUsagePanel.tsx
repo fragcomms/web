@@ -48,7 +48,6 @@ export const MicUsagePanel = memo(function MicUsagePanel(
 
         return (
             <aside className="w-full max-w-72 rounded-xl border border-slate-700 bg-slate-900/90 p-3 flex flex-col gap-3">
-                <div className="text-sm font-semibold text-slate-200">Mic Usage:</div>
                 {stats.length === 0
                     ? <p className="text-slate-400 italic text-sm text-center">No data yet.</p>
                     : (
