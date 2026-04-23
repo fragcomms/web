@@ -1,5 +1,6 @@
 import { Mic, MicOff, User } from "lucide-react";
 import { memo } from "react";
+import { useAuth } from "../../../utils/context/context";
 
 interface MuteSidebarProps {
   discordUsers: string[];
@@ -13,6 +14,9 @@ export const MuteSidebar = memo(
   function MuteSidebar({ discordUsers, mutedUsers, discordNames, toggleMute, isHorizontal = false }: MuteSidebarProps) {
     // Always show 6 items, padding with empty strings for missing users
     const paddedUsers = [...discordUsers, ...Array(6 - discordUsers.length).fill("")].slice(0, 6);
+    // useAuth
+    const {user} = useAuth();
+    console.log(`https://cdn.discordapp.com/avatars/${user?.id}/${user?.avatar}.png`)
 
     return (
       <div
@@ -21,8 +25,11 @@ export const MuteSidebar = memo(
           : "flex h-180 w-36 shrink-0 flex-col gap-2.5"}
       >
         {paddedUsers.map((discordId, index) => {
+
           const isEmpty = !discordId;
           const isMuted = !isEmpty && (mutedUsers[discordId] || false);
+          const isUser = discordId === user!.id;
+          
           const itemClasses = isEmpty
             ? "border-slate-600/50 bg-slate-800/30"
             : isMuted
@@ -39,9 +46,22 @@ export const MuteSidebar = memo(
               >
                 <div className="flex w-full items-center justify-center gap-2">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-700">
+                    
                     {isEmpty
                       ? <div className="text-xs text-slate-500">-</div>
-                      : <User className="h-6 w-6 text-slate-300" />}
+                      : isUser  
+                        ? <img
+                            src={
+                              `https://cdn.discordapp.com/avatars/${user?.id}/${user?.avatar}.png`
+                              }
+                            alt="Avatar"
+                            className="w-full h-full rounded-full object-cover"
+                          />
+                          : <User className="h-6 w-6 text-slate-300" />
+                  
+                    }
+                    
+                      
                   </div>
                   {!isEmpty && (
                     <button
