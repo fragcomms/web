@@ -10,14 +10,17 @@ import ReplayStats from "./ReplayStats";
 import { MuteSidebar } from "./components/MuteSidebar";
 import { TranscriptPanel } from "./components/TranscriptPanel";
 import { TransportBar } from "./components/TransportBar";
+import { MicUsagePanel } from "./components/MicUsagePanel";
+
 
 import { useKDA } from "./components/useKDA";
-
 import  type { ReplayPlayer } from "./components/PlayerCard";
 import PlayerCard from "./components/PlayerCard";
 import { PlayerCardPlaceholder } from "./components/PlayerCard";
+
 import { downloadTranscript } from "../../utils/media/downloadTranscript";
 import { downloadAudio } from "../../utils/media/downloadAudio";
+
 
 function getRoundFromTick(roundStartTicks: number[], currentTick: number): number {
   if (roundStartTicks.length === 0) return 1;
@@ -378,6 +381,16 @@ export default function ReplayPage() {
             }
           }}
         />
+
+        {/* Right Mic Usage Panel, only shows up if more than one user being recorded */}
+        {discordUsers.length > 1 && (
+          <MicUsagePanel
+            transcripts={transcripts}
+            discordNames={discordNames}
+            discordUsers={discordUsers}
+          />
+        )}
+
       </div>
 
       {/* Bottom Transport Bar with round selection and seek controls */}
