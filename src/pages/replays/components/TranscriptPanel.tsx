@@ -24,16 +24,21 @@ export const TranscriptPanel = memo(function TranscriptPanel(
 ) {
   const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
 
+  const visibleTranscripts = useMemo(
+    () => transcripts.filter((segment) => segment.start >= 0),
+    [transcripts],
+  );
+
   const activeIndices = useMemo(() => {
     const indices = new Set<number>();
-    for (let index = 0; index < transcripts.length; index++) {
-      const transcript = transcripts[index];
+    for (let index = 0; index < visibleTranscripts.length; index++) {
+      const transcript = visibleTranscripts[index];
       if (currentTimeSec >= transcript.start && currentTimeSec <= transcript.end) {
         indices.add(index);
       }
     }
     return indices;
-  }, [transcripts, currentTimeSec]);
+  }, [visibleTranscripts, currentTimeSec]);
 
   const firstActiveIndex = useMemo(() => {
     if (activeIndices.size === 0) return -1;
@@ -68,7 +73,7 @@ export const TranscriptPanel = memo(function TranscriptPanel(
             <DropdownMenuItem 
             className="cursor-pointer gap-2 whitespace-nowrap"
               onClick={onDownloadAudio}
-              disabled={transcripts.length === 0}
+              disabled={visibleTranscripts.length === 0}
             >
               <span>Download Audio</span>
               <ArrowDownToLine className="ml-auto h-4 w-4" />
@@ -76,7 +81,7 @@ export const TranscriptPanel = memo(function TranscriptPanel(
             <DropdownMenuItem 
               className="cursor-pointer gap-2 whitespace-nowrap"
               onClick={onDownloadTranscript}
-              disabled={transcripts.length === 0}
+              disabled={visibleTranscripts.length === 0}
             >
               <span>Download Transcript</span>
               <ArrowDownToLine className="ml-auto h-4 w-4" />
@@ -88,10 +93,10 @@ export const TranscriptPanel = memo(function TranscriptPanel(
         className="min-h-0 flex-1 overflow-y-auto rounded-md border border-slate-800 bg-slate-950/50 p-2 text-sm text-slate-300"
         aria-live="polite"
       >
-        {transcripts.length > 0
+        {visibleTranscripts.length > 0
           ? (
             <div ref={transcriptContainerRef} className="flex flex-col">
-              {transcripts.map((t, i) => (
+              {visibleTranscripts.map((t, i) => (
                 <div
                   key={i}
                   data-segment-index={i}
