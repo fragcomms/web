@@ -50,7 +50,7 @@ export const MuteSidebar = memo(
                     onClick={() => !isEmpty && onFilteredUser(discordId)}
                     className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-700 transition-all ${
                       !isEmpty ? "cursor-pointer" : ""
-                    } ${isFiltered ? "ring-2 ring-cyan-400" : ""}`}
+                    } ${isFiltered ? "ring-2 ring-[#23A55A]" : ""}`}
                   >
                     {isEmpty
                       ? <div className="text-xs text-slate-500">-</div>
