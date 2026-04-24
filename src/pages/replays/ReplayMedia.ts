@@ -26,6 +26,7 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
   const [audioSyncWarning, setAudioSyncWarning] = useState<string | null>(null);
   const [audioId, setAudioId] = useState<string | null>(null);
   const [filteredUser, setFilteredUser] = useState<string | null>(null);
+  const [audioStartsFirst, setAudioStartsFirst] = useState(true);
 
   const handleFilteredUser = useCallback((discordId: string) => {
     setFilteredUser(prev => prev === discordId ? null : discordId);
@@ -47,7 +48,8 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
         setAudioId(audioId);
 
         let localOffsetSec = 0;
-        let localStartsFirst = replayMetadata.audio_starts_first ?? true;
+        const localStartsFirst = replayMetadata.audio_starts_first ?? true;
+        setAudioStartsFirst(localStartsFirst);
 
         const offsetMs = replayMetadata.audio_offset;
         if (typeof offsetMs === "number" && Number.isFinite(offsetMs)) {
@@ -154,6 +156,7 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
     handleFilteredUser,
     toggleMute,
     audioStartOffsetSec,
+    audioStartsFirst,
     audioDurationSec,
     audioSyncWarning,
     audioId,

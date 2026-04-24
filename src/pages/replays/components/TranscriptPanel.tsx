@@ -18,10 +18,12 @@ interface TranscriptPanelProps {
   currentTimeSec: number;
   onDownloadTranscript: () => void;
   onDownloadAudio: () => void;
+  syncOffsetSec: number;
+  syncStartsFirst: boolean;
 }
 
 export const TranscriptPanel = memo(function TranscriptPanel(
-  { transcripts, mutedUsers, filteredUser, discordNames, transcriptText, formatTime, currentTimeSec, onDownloadTranscript, onDownloadAudio }: TranscriptPanelProps,
+  { transcripts, mutedUsers, filteredUser, discordNames, transcriptText, formatTime, currentTimeSec, onDownloadTranscript, onDownloadAudio, syncOffsetSec = 0, syncStartsFirst = true }: TranscriptPanelProps,
 ) {
   const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -29,17 +31,26 @@ export const TranscriptPanel = memo(function TranscriptPanel(
     () => transcripts.filter((segment) => segment.start >= 0),
     [transcripts],
   );
-
+  const offset = Number(syncOffsetSec) || 0;
   const activeIndices = useMemo(() => {
     const indices = new Set<number>();
     for (let index = 0; index < visibleTranscripts.length; index++) {
-      const transcript = visibleTranscripts[index];
-      if (currentTimeSec >= transcript.start && currentTimeSec <= transcript.end) {
+      const t = visibleTranscripts[index];
+      const adjustedStart = syncStartsFirst 
+        ? t.start - offset 
+        : t.start + offset;
+      const adjustedEnd = syncStartsFirst 
+        ? t.end - offset 
+        : t.end + offset;
+      if (currentTimeSec >= adjustedStart && currentTimeSec <= adjustedEnd) {
         indices.add(index);
       }
+      // if (currentTimeSec >= transcript.start && currentTimeSec <= transcript.end) {
+      //   indices.add(index);
+      // }
     }
     return indices;
-  }, [visibleTranscripts, currentTimeSec]);
+  }, [visibleTranscripts, currentTimeSec, offset, syncStartsFirst]);
 
   const firstActiveIndex = useMemo(() => {
     if (activeIndices.size === 0) return -1;
@@ -108,7 +119,7 @@ export const TranscriptPanel = memo(function TranscriptPanel(
                   } 
                   ${(filteredUser !== null ? filteredUser !== t.discordId : mutedUsers[t.discordId]) ? "opacity-30" : ""}`}>                  <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                      [{formatTime(t.start)} - {formatTime(t.end)}]
+                      [{formatTime(syncStartsFirst ? t.start - syncOffsetSec : t.start + syncOffsetSec)}]
                     </span>
                     <span className="font-semibold text-blue-700 dark:text-blue-400 text-xs truncate max-w-37.5">
                       {discordNames[t.discordId] || t.discordId}

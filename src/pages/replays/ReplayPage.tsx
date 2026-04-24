@@ -63,6 +63,7 @@ export default function ReplayPage() {
     handleFilteredUser,
     toggleMute,
     audioStartOffsetSec,
+    audioStartsFirst,
     audioDurationSec,
     audioSyncWarning,
     audioId,
@@ -385,6 +386,8 @@ export default function ReplayPage() {
               downloadAudio(audioId, import.meta.env.VITE_API_URL, id);
             }
           }}
+          syncOffsetSec={audioStartOffsetSec}
+          syncStartsFirst={audioStartsFirst}
         />
 
       </div>
