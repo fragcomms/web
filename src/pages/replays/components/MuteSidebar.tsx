@@ -31,14 +31,14 @@ export const MuteSidebar = memo(
           const isFiltered = filteredUser === discordId;
 
           const itemClasses = isEmpty
-            ? "border-slate-600/50 bg-slate-800/30"
+            ? "border-slate-200 bg-slate-100/60 dark:border-slate-600/50 dark:bg-slate-800/30"
             : isMuted
-            ? "border-red-900/50 bg-red-950/20"
-            : "border-slate-700 bg-slate-800";
+            ? "border-red-300 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20"
+            : "border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-800";
 
           const buttonClasses = isMuted
-            ? "border-red-500 bg-red-500/20 text-red-400 hover:bg-red-500/30"
-            : "border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400 hover:text-white";
+            ? "border-red-400 bg-red-100 text-red-600 hover:bg-red-200 dark:border-red-500 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30"
+            : "border-slate-300 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-400 dark:hover:text-white";
 
           return (
             <div key={`player-${discordId || `empty-${index}`}`} className="flex items-center gap-2.5">
@@ -48,19 +48,19 @@ export const MuteSidebar = memo(
                 <div className="flex w-full items-center justify-center gap-2">
                   <div
                     onClick={() => !isEmpty && onFilteredUser(discordId)}
-                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-700 transition-all ${
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 transition-all ${
                       !isEmpty ? "cursor-pointer" : ""
                     } ${isFiltered ? "ring-2 ring-[#23A55A]" : ""}`}
                   >
                     {isEmpty
-                      ? <div className="text-xs text-slate-500">-</div>
+                      ? <div className="text-xs text-slate-400 dark:text-slate-500">-</div>
                       : isUser
                         ? <img
                             src={`https://cdn.discordapp.com/avatars/${user?.id}/${user?.avatar}.png`}
                             alt="Avatar"
                             className="w-full h-full rounded-full object-cover"
                           />
-                        : <User className="h-6 w-6 text-slate-300" />
+                        : <User className="h-6 w-6 text-slate-600 dark:text-slate-300" />
                     }
                   </div>
                   {!isEmpty && (
@@ -74,11 +74,11 @@ export const MuteSidebar = memo(
                     </button>
                   )}
                 </div>
-                <div className="w-full truncate rounded border border-slate-600 bg-slate-900 px-2.5 py-0.5 text-center text-[11px] font-medium normal-case tracking-normal text-slate-300">
+                <div className="w-full truncate rounded border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-center text-[11px] font-medium normal-case tracking-normal text-slate-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300">
                   {isEmpty ? "-" : discordNames[discordId] || discordId}
                 </div>
               </div>
-              {isHorizontal && index === 4 && <div className="h-24 w-px bg-slate-600/70" />}
+              {isHorizontal && index === 4 && <div className="h-24 w-px bg-slate-300/70 dark:bg-slate-600/70" />}
             </div>
           );
         })}

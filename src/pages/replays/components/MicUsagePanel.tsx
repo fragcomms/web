@@ -48,9 +48,15 @@ export const MicUsagePanel = memo(function MicUsagePanel(
 
     const isFiller = (userID: string) => userID.startsWith("empty-");
 
+    const getUserNameClassName = (userID: string) =>
+        isFiller(userID) ? "text-slate-400 dark:text-slate-500" : "text-slate-800 dark:text-[#E6EDF7]";
+
+    const getUserStatsClassName = (userID: string) =>
+        isFiller(userID) ? "text-slate-400 dark:text-slate-500" : "text-slate-500 dark:text-slate-400";
+
     return (
-        <section className="w-full rounded-xl border border-slate-700 bg-slate-900/90 p-4 flex flex-col gap-4">
-            <div className="text-2xl font-semibold text-blue-400 text-center">Mic Usage</div>
+        <section className="w-full rounded-xl border border-slate-300 bg-white/90 p-4 flex flex-col gap-4 dark:border-slate-700 dark:bg-slate-900/90">
+            <div className="text-2xl font-semibold text-blue-700 dark:text-blue-400 text-center">Mic Usage</div>
             <div className="flex gap-6">
 
                 {/* Bar Chart */}
@@ -60,16 +66,15 @@ export const MicUsagePanel = memo(function MicUsagePanel(
                         <div key={userID} className="flex flex-col gap-1">
                             <div className="flex items-center justify-between text-xs">
                                 <span
-                                    className="font-semibold truncate max-w-36"
-                                    style={{ color: isFiller(userID) ? "#64748b" : "#E6EDF7" }}
+                                    className={`font-semibold truncate max-w-36 ${getUserNameClassName(userID)}`}
                                 >
                                     {name}
                                 </span>
-                                <span className="font-mono" style={{ color: isFiller(userID) ? "#64748b" : "#94a3b8" }}>
+                                <span className={`font-mono ${getUserStatsClassName(userID)}`}>
                                     {formatDuration(seconds)} · {speakingPercentage.toFixed(1)}%
                                 </span>
                             </div>
-                            <div className="h-3 w-full bg-slate-700 overflow-hidden">
+                            <div className="h-3 w-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                                 <div
                                     className="h-full transition-all duration-500"
                                     style={{
@@ -83,7 +88,7 @@ export const MicUsagePanel = memo(function MicUsagePanel(
                 </div>
 
                 {/* Divider */}
-                <div className="w-px bg-slate-700 shrink-0" />
+                <div className="w-px bg-slate-300 dark:bg-slate-700 shrink-0" />
 
                 {/* Pie Chart */}
                 <div className="flex-1 flex flex-col gap-4">
@@ -115,7 +120,7 @@ export const MicUsagePanel = memo(function MicUsagePanel(
                                     });
                                 })()}
                                 {stats.every(s => s.speakingPercentage === 0) && (
-                                    <circle cx="0" cy="0" r="1" fill="#1e293b" />
+                                    <circle cx="0" cy="0" r="1" className="fill-slate-300 dark:fill-slate-800" />
                                 )}
                             </svg>
                         </div>
@@ -125,10 +130,10 @@ export const MicUsagePanel = memo(function MicUsagePanel(
                                 <div key={userID} className="flex items-center gap-1.5 text-xs">
                                     <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                                     <div className="flex flex-col">
-                                        <span style={{ color: isFiller(userID) ? "#64748b" : "#E6EDF7" }} className="truncate max-w-24">
+                                        <span className={`truncate max-w-24 ${getUserNameClassName(userID)}`}>
                                             {name}
                                         </span>
-                                        <span className="font-mono" style={{ color: isFiller(userID) ? "#64748b" : "#94a3b8" }}>
+                                        <span className={`font-mono ${getUserStatsClassName(userID)}`}>
                                             {speakingPercentage.toFixed(1)}%
                                         </span>
                                     </div>

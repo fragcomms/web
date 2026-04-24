@@ -200,18 +200,18 @@ export default function ReplayStats({
 	};
 
 	const renderTeamRows = (players: Array<ReplayPlayer | undefined>, side: TeamSide) => {
-		const teamTextClass = side === "left" ? "text-blue-300" : "text-yellow-300";
+		const teamTextClass = side === "left" ? "text-blue-700 dark:text-blue-300" : "text-amber-700 dark:text-yellow-300";
 		const fallbackPrefix = side === "left" ? "CT" : "T";
 		const rowKeyPrefix = side === "left" ? "left-team-stats" : "right-team-stats";
 		const cellKeyPrefix = side === "left" ? "left" : "right";
 
 		return players.map((player, index) => (
-			<tr key={`${rowKeyPrefix}-${player?.steamid ?? index}`} className="border-t border-slate-700/70">
+			<tr key={`${rowKeyPrefix}-${player?.steamid ?? index}`} className="border-t border-slate-300/80 dark:border-slate-700/70">
 				<td className={`px-3 py-2 whitespace-nowrap font-medium ${teamTextClass}`}>
 					{player?.name || player?.steamid || `${fallbackPrefix} Player ${index + 1}`}
 				</td>
 				{teamStatColumns.map((column) => (
-					<td key={`${cellKeyPrefix}-${index}-${column}`} className="px-3 py-2 whitespace-nowrap text-slate-400">
+					<td key={`${cellKeyPrefix}-${index}-${column}`} className="px-3 py-2 whitespace-nowrap text-slate-600 dark:text-slate-400">
 						{renderStatCell(player, column)}
 					</td>
 				))}
@@ -220,24 +220,24 @@ export default function ReplayStats({
 	};
 
 	return (
-		<div className="w-full border-t border-slate-700 mt-6 pt-4 pb-6 text-white text-sm">
+		<div className="w-full border-t border-slate-300 dark:border-slate-700 mt-6 pt-4 pb-6 text-slate-800 dark:text-white text-sm">
 			<div className="max-w-[95vw] mx-auto mt-6 px-4">
 				{/* The section title keeps the stats table easy to identify in the replay view. */}
-				<div className="mb-2 text-center text-2xl font-semibold tracking-wide text-slate-200">
+				<div className="mb-2 text-center text-2xl font-semibold tracking-wide text-slate-800 dark:text-slate-200">
 					Match Stats
 				</div>
 				{/* Horizontal scrolling preserves all stat columns on smaller screens. */}
-				<div className="overflow-x-auto rounded-lg border border-slate-700 bg-slate-900/60">
-					<table className="min-w-max w-full text-xs text-slate-200">
+				<div className="overflow-x-auto rounded-lg border border-slate-300 dark:border-slate-700 bg-white/90 dark:bg-slate-900/60">
+					<table className="min-w-max w-full text-xs text-slate-700 dark:text-slate-200">
 						{/* Column headers stay fixed at the top of the table. */}
-						<thead className="bg-slate-800/80 text-slate-100">
+						<thead className="bg-slate-100/90 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100">
 							<tr>
 								{matchStatColumns.map((column) => (
 									<th key={column} className="px-3 py-2 text-left font-semibold whitespace-nowrap">
 										<span className="inline-flex items-center gap-1.5">
 											{column}
 											<span
-												className="inline-flex h-4 w-4 cursor-help select-none items-center justify-center text-slate-300 hover:text-white"
+												className="inline-flex h-4 w-4 cursor-help select-none items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white"
 												aria-label={`${column} info`}
 												tabIndex={0}
 												onMouseEnter={(event) => showTooltipFor(column, event.currentTarget)}
@@ -257,8 +257,8 @@ export default function ReplayStats({
 							{/* Render the left team, then a spacer row, then the right team. */}
 							{renderTeamRows(leftTeamMatchRows, "left")}
 
-							<tr className="bg-slate-800/50">
-								<td colSpan={matchStatColumns.length} className="px-3 py-1 border-y border-slate-600" aria-hidden="true">
+							<tr className="bg-slate-100/80 dark:bg-slate-800/50">
+								<td colSpan={matchStatColumns.length} className="px-3 py-1 border-y border-slate-300 dark:border-slate-600" aria-hidden="true">
 									&nbsp;
 								</td>
 							</tr>
@@ -269,7 +269,7 @@ export default function ReplayStats({
 				</div>
 				{activeTooltip ? (
 					<div
-						className="pointer-events-none fixed z-50 flex max-w-64 -translate-x-1/2 -translate-y-full items-start rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-left text-[11px] font-normal leading-snug text-slate-100 shadow-lg"
+						className="pointer-events-none fixed z-50 flex max-w-64 -translate-x-1/2 -translate-y-full items-start rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-left text-[11px] font-normal leading-snug text-slate-700 dark:text-slate-100 shadow-lg"
 						style={{ left: activeTooltip.x, top: activeTooltip.y }}
 						role="tooltip"
 					>
