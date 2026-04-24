@@ -1,4 +1,4 @@
-import { Github } from "lucide-react";
+import { Github, Link as LinkIcon } from "lucide-react";
 
 export default function About() {
   return (
@@ -240,96 +240,162 @@ export default function About() {
           {/* Resources List */}
           <div className="space-y-4 max-w-3xl mx-auto">
             {/* Resource Item 1 */}
-            <div className="bg-white dark:bg-[#1e293b] rounded-lg p-6 border border-slate-200 dark:border-[#334155] hover:border-blue-500 dark:hover:border-[#60a5fa] transition focus-within:ring-2 focus-within:ring-[#60a5fa] focus-within:ring-offset-2 focus-within:ring-offset-slate-50 dark:focus-within:ring-offset-slate-900">
-              <a
-                href="https://github.com/LaihoE/demoparser"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 dark:text-[#60a5fa] hover:text-blue-800 dark:hover:text-white font-semibold text-lg mb-2 block underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa] rounded"
-                aria-label="LaihoE/demoparser repository (opens in new window)"
-              >
-                LaihoE/demoparser
-              </a>
+            <div className="relative bg-white dark:bg-[#1e293b] rounded-lg py-6 pl-6 pr-18 border border-slate-200 dark:border-[#334155] hover:border-blue-500 dark:hover:border-[#60a5fa] transition focus-within:ring-2 focus-within:ring-[#60a5fa] focus-within:ring-offset-2 focus-within:ring-offset-slate-50 dark:focus-within:ring-offset-slate-900">
+              <div className="mb-2">
+                <a
+                  href="https://github.com/LaihoE/demoparser"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-[#60a5fa] hover:text-blue-800 dark:hover:text-white font-semibold text-lg block underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa] rounded"
+                  aria-label="LaihoE/demoparser repository (opens in new window)"
+                >
+                  LaihoE/demoparser
+                </a>
+                <a
+                  href="https://github.com/LaihoE/demoparser"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute right-6 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:text-blue-700 hover:border-blue-400 dark:border-[#334155] dark:text-[#cbd5e1] dark:hover:text-white dark:hover:border-[#60a5fa] transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa]"
+                  aria-label="Open LaihoE/demoparser resource link (opens in new window)"
+                >
+                  <LinkIcon className="h-4 w-4" />
+                </a>
+              </div>
               <p className="text-slate-600 dark:text-[#cbd5e1]">
                 Repository coded in Rust being used to parse Counter-Strike 2 demo files.
               </p>
             </div>
 
             {/* Resource Item 2 */}
-            <div className="bg-white dark:bg-[#1e293b] rounded-lg p-6 border border-slate-200 dark:border-[#334155] hover:border-blue-500 dark:hover:border-[#60a5fa] transition focus-within:ring-2 focus-within:ring-[#60a5fa] focus-within:ring-offset-2 focus-within:ring-offset-slate-50 dark:focus-within:ring-offset-slate-900">
-              <a
-                href="https://github.com/openai/whisper"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 dark:text-[#60a5fa] hover:text-blue-800 dark:hover:text-white font-semibold text-lg mb-2 block underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa] rounded"
-                aria-label="WhisperX speech recognition model (opens in new window)"
-              >
-                WhisperX
-              </a>
+            <div className="relative bg-white dark:bg-[#1e293b] rounded-lg py-6 pl-6 pr-18 border border-slate-200 dark:border-[#334155] hover:border-blue-500 dark:hover:border-[#60a5fa] transition focus-within:ring-2 focus-within:ring-[#60a5fa] focus-within:ring-offset-2 focus-within:ring-offset-slate-50 dark:focus-within:ring-offset-slate-900">
+              <div className="mb-2">
+                <a
+                  href="https://github.com/openai/whisper"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-[#60a5fa] hover:text-blue-800 dark:hover:text-white font-semibold text-lg block underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa] rounded"
+                  aria-label="WhisperX speech recognition model (opens in new window)"
+                >
+                  WhisperX
+                </a>
+                <a
+                  href="https://github.com/openai/whisper"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute right-6 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:text-blue-700 hover:border-blue-400 dark:border-[#334155] dark:text-[#cbd5e1] dark:hover:text-white dark:hover:border-[#60a5fa] transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa]"
+                  aria-label="Open WhisperX resource link (opens in new window)"
+                >
+                  <LinkIcon className="h-4 w-4" />
+                </a>
+              </div>
               <p className="text-slate-600 dark:text-[#cbd5e1]">
                 Advanced speech recognition model for accurate audio transcription and voice analysis by OpenAI.
               </p>
             </div>
 
             {/* Resource Item 3 */}
-            <div className="bg-white dark:bg-[#1e293b] rounded-lg p-6 border border-slate-200 dark:border-[#334155] hover:border-blue-500 dark:hover:border-[#60a5fa] transition focus-within:ring-2 focus-within:ring-[#60a5fa] focus-within:ring-offset-2 focus-within:ring-offset-slate-50 dark:focus-within:ring-offset-slate-900">
-              <a
-                href="https://discord.com/developers/docs/intro"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 dark:text-[#60a5fa] hover:text-blue-800 dark:hover:text-white font-semibold text-lg mb-2 block underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa] rounded"
-                aria-label="Discord API documentation (opens in new window)"
-              >
-                Discord API
-              </a>
+            <div className="relative bg-white dark:bg-[#1e293b] rounded-lg py-6 pl-6 pr-18 border border-slate-200 dark:border-[#334155] hover:border-blue-500 dark:hover:border-[#60a5fa] transition focus-within:ring-2 focus-within:ring-[#60a5fa] focus-within:ring-offset-2 focus-within:ring-offset-slate-50 dark:focus-within:ring-offset-slate-900">
+              <div className="mb-2">
+                <a
+                  href="https://discord.com/developers/docs/intro"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-[#60a5fa] hover:text-blue-800 dark:hover:text-white font-semibold text-lg block underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa] rounded"
+                  aria-label="Discord API documentation (opens in new window)"
+                >
+                  Discord API
+                </a>
+                <a
+                  href="https://discord.com/developers/docs/intro"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute right-6 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:text-blue-700 hover:border-blue-400 dark:border-[#334155] dark:text-[#cbd5e1] dark:hover:text-white dark:hover:border-[#60a5fa] transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa]"
+                  aria-label="Open Discord API resource link (opens in new window)"
+                >
+                  <LinkIcon className="h-4 w-4" />
+                </a>
+              </div>
               <p className="text-slate-600 dark:text-[#cbd5e1]">
                 Platform for building bots and integrations to sync voice communications.
               </p>
             </div>
 
             {/* Resource Item 4 */}
-            <div className="bg-white dark:bg-[#1e293b] rounded-lg p-6 border border-slate-200 dark:border-[#334155] hover:border-blue-500 dark:hover:border-[#60a5fa] transition focus-within:ring-2 focus-within:ring-[#60a5fa] focus-within:ring-offset-2 focus-within:ring-offset-slate-50 dark:focus-within:ring-offset-slate-900">
-              <a
-                href="https://github.com/SteamDatabase/Protobufs"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 dark:text-[#60a5fa] hover:text-blue-800 dark:hover:text-white font-semibold text-lg mb-2 block underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa] rounded"
-                aria-label="SteamDatabase Protobufs repository (opens in new window)"
-              >
-                SteamDatabase/Protobufs
-              </a>
+            <div className="relative bg-white dark:bg-[#1e293b] rounded-lg py-6 pl-6 pr-18 border border-slate-200 dark:border-[#334155] hover:border-blue-500 dark:hover:border-[#60a5fa] transition focus-within:ring-2 focus-within:ring-[#60a5fa] focus-within:ring-offset-2 focus-within:ring-offset-slate-50 dark:focus-within:ring-offset-slate-900">
+              <div className="mb-2">
+                <a
+                  href="https://github.com/SteamDatabase/Protobufs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-[#60a5fa] hover:text-blue-800 dark:hover:text-white font-semibold text-lg block underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa] rounded"
+                  aria-label="SteamDatabase Protobufs repository (opens in new window)"
+                >
+                  SteamDatabase/Protobufs
+                </a>
+                <a
+                  href="https://github.com/SteamDatabase/Protobufs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute right-6 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:text-blue-700 hover:border-blue-400 dark:border-[#334155] dark:text-[#cbd5e1] dark:hover:text-white dark:hover:border-[#60a5fa] transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa]"
+                  aria-label="Open SteamDatabase/Protobufs resource link (opens in new window)"
+                >
+                  <LinkIcon className="h-4 w-4" />
+                </a>
+              </div>
               <p className="text-slate-600 dark:text-[#cbd5e1]">
                 Protocol buffer definitions for Steam communications and game data structures.
               </p>
             </div>
 
             {/* Resource Item 5 */}
-            <div className="bg-white dark:bg-[#1e293b] rounded-lg p-6 border border-slate-200 dark:border-[#334155] hover:border-blue-500 dark:hover:border-[#60a5fa] transition focus-within:ring-2 focus-within:ring-[#60a5fa] focus-within:ring-offset-2 focus-within:ring-offset-slate-50 dark:focus-within:ring-offset-slate-900">
-              <a
-                href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 dark:text-[#60a5fa] hover:text-blue-800 dark:hover:text-white font-semibold text-lg mb-2 block underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa] rounded"
-                aria-label="NVIDIA Parakeet's Hugging Face Page (opens in new window)"
-              >
-                NVIDIA/Parakeet
-              </a>
+            <div className="relative bg-white dark:bg-[#1e293b] rounded-lg py-6 pl-6 pr-18 border border-slate-200 dark:border-[#334155] hover:border-blue-500 dark:hover:border-[#60a5fa] transition focus-within:ring-2 focus-within:ring-[#60a5fa] focus-within:ring-offset-2 focus-within:ring-offset-slate-50 dark:focus-within:ring-offset-slate-900">
+              <div className="mb-2">
+                <a
+                  href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-[#60a5fa] hover:text-blue-800 dark:hover:text-white font-semibold text-lg block underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa] rounded"
+                  aria-label="NVIDIA Parakeet's Hugging Face Page (opens in new window)"
+                >
+                  NVIDIA/Parakeet
+                </a>
+                <a
+                  href="https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute right-6 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:text-blue-700 hover:border-blue-400 dark:border-[#334155] dark:text-[#cbd5e1] dark:hover:text-white dark:hover:border-[#60a5fa] transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa]"
+                  aria-label="Open NVIDIA/Parakeet resource link (opens in new window)"
+                >
+                  <LinkIcon className="h-4 w-4" />
+                </a>
+              </div>
               <p className="text-slate-600 dark:text-[#cbd5e1]">
                 A 600-million-parameter multilingual automatic speech recognition (ASR) model by NVIDIA.
               </p>
             </div>
 
             {/* Resource Item 6 */}
-            <div className="bg-white dark:bg-[#1e293b] rounded-lg p-6 border border-slate-200 dark:border-[#334155] hover:border-blue-500 dark:hover:border-[#60a5fa] transition focus-within:ring-2 focus-within:ring-[#60a5fa] focus-within:ring-offset-2 focus-within:ring-offset-slate-50 dark:focus-within:ring-offset-slate-900">
-              <a
-                href="https://huggingface.co/collections/Qwen/qwen25"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 dark:text-[#60a5fa] hover:text-blue-800 dark:hover:text-white font-semibold text-lg mb-2 block underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa] rounded"
-                aria-label="Alibaba's Qwen2.5 Hugging Face Collection (opens in new window)"
-              >
-                Alibaba/Qwen2.5
-              </a>
+            <div className="relative bg-white dark:bg-[#1e293b] rounded-lg py-6 pl-6 pr-18 border border-slate-200 dark:border-[#334155] hover:border-blue-500 dark:hover:border-[#60a5fa] transition focus-within:ring-2 focus-within:ring-[#60a5fa] focus-within:ring-offset-2 focus-within:ring-offset-slate-50 dark:focus-within:ring-offset-slate-900">
+              <div className="mb-2">
+                <a
+                  href="https://huggingface.co/collections/Qwen/qwen25"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-[#60a5fa] hover:text-blue-800 dark:hover:text-white font-semibold text-lg block underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa] rounded"
+                  aria-label="Alibaba's Qwen2.5 Hugging Face Collection (opens in new window)"
+                >
+                  Alibaba/Qwen2.5
+                </a>
+                <a
+                  href="https://huggingface.co/collections/Qwen/qwen25"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute right-6 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:text-blue-700 hover:border-blue-400 dark:border-[#334155] dark:text-[#cbd5e1] dark:hover:text-white dark:hover:border-[#60a5fa] transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#1e293b] focus:ring-[#60a5fa]"
+                  aria-label="Open Alibaba/Qwen2.5 resource link (opens in new window)"
+                >
+                  <LinkIcon className="h-4 w-4" />
+                </a>
+              </div>
               <p className="text-slate-600 dark:text-[#cbd5e1]">
                 A series of open-source large language models (LLMs) by Alibaba.
               </p>
