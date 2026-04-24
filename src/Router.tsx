@@ -74,7 +74,7 @@ function AppContent({
           <Route
             path="/"
             element={
-              <div className="w-full flex-1 flex flex-col p-4 items-center justify-center">
+              <div className="w-full flex-1 flex flex-col p-4 items-center justify-start">
                 <Home />
               </div>
             }

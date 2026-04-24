@@ -19,12 +19,6 @@ type SubmitErrorState = {
   details: string[];
 };
 
-type ReplayJobStatus = {
-  status?: string;
-  reason?: string;
-  error?: string;
-};
-
 function parseDetailLines(value: unknown): string[] {
   if (typeof value === "string") {
     return value
@@ -92,44 +86,41 @@ function formatSubmitError(
   return { title: fallbackTitle, details: [] };
 }
 
-const JOB_POLL_INTERVAL_MS = 2500;
-const JOB_POLL_TIMEOUT_MS = 5 * 60 * 1000;
+const REPLAY_COUNT_POLL_INTERVAL_MS = 2500;
+const REPLAY_COUNT_POLL_TIMEOUT_MS = 5 * 60 * 1000;
 
-async function waitForReplayBuild(jobId: string): Promise<ReplayJobStatus> {
-  const startedAt = Date.now();
-
-  while (Date.now() - startedAt < JOB_POLL_TIMEOUT_MS) {
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/jobs/${encodeURIComponent(jobId)}`, {
+async function fetchReplayCount(): Promise<number | null> {
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/replays`, {
       credentials: "include",
     });
 
     if (!res.ok) {
-      const payload = await res.json().catch(() => null);
-      const message = payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string"
-        ? payload.error
-        : `Failed to check replay status (${res.status} ${res.statusText})`;
-      throw new Error(message);
+      return null;
     }
 
-    const statusPayload = await res.json() as ReplayJobStatus;
-    const status = (statusPayload.status ?? "").toLowerCase();
+    const data = await res.json();
+    return Array.isArray(data) ? data.length : null;
+  } catch {
+    return null;
+  }
+}
 
-    if (status === "completed") {
-      return statusPayload;
-    }
+async function waitForReplayCountIncrease(initialReplayCount: number): Promise<boolean> {
+  const startedAt = Date.now();
 
-    if (status === "failed") {
-      return statusPayload;
+  while (Date.now() - startedAt < REPLAY_COUNT_POLL_TIMEOUT_MS) {
+    const currentReplayCount = await fetchReplayCount();
+    if (currentReplayCount !== null && currentReplayCount > initialReplayCount) {
+      return true;
     }
 
     await new Promise<void>((resolve) => {
-      setTimeout(resolve, JOB_POLL_INTERVAL_MS);
+      setTimeout(resolve, REPLAY_COUNT_POLL_INTERVAL_MS);
     });
   }
 
-  return {
-    status: "timeout",
-  };
+  return false;
 }
 
 export function AudioLibrary() {
@@ -143,6 +134,7 @@ export function AudioLibrary() {
   const [sharecode, setSharecode] = useState("");
   const [submitError, setSubmitError] = useState<SubmitErrorState | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWaitingForReplayUpdate, setIsWaitingForReplayUpdate] = useState(false);
   const [search, setSearch] = useState("");
   const [showProcessConfirm, setShowProcessConfirm] = useState(false);
 
@@ -202,10 +194,12 @@ export function AudioLibrary() {
     setSubmitError(null);
     setShowProcessConfirm(false);
     setIsSubmitting(true);
+    setIsWaitingForReplayUpdate(false);
 
     try {
       const normalizedSharecode = sharecodeResult.value;
       const replayName = `Replay ${normalizedSharecode}`;
+      const replayCountBefore = await fetchReplayCount();
       const res = await fetch(`${import.meta.env.VITE_API_URL}/replays/process`, {
         method: "POST",
         headers: {
@@ -225,39 +219,39 @@ export function AudioLibrary() {
         return;
       }
 
-      const data = await res.json() as { job_id?: string; };
-      if (!data.job_id) {
+      const data = await res.json() as { success?: boolean; };
+      if (!data.success) {
         setSubmitError({
-          title: "Replay pipeline returned no job ID.",
+          title: "Replay pipeline did not confirm start.",
           details: ["Please try again in a few moments."],
         });
         return;
       }
 
-      const jobStatus = await waitForReplayBuild(data.job_id);
-      const status = (jobStatus.status ?? "").toLowerCase();
-
-      if (status === "completed") {
-        navigate("/replays");
+      if (replayCountBefore === null) {
+        setSubmitError({
+          title: "Replay started, but status tracking is unavailable.",
+          details: ["We could not read your replay count. Please check Replay Library in a moment."],
+        });
         return;
       }
 
-      if (status === "failed") {
-        setSubmitError({
-          title: "Replay processing failed.",
-          details: [jobStatus.reason || jobStatus.error || "The pipeline reported a failure."],
-        });
+      setIsWaitingForReplayUpdate(true);
+      const replayCountIncreased = await waitForReplayCountIncrease(replayCountBefore);
+      if (replayCountIncreased) {
+        navigate("/replays");
         return;
       }
 
       setSubmitError({
         title: "Replay is still processing.",
-        details: ["It is taking longer than expected. You can check your replay library in a moment."],
+        details: ["It is taking longer than expected. You can check Replay Library in a moment."],
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to process replay";
       setSubmitError({ title: message, details: [] });
     } finally {
+      setIsWaitingForReplayUpdate(false);
       setIsSubmitting(false);
     }
   }
@@ -403,10 +397,29 @@ export function AudioLibrary() {
                   onClick={openProcessConfirm}
                   disabled={isSubmitting || !sharecode.trim()}
                 >
-                  {isSubmitting ? "Creating replay..." : "Create Replay"}
+                  {isSubmitting
+                    ? (isWaitingForReplayUpdate ? "Building replay..." : "Creating replay...")
+                    : "Create Replay"}
                 </Button>
               </div>
             </div>
+            {isSubmitting && (
+              <div className="rounded-md border border-[#334155] bg-[#0f172a] p-3 text-sm">
+                <div className="flex items-center gap-3">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#60a5fa] border-t-transparent" />
+                  <div className="space-y-0.5">
+                    <p className="font-medium text-[#dbeafe]">
+                      {isWaitingForReplayUpdate ? "Finalizing replay..." : "Starting replay pipeline..."}
+                    </p>
+                    <p className="text-xs text-[#94a3b8]">
+                      {isWaitingForReplayUpdate
+                        ? "Waiting for your replay library count to update. You will be redirected automatically."
+                        : "Preparing downloader and transcription tasks."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             {submitError && (
               <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm">
                 <div className="flex items-start gap-2">
