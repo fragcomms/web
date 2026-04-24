@@ -89,13 +89,13 @@ export default function Settings() {
           <div className="space-y-2">
             <Button
               onClick={handleFetchUserData}
-              className="w-full bg-slate-700 text-white hover:bg-slate-600"
+              className="w-full border border-slate-300 bg-white text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
             >
               View Profile Data
             </Button>
             <Button
               onClick={handleFetchConnections}
-              className="w-full bg-slate-700 text-white hover:bg-slate-600"
+              className="w-full border border-slate-300 bg-white text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
             >
               View Connections
             </Button>
@@ -115,7 +115,7 @@ export default function Settings() {
           </div>
           <Button
             onClick={logout}
-            className="bg-red-600 text-white hover:bg-red-700"
+            className="border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-500/40 dark:bg-red-600 dark:text-white dark:hover:bg-red-700"
           >
             Logout
           </Button>

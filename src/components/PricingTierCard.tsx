@@ -70,19 +70,19 @@ export function PricingTierCard({
           </div>
         </div>
         <button
-          className="bg-slate-800 dark:bg-slate-100 relative rounded-lg shrink-0 w-full hover:bg-slate-700 dark:hover:bg-white transition-colors"
+          className="border border-slate-300 bg-white text-slate-800 relative rounded-lg shrink-0 w-full hover:bg-slate-100 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white transition-colors"
           data-name="Button"
         >
           <div className="flex flex-row items-center justify-center overflow-clip rounded-[inherit] size-full">
             <div className="content-stretch flex gap-2 items-center justify-center p-3 relative w-full">
-              <p className="font-['Inter:Regular',sans-serif] font-normal leading-none not-italic relative shrink-0 text-slate-100 dark:text-slate-900 text-[16px]">
+              <p className="font-['Inter:Regular',sans-serif] font-normal leading-none not-italic relative shrink-0 text-slate-800 dark:text-slate-900 text-[16px]">
                 {buttonText}
               </p>
             </div>
           </div>
           <div
             aria-hidden="true"
-            className="absolute border border-slate-800 dark:border-slate-100 border-solid inset-0 pointer-events-none rounded-lg"
+            className="absolute border border-slate-300 dark:border-slate-100 border-solid inset-0 pointer-events-none rounded-lg"
           />
         </button>
       </div>

@@ -65,9 +65,9 @@ export default function InviteBot() {
         rel="noopener noreferrer"
         className={`${
           inviteLink
-            ? "bg-slate-800 dark:bg-gray-700 hover:bg-slate-700 dark:hover:bg-gray-600"
-            : "bg-slate-500 dark:bg-gray-700 cursor-not-allowed"
-        } text-white font-bold px-6 py-3 rounded-lg mb-4 transition-colors duration-200`}
+            ? "border border-slate-300 bg-white text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+            : "border border-slate-300 bg-slate-100 text-slate-400 cursor-not-allowed dark:border-slate-700 dark:bg-gray-700 dark:text-slate-400"
+        } font-bold px-6 py-3 rounded-lg mb-4 transition-colors duration-200`}
       >
         {loading ? "Loading..." : "Invite Bot"}
       </a>
@@ -78,9 +78,9 @@ export default function InviteBot() {
         disabled={!inviteLink}
         className={`flex items-center gap-2 ${
           inviteLink
-            ? "bg-slate-800 dark:bg-gray-700 hover:bg-slate-700 dark:hover:bg-gray-600"
-            : "bg-slate-500 dark:bg-gray-700 cursor-not-allowed"
-        } text-white font-semibold px-6 py-2 rounded-lg transition-colors duration-200`}
+            ? "border border-slate-300 bg-white text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+            : "border border-slate-300 bg-slate-100 text-slate-400 cursor-not-allowed dark:border-slate-700 dark:bg-gray-700 dark:text-slate-400"
+        } font-semibold px-6 py-2 rounded-lg transition-colors duration-200`}
       >
         {copied
           ? (
