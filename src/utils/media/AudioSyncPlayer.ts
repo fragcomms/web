@@ -82,6 +82,9 @@ export class AudioSyncPlayer {
 
     const shouldBeSilent = !this.syncStartsFirst && demoTimeSec < this.syncOffsetSec;
 
+    console.log(`[Audio Debug] DemoTime: ${demoTimeSec.toFixed(2)}s | Offset: ${this.syncOffsetSec}s | StartsFirst: ${this.syncStartsFirst}`);
+    console.log(`[Audio Debug] Calculated FileSeekTime: ${fileSeekTime.toFixed(2)}s | ShouldBeSilent: ${shouldBeSilent}`);
+
     if (shouldBeSilent || fileSeekTime < 0) return;
 
     // Schedule playback 50ms in the future so the CPU has time to queue all

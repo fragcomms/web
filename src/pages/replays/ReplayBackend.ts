@@ -72,18 +72,18 @@ export function useReplayEngine(
       return;
     }
 
-    const audioSeekSec = replaySec - audioSyncConfig.audioStartOffsetSec;
-    if (audioSeekSec < 0) {
-      audioPlayerRef.current.stop();
-      return;
-    }
+    // const audioSeekSec = replaySec - audioSyncConfig.audioStartOffsetSec;
+    // if (audioSeekSec < 0) {
+    //   audioPlayerRef.current.stop();
+    //   return;
+    // }
 
-    if (audioSyncConfig.audioDurationSec !== null && audioSeekSec >= audioSyncConfig.audioDurationSec) {
-      audioPlayerRef.current.stop();
-      return;
-    }
+    // if (audioSyncConfig.audioDurationSec !== null && audioSeekSec >= audioSyncConfig.audioDurationSec) {
+    //   audioPlayerRef.current.stop();
+    //   return;
+    // }
 
-    audioPlayerRef.current.play(audioSeekSec);
+    audioPlayerRef.current.play(replaySec);
   }, [audioPlayerRef, audioSyncConfig]);
 
   // compute live score
@@ -127,19 +127,20 @@ export function useReplayEngine(
     /*  while  replay is playing, only worry about audio sync if audio is actually playing*/
     if (audioPlayerRef.current) {
       if (isPlaying) {
-        const audioSeekSec = currentTimeSec - audioSyncConfig.audioStartOffsetSec;
-        const audioIsOver = audioSyncConfig.audioDurationSec !== null && audioSeekSec >= audioSyncConfig.audioDurationSec;
+        syncAudioForReplayTime(currentTimeRef.current)
+        // const audioSeekSec = currentTimeSec - audioSyncConfig.audioStartOffsetSec;
+        // const audioIsOver = audioSyncConfig.audioDurationSec !== null && audioSeekSec >= audioSyncConfig.audioDurationSec;
 
-        if(!audioIsOver) { //sync audio if it's not already over
-          syncAudioForReplayTime(currentTimeRef.current);
-        }
+        // if(!audioIsOver) { //sync audio if it's not already over
+        //   syncAudioForReplayTime(currentTimeRef.current);
+        // }
 
       //else if !isPlaying, stop the audio
       } else { 
         audioPlayerRef.current.stop(); 
       }
     }
-  }, [isPlaying, audioPlayerRef, syncAudioForReplayTime, audioSyncConfig]);
+  }, [isPlaying, audioPlayerRef, syncAudioForReplayTime]);
 
   useEffect(() => {
     currentTimeRef.current = currentTimeSec;

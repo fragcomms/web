@@ -41,19 +41,24 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
         if (!audioId) return setTranscriptText("No audio linked to this replay.");
         setAudioId(audioId);
 
+        let localOffsetSec = 0;
+        let localStartsFirst = replayMetadata.audio_starts_first ?? true;
+
         const offsetMs = replayMetadata.audio_offset;
         if (typeof offsetMs === "number" && Number.isFinite(offsetMs)) {
           if (offsetMs < 0) {
-            setAudioStartOffsetSec(0);
+            // setAudioStartOffsetSec(0);
             setAudioSyncWarning("Audio timestamp is after the demo window; playback sync is disabled for this replay.");
           } else {
-            setAudioStartOffsetSec(offsetMs / 1000);
+            localOffsetSec = offsetMs / 1000;
             setAudioSyncWarning(null);
           }
         } else {
-          setAudioStartOffsetSec(0);
+          // setAudioStartOffsetSec(0);
           setAudioSyncWarning(null);
         }
+
+        setAudioStartOffsetSec(localOffsetSec);
 
         const transcriptRes = await fetch(`${import.meta.env.VITE_API_URL}/audio/${audioId}/transcriptions`, {
           credentials: "include",
@@ -88,7 +93,13 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
 
         const fetchAudio = async () => {
           if (!audioPlayerRef.current) return;
-          await audioPlayerRef.current.loadTracks(audioId, uniqueIds, import.meta.env.VITE_API_URL);
+          await audioPlayerRef.current.loadTracks(
+            audioId, 
+            uniqueIds, 
+            import.meta.env.VITE_API_URL,
+            localOffsetSec,
+            localStartsFirst,
+          );
           if (!cancelled) {
             setAudioDurationSec(audioPlayerRef.current.getLongestTrackDurationSeconds());
           }
