@@ -11,6 +11,7 @@ import type { TranscriptSegment } from "../ReplayMedia";
 interface TranscriptPanelProps {
   transcripts: TranscriptSegment[];
   mutedUsers: Record<string, boolean>;
+  filteredUser: string | null;
   discordNames: Record<string, string>;
   transcriptText: string;
   formatTime: (sec: number) => string;
@@ -20,7 +21,7 @@ interface TranscriptPanelProps {
 }
 
 export const TranscriptPanel = memo(function TranscriptPanel(
-  { transcripts, mutedUsers, discordNames, transcriptText, formatTime, currentTimeSec, onDownloadTranscript, onDownloadAudio }: TranscriptPanelProps,
+  { transcripts, mutedUsers, filteredUser, discordNames, transcriptText, formatTime, currentTimeSec, onDownloadTranscript, onDownloadAudio }: TranscriptPanelProps,
 ) {
   const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -104,9 +105,8 @@ export const TranscriptPanel = memo(function TranscriptPanel(
                     activeIndices.has(i)
                       ? "border-cyan-400 bg-cyan-500/10 shadow-[0_0_0_1px_rgba(34,211,238,0.45)]"
                       : "border-transparent"
-                  } ${mutedUsers[t.discordId] ? "opacity-30" : ""}`}
-                >
-                  <div className="flex items-center gap-2 mb-0.5">
+                  } 
+                  ${(filteredUser !== null ? filteredUser !== t.discordId : mutedUsers[t.discordId]) ? "opacity-30" : ""}`}>                  <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-xs text-slate-500 font-mono">
                       [{formatTime(t.start)} - {formatTime(t.end)}]
                     </span>

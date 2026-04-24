@@ -25,6 +25,11 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
   const [audioDurationSec, setAudioDurationSec] = useState<number | null>(null);
   const [audioSyncWarning, setAudioSyncWarning] = useState<string | null>(null);
   const [audioId, setAudioId] = useState<string | null>(null);
+  const [filteredUser, setFilteredUser] = useState<string | null>(null);
+
+  const handleFilteredUser = useCallback((discordId: string) => {
+    setFilteredUser(prev => prev === discordId ? null : discordId);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -145,6 +150,8 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
     discordUsers,
     discordNames,
     mutedUsers,
+    filteredUser,
+    handleFilteredUser,
     toggleMute,
     audioStartOffsetSec,
     audioDurationSec,

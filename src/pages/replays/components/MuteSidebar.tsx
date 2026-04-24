@@ -5,18 +5,18 @@ import { useAuth } from "../../../utils/context/context";
 interface MuteSidebarProps {
   discordUsers: string[];
   mutedUsers: Record<string, boolean>;
+
   discordNames: Record<string, string>;
   toggleMute: (discordId: string) => void;
+  filteredUser: string | null;
+  onFilteredUser: (discordId: string) => void;
   isHorizontal?: boolean;
 }
 
 export const MuteSidebar = memo(
-  function MuteSidebar({ discordUsers, mutedUsers, discordNames, toggleMute, isHorizontal = false }: MuteSidebarProps) {
-    // Always show 6 items, padding with empty strings for missing users
+  function MuteSidebar({ discordUsers, mutedUsers, discordNames, toggleMute, filteredUser, onFilteredUser, isHorizontal = false }: MuteSidebarProps) {
     const paddedUsers = [...discordUsers, ...Array(6 - discordUsers.length).fill("")].slice(0, 6);
-    // useAuth
-    const {user} = useAuth();
-    console.log(`https://cdn.discordapp.com/avatars/${user?.id}/${user?.avatar}.png`)
+    const { user } = useAuth();
 
     return (
       <div
@@ -25,16 +25,17 @@ export const MuteSidebar = memo(
           : "flex h-180 w-36 shrink-0 flex-col gap-2.5"}
       >
         {paddedUsers.map((discordId, index) => {
-
           const isEmpty = !discordId;
           const isMuted = !isEmpty && (mutedUsers[discordId] || false);
           const isUser = discordId === user!.id;
-          
+          const isFiltered = filteredUser === discordId;
+
           const itemClasses = isEmpty
             ? "border-slate-600/50 bg-slate-800/30"
             : isMuted
             ? "border-red-900/50 bg-red-950/20"
             : "border-slate-700 bg-slate-800";
+
           const buttonClasses = isMuted
             ? "border-red-500 bg-red-500/20 text-red-400 hover:bg-red-500/30"
             : "border-slate-600 bg-slate-900 text-slate-300 hover:border-slate-400 hover:text-white";
@@ -45,23 +46,22 @@ export const MuteSidebar = memo(
                 className={`flex h-fit w-32 flex-col items-center gap-2 rounded-md border p-2.5 transition-colors ${itemClasses}`}
               >
                 <div className="flex w-full items-center justify-center gap-2">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-700">
-                    
+                  <div
+                    onClick={() => !isEmpty && onFilteredUser(discordId)}
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-700 transition-all ${
+                      !isEmpty ? "cursor-pointer" : ""
+                    } ${isFiltered ? "ring-2 ring-cyan-400" : ""}`}
+                  >
                     {isEmpty
                       ? <div className="text-xs text-slate-500">-</div>
-                      : isUser  
+                      : isUser
                         ? <img
-                            src={
-                              `https://cdn.discordapp.com/avatars/${user?.id}/${user?.avatar}.png`
-                              }
+                            src={`https://cdn.discordapp.com/avatars/${user?.id}/${user?.avatar}.png`}
                             alt="Avatar"
                             className="w-full h-full rounded-full object-cover"
                           />
-                          : <User className="h-6 w-6 text-slate-300" />
-                  
+                        : <User className="h-6 w-6 text-slate-300" />
                     }
-                    
-                      
                   </div>
                   {!isEmpty && (
                     <button

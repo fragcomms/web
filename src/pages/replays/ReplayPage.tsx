@@ -59,6 +59,8 @@ export default function ReplayPage() {
     discordUsers,
     discordNames,
     mutedUsers,
+    filteredUser,
+    handleFilteredUser,
     toggleMute,
     audioStartOffsetSec,
     audioDurationSec,
@@ -275,6 +277,8 @@ export default function ReplayPage() {
         <MuteSidebar
           discordUsers={discordUsers}
           mutedUsers={mutedUsers}
+          filteredUser={filteredUser}
+          onFilteredUser={handleFilteredUser}
           discordNames={discordNames}
           toggleMute={toggleMute}
           isHorizontal={true}
@@ -368,6 +372,7 @@ export default function ReplayPage() {
         <TranscriptPanel
           transcripts={transcripts}
           mutedUsers={mutedUsers}
+          filteredUser={filteredUser}
           discordNames={discordNames}
           transcriptText={transcriptText}
           formatTime={formatTime}
