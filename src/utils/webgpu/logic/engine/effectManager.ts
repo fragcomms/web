@@ -120,25 +120,25 @@ export class EffectManager {
       outEffect.y = effect.y;
 
       if (effect.kind === "he") {
-        const blastFade = Math.max(0, 1 - progress * 1.85);
+        const blastFade = Math.max(0, 1 - progress * 1.08);
         outEffect.effectType = 2;
-        outEffect.radius = 74 + progress * 228;
+        outEffect.radius = 88 + progress * 330;
         outEffect.r = 1.0;
-        outEffect.g = 0.76;
-        outEffect.b = 0.48;
-        outEffect.alpha = 1.08 * blastFade * blastFade;
+        outEffect.g = 0.82;
+        outEffect.b = 0.54;
+        outEffect.alpha = 1.42 * Math.pow(blastFade, 1.35);
         outEffect.softness = progress;
         outEffect.density = life;
       } else if (effect.kind === "inferno") {
         const flicker = 0.92 + 0.08 * Math.sin(targetTick * 0.09 + effect.x * 0.002);
         outEffect.effectType = 1;
-        outEffect.radius = 126 + (1 - life) * 10;
+        outEffect.radius = 202 + (1 - life) * 28;
         outEffect.r = 1.0;
-        outEffect.g = 0.46 + 0.1 * flicker;
-        outEffect.b = 0.05;
-        outEffect.alpha = (0.4 + life * 0.28) * flicker;
-        outEffect.softness = 0.18;
-        outEffect.density = 1.42;
+        outEffect.g = 0.04 + 0.025 * flicker;
+        outEffect.b = 0.025;
+        outEffect.alpha = (0.58 + life * 0.14) * flicker;
+        outEffect.softness = 0.48;
+        outEffect.density = 1.22 + life * 0.22;
       }
       count++;
     }

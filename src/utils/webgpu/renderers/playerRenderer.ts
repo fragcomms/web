@@ -15,6 +15,7 @@ export class PlayerRenderer {
   private instanceStrideFloats = 7;
 
   private instanceScratch: Float32Array;
+  private deadInstanceCount = 0;
 
   constructor(
     queue: GPUQueue,
@@ -35,26 +36,38 @@ export class PlayerRenderer {
   }
 
   upload(players: RenderPlayer[], isSecondHalf: boolean): number {
-    const count = Math.min(players.length, this.maxPlayerInstances);
     const data = this.instanceScratch;
+    let count = 0;
 
-    for (let i = 0; i < count; i++) {
-      const p = players[i];
-      const base = i * this.instanceStrideFloats;
+    for (const p of players) {
+      if (p.alive || count >= this.maxPlayerInstances) continue;
+      this.writeInstance(data, count, p, isSecondHalf);
+      count++;
+    }
+    this.deadInstanceCount = count;
 
-      data[base + 0] = p.x;
-      data[base + 1] = p.y;
-
-      const [r, g, b] = getPlayerColor(p.team, p.alive, isSecondHalf);
-      data[base + 2] = r;
-      data[base + 3] = g;
-      data[base + 4] = b;
-      data[base + 5] = p.alive ? 1 - Math.max(0, Math.min(100, p.hp)) / 100 : -1;
-      data[base + 6] = hashSteamId(p.steamid);
+    for (const p of players) {
+      if (!p.alive || count >= this.maxPlayerInstances) continue;
+      this.writeInstance(data, count, p, isSecondHalf);
+      count++;
     }
 
     writeFloat32Slice(this.queue, this.playerInstanceBuffer, data, count * this.instanceStrideFloats);
     return count;
+  }
+
+  private writeInstance(data: Float32Array, index: number, p: RenderPlayer, isSecondHalf: boolean) {
+    const base = index * this.instanceStrideFloats;
+
+    data[base + 0] = p.x;
+    data[base + 1] = p.y;
+
+    const [r, g, b] = getPlayerColor(p.team, p.alive, isSecondHalf);
+    data[base + 2] = r;
+    data[base + 3] = g;
+    data[base + 4] = b;
+    data[base + 5] = p.alive ? 1 - Math.max(0, Math.min(100, p.hp)) / 100 : -1;
+    data[base + 6] = hashSteamId(p.steamid);
   }
 
   draw(pass: GPURenderPassEncoder, instanceCount: number) {
@@ -66,7 +79,14 @@ export class PlayerRenderer {
     pass.setBindGroup(0, this.globalBindGroup);
     pass.setVertexBuffer(0, this.quadVertexBuffer);
     pass.setVertexBuffer(1, this.playerInstanceBuffer);
-    pass.draw(6, instanceCount, 0, 0);
+    const deadCount = Math.min(this.deadInstanceCount, instanceCount);
+    const aliveCount = Math.max(0, instanceCount - deadCount);
+    if (deadCount > 0) {
+      pass.draw(6, deadCount, 0, 0);
+    }
+    if (aliveCount > 0) {
+      pass.draw(6, aliveCount, 0, deadCount);
+    }
   }
 }
 

@@ -20,6 +20,18 @@ export function createGlobalLayout(device: GPUDevice) {
   });
 }
 
+export function createWallsLayout(device: GPUDevice) {
+  return device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.FRAGMENT,
+        buffer: { type: "read-only-storage" },
+      },
+    ],
+  });
+}
+
 export function createPlayerPipeline(device: GPUDevice, format: GPUTextureFormat, globalLayout: GPUBindGroupLayout) {
   const module = device.createShaderModule({ code: playerShaderWGSL });
 
@@ -146,6 +158,7 @@ export function createAreaEffectPipeline(
   device: GPUDevice,
   format: GPUTextureFormat,
   globalLayout: GPUBindGroupLayout,
+  wallsLayout: GPUBindGroupLayout,
 ) {
   const module = device.createShaderModule({ code: areaEffectShaderWGSL });
 
@@ -154,6 +167,7 @@ export function createAreaEffectPipeline(
       { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
       { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: {} },
       { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
+      { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: {} },
     ],
   });
 
@@ -181,7 +195,7 @@ export function createAreaEffectPipeline(
   ];
 
   const pipelineLayout = device.createPipelineLayout({
-    bindGroupLayouts: [globalLayout, smokeFieldLayout],
+    bindGroupLayouts: [globalLayout, wallsLayout, smokeFieldLayout],
   });
 
   const pipeline = device.createRenderPipeline({
@@ -222,24 +236,36 @@ export function createSmokeRenderPipeline(
   device: GPUDevice,
   format: GPUTextureFormat,
   globalLayout: GPUBindGroupLayout,
+  wallsLayout: GPUBindGroupLayout,
   smokeFieldLayout: GPUBindGroupLayout,
 ) {
   const module = device.createShaderModule({ code: smokeFieldRenderShaderWGSL });
 
   const pipeline = device.createRenderPipeline({
     layout: device.createPipelineLayout({
-      bindGroupLayouts: [globalLayout, smokeFieldLayout],
+      bindGroupLayouts: [globalLayout, smokeFieldLayout, wallsLayout],
     }),
     vertex: {
       module,
       entryPoint: "vs_main",
-      buffers: [{
-        arrayStride: 4 * 4,
-        attributes: [
-          { shaderLocation: 0, offset: 0, format: "float32x2" },
-          { shaderLocation: 1, offset: 2 * 4, format: "float32x2" },
-        ],
-      }],
+      buffers: [
+        {
+          arrayStride: 2 * 4,
+          stepMode: "vertex",
+          attributes: [
+            { shaderLocation: 0, offset: 0, format: "float32x2" },
+          ],
+        },
+        {
+          arrayStride: 4 * 4,
+          stepMode: "instance",
+          attributes: [
+            { shaderLocation: 1, offset: 0, format: "float32x2" },
+            { shaderLocation: 2, offset: 2 * 4, format: "float32" },
+            { shaderLocation: 3, offset: 3 * 4, format: "float32" },
+          ],
+        },
+      ],
     },
     fragment: {
       module,
@@ -324,6 +350,48 @@ fn distanceToSegment(p : vec2<f32>, a : vec2<f32>, b : vec2<f32>) -> f32 {
 }
 `;
 
+  const obstacleModule = device.createShaderModule({
+    code: `
+${common}
+
+struct WallBuffer {
+  header : vec4<f32>,
+  segments : array<vec4<f32>>,
+};
+
+@group(0) @binding(0) var<storage, read> walls : WallBuffer;
+@group(0) @binding(1) var<uniform> params : SimParams;
+@group(0) @binding(2) var obstacleTex : texture_storage_2d<rgba16float, write>;
+
+@compute @workgroup_size(8, 8, 1)
+fn cs_main(@builtin(global_invocation_id) gid : vec3<u32>) {
+  let dims = textureDimensions(obstacleTex);
+  if (gid.x >= dims.x || gid.y >= dims.y) {
+    return;
+  }
+
+  let uv = (vec2<f32>(gid.xy) + vec2<f32>(0.5)) / vec2<f32>(dims);
+  let worldPos = worldFromUv(params, uv);
+  let size = worldSize(params);
+  let cellWorld = max(size.x / f32(dims.x), size.y / f32(dims.y));
+  let thickness = max(cellWorld * 1.45, 16.0);
+  let maxCoord = vec2<u32>(dims.x - 1u, dims.y - 1u);
+  let edgePx = min(min(gid.x, maxCoord.x - gid.x), min(gid.y, maxCoord.y - gid.y));
+  let edgeSolid = 1.0 - smoothstep(2.0, 5.0, f32(edgePx));
+  let wallCount = min(u32(walls.header.x), 4096u);
+  var solid = edgeSolid;
+
+  for (var i = 0u; i < wallCount; i = i + 1u) {
+    let wall = walls.segments[i];
+    let dist = distanceToSegment(worldPos, wall.xy, wall.zw);
+    solid = max(solid, 1.0 - smoothstep(thickness * 0.38, thickness, dist));
+  }
+
+  textureStore(obstacleTex, vec2<i32>(gid.xy), vec4<f32>(solid, 0.0, 0.0, 1.0));
+}
+`,
+  });
+
   const velocityAdvectModule = device.createShaderModule({
     code: `
 ${common}
@@ -332,12 +400,19 @@ ${fullscreenVertex}
 @group(0) @binding(0) var simSampler : sampler;
 @group(0) @binding(1) var velocityTex : texture_2d<f32>;
 @group(0) @binding(2) var<uniform> params : SimParams;
+@group(0) @binding(3) var obstacleTex : texture_2d<f32>;
+
+fn obstacleAt(uv : vec2<f32>) -> f32 {
+  return textureSampleLevel(obstacleTex, simSampler, clampUv(uv), 0.0).x;
+}
 
 @fragment
 fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
-  let velocity = textureSampleLevel(velocityTex, simSampler, input.uv, 0.0).xy;
+  let solid = obstacleAt(input.uv);
+  let velocity = textureSampleLevel(velocityTex, simSampler, input.uv, 0.0).xy * (1.0 - solid);
   let backUv = clampUv(input.uv - (velocity * params.control.x) / worldSize(params));
-  let advected = textureSampleLevel(velocityTex, simSampler, backUv, 0.0).xy * params.tuning.x;
+  let backSolid = obstacleAt(backUv);
+  let advected = textureSampleLevel(velocityTex, simSampler, backUv, 0.0).xy * params.tuning.x * (1.0 - max(solid, backSolid));
   return vec4<f32>(advected, 0.0, 0.0);
 }
 `,
@@ -354,10 +429,20 @@ ${fullscreenVertex}
 @group(0) @binding(3) var<storage, read> players : array<PlayerInjector>;
 @group(0) @binding(4) var<storage, read> tracers : array<TracerInjector>;
 @group(0) @binding(5) var<storage, read> smokes : array<vec4<f32>>;
+@group(0) @binding(6) var obstacleTex : texture_2d<f32>;
+
+fn obstacleAt(uv : vec2<f32>) -> f32 {
+  return textureSampleLevel(obstacleTex, simSampler, clampUv(uv), 0.0).x;
+}
 
 @fragment
 fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
-  var velocity = textureSampleLevel(velocityTex, simSampler, input.uv, 0.0).xy;
+  let solid = obstacleAt(input.uv);
+  if (solid > 0.65) {
+    return vec4<f32>(0.0);
+  }
+
+  var velocity = textureSampleLevel(velocityTex, simSampler, input.uv, 0.0).xy * (1.0 - solid);
   let worldPos = worldFromUv(params, input.uv);
   let smokeCount = u32(params.control.w);
   var smokeEnvelope = 0.0;
@@ -414,16 +499,30 @@ ${fullscreenVertex}
 @group(0) @binding(0) var simSampler : sampler;
 @group(0) @binding(1) var velocityTex : texture_2d<f32>;
 @group(0) @binding(2) var<uniform> params : SimParams;
+@group(0) @binding(3) var obstacleTex : texture_2d<f32>;
+
+fn obstacleAt(uv : vec2<f32>) -> f32 {
+  return textureSampleLevel(obstacleTex, simSampler, clampUv(uv), 0.0).x;
+}
+
+fn velocityAt(uv : vec2<f32>) -> vec2<f32> {
+  let solid = obstacleAt(uv);
+  return textureSampleLevel(velocityTex, simSampler, clampUv(uv), 0.0).xy * (1.0 - solid);
+}
 
 @fragment
 fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
+  if (obstacleAt(input.uv) > 0.65) {
+    return vec4<f32>(0.0);
+  }
+
   let dims = vec2<f32>(textureDimensions(velocityTex));
   let texel = vec2<f32>(1.0) / dims;
 
-  let left = textureSampleLevel(velocityTex, simSampler, clampUv(input.uv + vec2<f32>(-texel.x, 0.0)), 0.0).xy;
-  let right = textureSampleLevel(velocityTex, simSampler, clampUv(input.uv + vec2<f32>(texel.x, 0.0)), 0.0).xy;
-  let up = textureSampleLevel(velocityTex, simSampler, clampUv(input.uv + vec2<f32>(0.0, -texel.y)), 0.0).xy;
-  let down = textureSampleLevel(velocityTex, simSampler, clampUv(input.uv + vec2<f32>(0.0, texel.y)), 0.0).xy;
+  let left = velocityAt(input.uv + vec2<f32>(-texel.x, 0.0));
+  let right = velocityAt(input.uv + vec2<f32>(texel.x, 0.0));
+  let up = velocityAt(input.uv + vec2<f32>(0.0, -texel.y));
+  let down = velocityAt(input.uv + vec2<f32>(0.0, texel.y));
 
   let divergence = 0.5 * ((right.x - left.x) + (down.y - up.y));
   return vec4<f32>(divergence, 0.0, 0.0, 0.0);
@@ -440,16 +539,31 @@ ${fullscreenVertex}
 @group(0) @binding(1) var pressureTex : texture_2d<f32>;
 @group(0) @binding(2) var divergenceTex : texture_2d<f32>;
 @group(0) @binding(3) var<uniform> params : SimParams;
+@group(0) @binding(4) var obstacleTex : texture_2d<f32>;
+
+fn obstacleAt(uv : vec2<f32>) -> f32 {
+  return textureSampleLevel(obstacleTex, simSampler, clampUv(uv), 0.0).x;
+}
+
+fn pressureAt(uv : vec2<f32>, fallback : f32) -> f32 {
+  let solid = obstacleAt(uv);
+  return mix(textureSampleLevel(pressureTex, simSampler, clampUv(uv), 0.0).x, fallback, step(0.65, solid));
+}
 
 @fragment
 fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
+  if (obstacleAt(input.uv) > 0.65) {
+    return vec4<f32>(0.0);
+  }
+
   let dims = vec2<f32>(textureDimensions(pressureTex));
   let texel = vec2<f32>(1.0) / dims;
+  let center = textureSampleLevel(pressureTex, simSampler, input.uv, 0.0).x;
 
-  let left = textureSampleLevel(pressureTex, simSampler, clampUv(input.uv + vec2<f32>(-texel.x, 0.0)), 0.0).x;
-  let right = textureSampleLevel(pressureTex, simSampler, clampUv(input.uv + vec2<f32>(texel.x, 0.0)), 0.0).x;
-  let up = textureSampleLevel(pressureTex, simSampler, clampUv(input.uv + vec2<f32>(0.0, -texel.y)), 0.0).x;
-  let down = textureSampleLevel(pressureTex, simSampler, clampUv(input.uv + vec2<f32>(0.0, texel.y)), 0.0).x;
+  let left = pressureAt(input.uv + vec2<f32>(-texel.x, 0.0), center);
+  let right = pressureAt(input.uv + vec2<f32>(texel.x, 0.0), center);
+  let up = pressureAt(input.uv + vec2<f32>(0.0, -texel.y), center);
+  let down = pressureAt(input.uv + vec2<f32>(0.0, texel.y), center);
   let divergence = textureSampleLevel(divergenceTex, simSampler, input.uv, 0.0).x;
 
   let pressure = (left + right + up + down - divergence) * 0.25;
@@ -467,19 +581,35 @@ ${fullscreenVertex}
 @group(0) @binding(1) var velocityTex : texture_2d<f32>;
 @group(0) @binding(2) var pressureTex : texture_2d<f32>;
 @group(0) @binding(3) var<uniform> params : SimParams;
+@group(0) @binding(4) var obstacleTex : texture_2d<f32>;
+
+fn obstacleAt(uv : vec2<f32>) -> f32 {
+  return textureSampleLevel(obstacleTex, simSampler, clampUv(uv), 0.0).x;
+}
+
+fn pressureAt(uv : vec2<f32>, fallback : f32) -> f32 {
+  let solid = obstacleAt(uv);
+  return mix(textureSampleLevel(pressureTex, simSampler, clampUv(uv), 0.0).x, fallback, step(0.65, solid));
+}
 
 @fragment
 fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
+  let solid = obstacleAt(input.uv);
+  if (solid > 0.65) {
+    return vec4<f32>(0.0);
+  }
+
   let dims = vec2<f32>(textureDimensions(pressureTex));
   let texel = vec2<f32>(1.0) / dims;
 
-  let velocity = textureSampleLevel(velocityTex, simSampler, input.uv, 0.0).xy;
-  let left = textureSampleLevel(pressureTex, simSampler, clampUv(input.uv + vec2<f32>(-texel.x, 0.0)), 0.0).x;
-  let right = textureSampleLevel(pressureTex, simSampler, clampUv(input.uv + vec2<f32>(texel.x, 0.0)), 0.0).x;
-  let up = textureSampleLevel(pressureTex, simSampler, clampUv(input.uv + vec2<f32>(0.0, -texel.y)), 0.0).x;
-  let down = textureSampleLevel(pressureTex, simSampler, clampUv(input.uv + vec2<f32>(0.0, texel.y)), 0.0).x;
+  let velocity = textureSampleLevel(velocityTex, simSampler, input.uv, 0.0).xy * (1.0 - solid);
+  let center = textureSampleLevel(pressureTex, simSampler, input.uv, 0.0).x;
+  let left = pressureAt(input.uv + vec2<f32>(-texel.x, 0.0), center);
+  let right = pressureAt(input.uv + vec2<f32>(texel.x, 0.0), center);
+  let up = pressureAt(input.uv + vec2<f32>(0.0, -texel.y), center);
+  let down = pressureAt(input.uv + vec2<f32>(0.0, texel.y), center);
 
-  let projected = velocity - vec2<f32>(right - left, down - up) * 0.5;
+  let projected = (velocity - vec2<f32>(right - left, down - up) * 0.5) * (1.0 - solid);
   return vec4<f32>(projected, 0.0, 0.0);
 }
 `,
@@ -496,12 +626,23 @@ ${fullscreenVertex}
 @group(0) @binding(3) var<uniform> params : SimParams;
 @group(0) @binding(4) var<storage, read> smokes : array<vec4<f32>>;
 @group(0) @binding(5) var<storage, read> tracers : array<TracerInjector>;
+@group(0) @binding(6) var obstacleTex : texture_2d<f32>;
+
+fn obstacleAt(uv : vec2<f32>) -> f32 {
+  return textureSampleLevel(obstacleTex, simSampler, clampUv(uv), 0.0).x;
+}
 
 @fragment
 fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
-  let velocity = textureSampleLevel(velocityTex, simSampler, input.uv, 0.0).xy;
+  let solid = obstacleAt(input.uv);
+  if (solid > 0.65) {
+    return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+  }
+
+  let velocity = textureSampleLevel(velocityTex, simSampler, input.uv, 0.0).xy * (1.0 - solid);
   let backUv = clampUv(input.uv - (velocity * params.control.x) / worldSize(params));
-  let previousState = textureSampleLevel(densityTex, simSampler, backUv, 0.0);
+  let backSolid = obstacleAt(backUv);
+  let previousState = textureSampleLevel(densityTex, simSampler, backUv, 0.0) * (1.0 - backSolid);
   var density = previousState.x * params.tuning.w;
   var disturbance = previousState.y * 0.988;
   let worldPos = worldFromUv(params, input.uv);
@@ -562,6 +703,15 @@ fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
       { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
       { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: {} },
       { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
+      { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: {} },
+    ],
+  });
+
+  const obstacleLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
+      { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
+      { binding: 2, visibility: GPUShaderStage.COMPUTE, storageTexture: { access: "write-only", format: "rgba16float" } },
     ],
   });
 
@@ -570,6 +720,7 @@ fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
       { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
       { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: {} },
       { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
+      { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: {} },
     ],
   });
 
@@ -581,6 +732,7 @@ fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
       { binding: 3, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "read-only-storage" } },
       { binding: 4, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "read-only-storage" } },
       { binding: 5, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "read-only-storage" } },
+      { binding: 6, visibility: GPUShaderStage.FRAGMENT, texture: {} },
     ],
   });
 
@@ -589,6 +741,7 @@ fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
       { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
       { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: {} },
       { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
+      { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: {} },
     ],
   });
 
@@ -598,6 +751,7 @@ fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
       { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: {} },
       { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture: {} },
       { binding: 3, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
+      { binding: 4, visibility: GPUShaderStage.FRAGMENT, texture: {} },
     ],
   });
 
@@ -607,6 +761,7 @@ fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
       { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: {} },
       { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture: {} },
       { binding: 3, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
+      { binding: 4, visibility: GPUShaderStage.FRAGMENT, texture: {} },
     ],
   });
 
@@ -618,6 +773,7 @@ fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
       { binding: 3, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
       { binding: 4, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "read-only-storage" } },
       { binding: 5, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "read-only-storage" } },
+      { binding: 6, visibility: GPUShaderStage.FRAGMENT, texture: {} },
     ],
   });
 
@@ -642,13 +798,25 @@ fn fs_main(input : VSOut) -> @location(0) vec4<f32> {
       },
     });
 
+  const obstaclePipeline = device.createComputePipeline({
+    layout: device.createPipelineLayout({
+      bindGroupLayouts: [obstacleLayout],
+    }),
+    compute: {
+      module: obstacleModule,
+      entryPoint: "cs_main",
+    },
+  });
+
   return {
+    obstaclePipeline,
     velocityAdvectPipeline: createPipeline(velocityAdvectModule, velocityAdvectLayout),
     forceInjectPipeline: createPipeline(forceInjectModule, forceInjectLayout),
     divergencePipeline: createPipeline(divergenceModule, divergenceLayout),
     pressureSolvePipeline: createPipeline(pressureSolveModule, pressureSolveLayout),
     projectPipeline: createPipeline(projectModule, projectLayout),
     densityPipeline: createPipeline(densityModule, densityLayout),
+    obstacleLayout,
     sampleLayout,
     velocityAdvectLayout,
     forceInjectLayout,
@@ -663,18 +831,9 @@ export function createVisionPipeline(
   device: GPUDevice,
   format: GPUTextureFormat,
   globalLayout: GPUBindGroupLayout,
+  wallsLayout: GPUBindGroupLayout,
   smokeFieldLayout: GPUBindGroupLayout,
 ) {
-  const visionWallsLayout = device.createBindGroupLayout({
-    entries: [
-      {
-        binding: 0,
-        visibility: GPUShaderStage.FRAGMENT,
-        buffer: { type: "read-only-storage" },
-      },
-    ],
-  });
-
   const module = device.createShaderModule({ code: visionShaderWGSL });
 
   const vertexBuffers: GPUVertexBufferLayout[] = [
@@ -696,7 +855,7 @@ export function createVisionPipeline(
   ];
 
   const pipelineLayout = device.createPipelineLayout({
-    bindGroupLayouts: [globalLayout, visionWallsLayout, smokeFieldLayout],
+    bindGroupLayouts: [globalLayout, wallsLayout, smokeFieldLayout],
   });
 
   const pipeline = device.createRenderPipeline({
@@ -716,7 +875,7 @@ export function createVisionPipeline(
     primitive: { topology: "triangle-list" },
   });
 
-  return { pipeline, visionWallsLayout };
+  return { pipeline };
 }
 
 export function createTracerPipeline(device: GPUDevice, format: GPUTextureFormat, globalLayout: GPUBindGroupLayout) {

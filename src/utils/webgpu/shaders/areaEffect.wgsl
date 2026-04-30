@@ -4,6 +4,14 @@ struct Uniforms {
     _pad0 : vec3<f32>,
 };
 
+const MAX_AREA_EFFECT_INSTANCES : u32 = 64u;
+const MAX_LOCAL_WALLS : u32 = 64u;
+
+struct LocalWallBuffer {
+    counts : array<vec4<f32>, 64>,
+    segments : array<vec4<f32>, 4096>,
+};
+
 @group(0) @binding(0)
 var<uniform> uniforms : Uniforms;
 
@@ -12,9 +20,11 @@ struct SmokeFieldParams {
     mapMax : vec2<f32>,
 };
 
-@group(1) @binding(0) var smokeSampler : sampler;
-@group(1) @binding(1) var smokeField : texture_2d<f32>;
-@group(1) @binding(2) var<uniform> smokeParams : SmokeFieldParams;
+@group(1) @binding(0) var<storage, read> walls : LocalWallBuffer;
+@group(2) @binding(0) var smokeSampler : sampler;
+@group(2) @binding(1) var smokeField : texture_2d<f32>;
+@group(2) @binding(2) var<uniform> smokeParams : SmokeFieldParams;
+@group(2) @binding(3) var obstacleField : texture_2d<f32>;
 
 struct VSOut {
     @builtin(position) position : vec4<f32>,
@@ -25,6 +35,8 @@ struct VSOut {
     @location(4) density : f32,
     @location(5) effectType : f32,
     @location(6) worldPos : vec2<f32>,
+    @location(7) origin : vec2<f32>,
+    @location(8) @interpolate(flat, either) sourceIndex : u32,
 };
 
 @vertex
@@ -37,6 +49,7 @@ fn vs_main(
     @location(5) i_softness : f32,
     @location(6) i_density  : f32,
     @location(7) i_effectType : f32,
+    @builtin(instance_index) instanceIndex : u32,
 ) -> VSOut {
     var out : VSOut;
 
@@ -50,8 +63,32 @@ fn vs_main(
     out.density = i_density;
     out.effectType = i_effectType;
     out.worldPos = worldPos;
+    out.origin = i_position;
+    out.sourceIndex = instanceIndex;
 
     return out;
+}
+
+fn cross2(a : vec2<f32>, b : vec2<f32>) -> f32 {
+    return a.x * b.y - a.y * b.x;
+}
+
+fn segmentBlocks(origin : vec2<f32>, fragPos : vec2<f32>, wall : vec4<f32>) -> bool {
+    let p = origin;
+    let r = fragPos - origin;
+    let q = wall.xy;
+    let s = wall.zw - wall.xy;
+    let rxs = cross2(r, s);
+
+    if (abs(rxs) < 0.0001) {
+        return false;
+    }
+
+    let qp = q - p;
+    let t = cross2(qp, s) / rxs;
+    let u = cross2(qp, r) / rxs;
+
+    return t >= 0.0 && t < 0.999 && u >= 0.0 && u <= 1.0;
 }
 
 fn hash21(p : vec2<f32>) -> f32 {
@@ -117,11 +154,88 @@ fn sampleSmokeField(worldPos : vec2<f32>) -> vec3<f32> {
     return vec3<f32>(0.0, 0.0, sample.x);
 }
 
+fn sampleObstacleField(worldPos : vec2<f32>) -> f32 {
+    let size = max(smokeParams.mapMax - smokeParams.mapMin, vec2<f32>(1.0, 1.0));
+    let uv = clamp(vec2<f32>(
+        (worldPos.x - smokeParams.mapMin.x) / size.x,
+        (smokeParams.mapMax.y - worldPos.y) / size.y
+    ), vec2<f32>(0.0), vec2<f32>(1.0));
+    return textureSampleLevel(obstacleField, smokeSampler, uv, 0.0).x;
+}
+
+fn insideMapBounds(worldPos : vec2<f32>) -> bool {
+    return worldPos.x >= smokeParams.mapMin.x
+        && worldPos.x <= smokeParams.mapMax.x
+        && worldPos.y >= smokeParams.mapMin.y
+        && worldPos.y <= smokeParams.mapMax.y;
+}
+
 @fragment
 fn fs_main(input: VSOut) -> @location(0) vec4<f32> {
     let dist = length(input.localPos);
     let w = fwidth(dist);
     let field = sampleSmokeField(input.worldPos);
+
+    if (input.effectType > 1.5) {
+        let progress = clamp(input.softness, 0.0, 1.0);
+        let life = clamp(input.density, 0.0, 1.0);
+        let shockRadius = 0.16 + progress * 0.78;
+        let ringWidth = 0.05 + progress * 0.05;
+        let shockRing = ringProfile(dist, shockRadius, ringWidth) * (0.7 + life * 0.6);
+        let rippleRing = ringProfile(dist, shockRadius + 0.12, ringWidth * 1.6)
+            * (1.0 - progress)
+            * 0.46;
+        let core = (1.0 - smoothstep(0.0, 0.24 + progress * 0.1, dist)) * life;
+        let secondaryRing = ringProfile(dist, shockRadius + 0.18, ringWidth * 0.92)
+            * (1.0 - smoothstep(0.0, 0.44, progress))
+            * 0.72;
+        let dustBloom = (1.0 - smoothstep(0.04, 1.04, dist))
+            * (1.0 - smoothstep(0.08, 0.82, progress))
+            * (0.54 + life * 1.08);
+        let haze = (1.0 - smoothstep(0.08, 1.0, dist))
+            * (1.0 - smoothstep(0.18, 0.96, progress))
+            * 0.38;
+        let shimmer = fbm(
+            input.localPos * (9.0 + progress * 5.0)
+            + vec2<f32>(uniforms.timeSec * 3.8, -uniforms.timeSec * 2.4)
+        );
+        let tailFade = 1.0 - smoothstep(0.72, 1.0, progress);
+        let alpha = clamp(
+            core * 1.24
+            + shockRing * 1.34
+            + rippleRing * 1.12
+            + secondaryRing * 1.08
+            + dustBloom * 0.72
+            + haze * 0.18,
+            0.0,
+            1.85
+        ) * input.alpha * tailFade * (0.9 + shimmer * 0.14);
+        let hotCore = vec3<f32>(1.0, 0.96, 0.84);
+        let gold = vec3<f32>(1.0, 0.8, 0.46);
+        let ember = vec3<f32>(1.0, 0.48, 0.16);
+        var finalColor = mix(ember, gold, clamp(shockRing + secondaryRing * 0.42 + haze * 0.22, 0.0, 1.0));
+        finalColor = mix(finalColor, hotCore, clamp(core + rippleRing * 0.28, 0.0, 1.0));
+        finalColor = mix(finalColor, vec3<f32>(0.78, 0.72, 0.64), clamp(dustBloom * 0.5, 0.0, 0.42));
+        finalColor = mix(finalColor, input.color, 0.28);
+        return vec4<f32>(finalColor * alpha, alpha);
+    }
+
+    if (!insideMapBounds(input.worldPos)) {
+        discard;
+    }
+
+    if (sampleObstacleField(input.worldPos) > 0.65) {
+        discard;
+    }
+
+    let sourceIndex = min(input.sourceIndex, MAX_AREA_EFFECT_INSTANCES - 1u);
+    let wallCount = min(u32(walls.counts[sourceIndex].x), MAX_LOCAL_WALLS);
+    let wallBase = sourceIndex * MAX_LOCAL_WALLS;
+    for (var i = 0u; i < wallCount; i = i + 1u) {
+        if (segmentBlocks(input.origin, input.worldPos, walls.segments[wallBase + i])) {
+            discard;
+        }
+    }
 
     if (input.effectType < 0.5) {
         let displacedLocal = input.localPos + field.xy;
@@ -157,112 +271,35 @@ fn fs_main(input: VSOut) -> @location(0) vec4<f32> {
         return vec4<f32>(finalColor * alpha, alpha);
     }
 
-    if (input.effectType > 1.5) {
-        let progress = clamp(input.softness, 0.0, 1.0);
-        let life = clamp(input.density, 0.0, 1.0);
-        let shockRadius = 0.16 + progress * 0.78;
-        let ringWidth = 0.05 + progress * 0.05;
-        let shockRing = ringProfile(dist, shockRadius, ringWidth) * (0.7 + life * 0.6);
-        let rippleRing = ringProfile(dist, shockRadius + 0.12, ringWidth * 1.6)
-            * (1.0 - progress)
-            * 0.46;
-        let core = (1.0 - smoothstep(0.0, 0.24 + progress * 0.1, dist)) * life;
-        let secondaryRing = ringProfile(dist, shockRadius + 0.18, ringWidth * 0.92)
-            * (1.0 - smoothstep(0.0, 0.44, progress))
-            * 0.72;
-        let dustBloom = (1.0 - smoothstep(0.05, 0.94, dist))
-            * (1.0 - smoothstep(0.0, 0.42, progress))
-            * (0.34 + life * 0.9);
-        let haze = (1.0 - smoothstep(0.08, 1.0, dist))
-            * (1.0 - smoothstep(0.06, 0.54, progress))
-            * 0.22;
-        let shimmer = fbm(
-            input.localPos * (9.0 + progress * 5.0)
-            + vec2<f32>(uniforms.timeSec * 3.8, -uniforms.timeSec * 2.4)
-        );
-        let tailFade = 1.0 - smoothstep(0.46, 1.0, progress);
-        let alpha = clamp(
-            core * 1.08
-            + shockRing * 1.12
-            + rippleRing
-            + secondaryRing
-            + dustBloom * 0.42
-            + haze * 0.08,
-            0.0,
-            1.35
-        ) * input.alpha * tailFade * (0.9 + shimmer * 0.14);
-        let hotCore = vec3<f32>(1.0, 0.96, 0.84);
-        let gold = vec3<f32>(1.0, 0.8, 0.46);
-        let ember = vec3<f32>(1.0, 0.48, 0.16);
-        var finalColor = mix(ember, gold, clamp(shockRing + secondaryRing * 0.42 + haze * 0.22, 0.0, 1.0));
-        finalColor = mix(finalColor, hotCore, clamp(core + rippleRing * 0.28, 0.0, 1.0));
-        finalColor = mix(finalColor, vec3<f32>(0.78, 0.72, 0.64), clamp(dustBloom * 0.5, 0.0, 0.42));
-        finalColor = mix(finalColor, input.color, 0.28);
-        return vec4<f32>(finalColor * alpha, alpha);
-    }
-
-    let p = input.localPos;
-    let upward = clamp((p.y + 1.0) * 0.5, 0.0, 1.0);
-    let centerBias = 1.0 - smoothstep(0.0, 0.78, abs(p.x));
-    let radial = 1.0 - smoothstep(0.04, 1.02, dist);
-    let stem = 1.0 - smoothstep(0.34, 1.08, abs(p.x) + upward * 0.2);
-    let crown = 1.0 - smoothstep(0.44, 1.18, abs(p.x) + (1.0 - upward) * 0.28);
-    let envelope = radial * mix(stem, crown, upward);
-
-    let drift = uniforms.timeSec * (2.1 + input.density * 0.45);
-    let flow = vec2<f32>(
-        p.x * (3.4 + upward * 1.3),
-        p.y * 4.9 - drift
+    let drift = vec2<f32>(uniforms.timeSec * 0.012, -uniforms.timeSec * 0.009);
+    let warp = vec2<f32>(
+        fbm(input.localPos * 2.2 + vec2<f32>(2.1, -0.7) + drift) - 0.5,
+        fbm(input.localPos.yx * 2.0 + vec2<f32>(-1.3, 3.4) - drift * 0.8) - 0.5
     );
-    let curl = fbm(flow + vec2<f32>(0.0, -upward * 1.8));
-    let ridge = ridgeFbm(flow * vec2<f32>(1.4, 1.9) + vec2<f32>(2.8, -1.6));
-    let tonguesNoise = fbm(flow * 2.35 + vec2<f32>(4.3, 1.2));
-    let fineTongues = ridgeFbm(flow * 4.2 + vec2<f32>(-2.2, 5.1));
-    let sideLick = sin((p.x * 10.0 + curl * 4.0) + drift * 2.4) * 0.5 + 0.5;
-    let flameShape = smoothstep(
-        0.2,
-        0.92,
-        curl * 0.34 + ridge * 0.32 + tonguesNoise * 0.24 + fineTongues * 0.18 - upward * 0.05
-    );
-    let tongues = envelope * flameShape;
-    let innerTongues = tongues * smoothstep(0.18, 0.92, ridge + fineTongues * 0.45);
-    let sideTongues = envelope * smoothstep(0.48, 0.94, sideLick) * centerBias * (0.16 + 0.84 * (1.0 - upward));
+    let warpedLocal = input.localPos + warp * 0.18;
+    let warpedDist = length(warpedLocal);
+    let uv = warpedLocal * 2.35;
+    let cloudA = fbm(uv + drift);
+    let cloudB = fbm(uv.yx * 1.48 + vec2<f32>(3.4, -1.7) - drift * 0.82);
+    let cloudC = fbm(uv * 2.2 + vec2<f32>(-4.1, 1.9) + drift * 0.24);
+    let billow = clamp(cloudA * 0.5 + cloudB * 0.32 + cloudC * 0.18, 0.0, 1.0);
+    let body = 1.0 - smoothstep(0.16 - w, 1.08 + w, warpedDist);
+    let core = 1.0 - smoothstep(0.0, 0.46 + w, warpedDist);
+    let shell = smoothstep(0.42, 1.02, warpedDist) * (1.0 - smoothstep(0.9 - w, 1.34 + w, warpedDist));
+    let edgeWisps = shell * smoothstep(0.5, 0.92, billow) * 0.42;
+    let voids = smoothstep(0.64, 0.95, cloudB) * body * (1.0 - core) * 0.26;
+    let softSmoke = body * (0.34 + billow * 0.52) + core * 0.24 + edgeWisps - voids;
+    let alpha = clamp(softSmoke * input.alpha * 1.16, 0.0, 0.92);
 
-    let hotPocketNoise = ridgeFbm(flow * 3.2 + vec2<f32>(6.8, -3.4));
-    let hotPocket = smoothstep(0.56, 0.94, hotPocketNoise) * tongues * (1.0 - upward * 0.45);
-    let whiteCore = hotPocket * smoothstep(0.1, 0.65, centerBias + (1.0 - upward) * 0.45);
+    let emberSmoke = vec3<f32>(0.44, 0.025, 0.018);
+    let redBody = vec3<f32>(1.08, 0.035, 0.026);
+    let hotRed = vec3<f32>(1.55, 0.08, 0.045);
+    let warmCore = vec3<f32>(1.82, 0.2, 0.08);
 
-    let sootNoise = fbm(flow * 1.3 + vec2<f32>(-1.8, 2.6));
-    let sootFringe = envelope
-        * smoothstep(0.12, 0.44, abs(p.x) + upward * 0.08)
-        * (1.0 - smoothstep(0.44, 0.82, abs(p.x) + upward * 0.08))
-        * smoothstep(0.34, 0.88, sootNoise);
-
-    let shimmer = ridgeFbm(flow * 6.2 + vec2<f32>(drift * 0.4, -drift * 0.22));
-    let heatHalo = envelope
-        * (1.0 - smoothstep(0.18, 0.92, dist))
-        * (0.16 + 0.84 * smoothstep(0.42, 0.96, shimmer))
-        * (0.45 + 0.55 * (1.0 - upward));
-
-    let emberFieldA = noise21(flow * 6.8 + vec2<f32>(uniforms.timeSec * 4.8, -uniforms.timeSec * 2.0));
-    let emberFieldB = ridgeFbm(flow * 5.6 + vec2<f32>(-3.8, 2.1) + vec2<f32>(uniforms.timeSec * 1.2, -uniforms.timeSec * 3.4));
-    let embers = smoothstep(0.88, 0.985, emberFieldA) * envelope * (0.45 + 0.55 * (1.0 - upward))
-        + smoothstep(0.82, 0.96, emberFieldB) * sootFringe * 0.55;
-
-    let flameAlpha = tongues * 1.08 + innerTongues * 0.48 + sideTongues * 0.28 + heatHalo * 0.24;
-    let alpha = clamp((flameAlpha + embers * 0.78 - sootFringe * 0.18) * input.alpha, 0.0, 1.35);
-
-    let deepRed = vec3<f32>(0.86, 0.09, 0.01);
-    let orange = vec3<f32>(1.0, 0.42, 0.04);
-    let gold = vec3<f32>(1.0, 0.72, 0.16);
-    let whiteHot = vec3<f32>(1.0, 0.95, 0.72);
-    let sootColor = vec3<f32>(0.18, 0.08, 0.04);
-
-    var finalColor = mix(deepRed, orange, clamp(tongues * 0.78 + sideTongues * 0.2, 0.0, 1.0));
-    finalColor = mix(finalColor, gold, clamp(innerTongues * 0.72 + hotPocket * 0.34, 0.0, 1.0));
-    finalColor = mix(finalColor, whiteHot, clamp(whiteCore * 1.25, 0.0, 1.0));
-    finalColor = mix(finalColor, sootColor, sootFringe * 0.42);
-    finalColor = finalColor + embers * vec3<f32>(1.35, 0.82, 0.22) + heatHalo * vec3<f32>(0.22, 0.08, 0.02);
+    var finalColor = mix(emberSmoke, redBody, clamp(body * 0.76 + billow * 0.18, 0.0, 1.0));
+    finalColor = mix(finalColor, hotRed, clamp(edgeWisps * 0.52 + core * 0.28, 0.0, 0.72));
+    finalColor = mix(finalColor, warmCore, clamp(core * 0.22, 0.0, 0.28));
+    finalColor = finalColor + shell * vec3<f32>(0.16, 0.006, 0.003);
 
     return vec4<f32>(finalColor * alpha, alpha);
 }

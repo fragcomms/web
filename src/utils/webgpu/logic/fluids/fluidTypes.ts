@@ -1,10 +1,13 @@
 export type FluidSimPipelineSet = {
+  obstaclePipeline: GPUComputePipeline;
   velocityAdvectPipeline: GPURenderPipeline;
   forceInjectPipeline: GPURenderPipeline;
   divergencePipeline: GPURenderPipeline;
   pressureSolvePipeline: GPURenderPipeline;
   projectPipeline: GPURenderPipeline;
   densityPipeline: GPURenderPipeline;
+  obstacleLayout: GPUBindGroupLayout;
+  sampleLayout: GPUBindGroupLayout;
   velocityAdvectLayout: GPUBindGroupLayout;
   forceInjectLayout: GPUBindGroupLayout;
   divergenceLayout: GPUBindGroupLayout;

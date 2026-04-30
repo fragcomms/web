@@ -37,6 +37,11 @@ export class FluidSim {
     this.resetSimulation();
   }
 
+  setWalls(walls: readonly { x1: number; y1: number; x2: number; y2: number }[]) {
+    this.gpu.setWalls(walls);
+    this.resetSimulation();
+  }
+
   getSampleBindGroup() {
     return this.gpu.sampleBindGroup;
   }

@@ -1,6 +1,6 @@
 import { FluidSim } from "../logic/fluids/fluidSim";
 import { DefaultMapConfig, MapRegistry } from "../logic/mapConfig";
-import { createCenteredQuadVertices, createUnitQuadVertices, createWorldQuadVertices } from "../math/quadGeometry";
+import { createCenteredQuadVertices, createUnitQuadVertices } from "../math/quadGeometry";
 import { AreaEffectRenderer } from "../renderers/areaEffectRenderer";
 import { DeathShardRenderer } from "../renderers/deathShardRenderer";
 import { GrenadeRenderer } from "../renderers/grenadeRenderer";
@@ -24,6 +24,7 @@ import {
   createSmokeRenderPipeline,
   createTracerPipeline,
   createVisionPipeline,
+  createWallsLayout,
 } from "./pipelines";
 
 export class Renderer {
@@ -119,16 +120,29 @@ export class Renderer {
     const { device, queue, format, context } = await initWebGPU(canvas);
 
     const globalLayout = createGlobalLayout(device);
+    const wallsLayout = createWallsLayout(device);
 
-    const { pipeline: areaEffectPipeline, smokeFieldLayout } = createAreaEffectPipeline(device, format, globalLayout);
-    const { pipeline: smokeRenderPipeline } = createSmokeRenderPipeline(device, format, globalLayout, smokeFieldLayout);
-    const fluidSimPipelines = createFluidSimPipelines(device);
-    const { pipeline: playerPipeline } = createPlayerPipeline(device, format, globalLayout);
-    const { pipeline: grenadePipeline } = createGrenadePipeline(device, format, globalLayout);
-    const { pipeline: visionPipeline, visionWallsLayout } = createVisionPipeline(
+    const { pipeline: areaEffectPipeline, smokeFieldLayout } = createAreaEffectPipeline(
       device,
       format,
       globalLayout,
+      wallsLayout,
+    );
+    const { pipeline: smokeRenderPipeline } = createSmokeRenderPipeline(
+      device,
+      format,
+      globalLayout,
+      wallsLayout,
+      smokeFieldLayout,
+    );
+    const fluidSimPipelines = createFluidSimPipelines(device);
+    const { pipeline: playerPipeline } = createPlayerPipeline(device, format, globalLayout);
+    const { pipeline: grenadePipeline } = createGrenadePipeline(device, format, globalLayout);
+    const { pipeline: visionPipeline } = createVisionPipeline(
+      device,
+      format,
+      globalLayout,
+      wallsLayout,
       smokeFieldLayout,
     );
     const { pipeline: tracerPipeline } = createTracerPipeline(device, format, globalLayout);
@@ -237,28 +251,77 @@ export class Renderer {
       smokeFieldLayout,
     );
 
+    const maxVisionWalls = 4096;
+    const visionWallBuffer = createDynamicBuffer(
+      device,
+      (4 + maxVisionWalls * 4) * 4,
+      GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    );
+
+    const wallsBindGroup = device.createBindGroup({
+      layout: wallsLayout,
+      entries: [{ binding: 0, resource: { buffer: visionWallBuffer } }],
+    });
+
+    const maxAreaEffectWalls = 64;
+    const areaEffectWallBuffer = createDynamicBuffer(
+      device,
+      (maxAreaEffectInstances * 4 + maxAreaEffectInstances * maxAreaEffectWalls * 4) * 4,
+      GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    );
+
+    const areaEffectWallsBindGroup = device.createBindGroup({
+      layout: wallsLayout,
+      entries: [{ binding: 0, resource: { buffer: areaEffectWallBuffer } }],
+    });
+
     const areaEffectRenderer = new AreaEffectRenderer(
       queue,
       areaEffectPipeline,
       globalBindGroup,
+      areaEffectWallsBindGroup,
       fluidSim.getSampleBindGroup(),
       unitQuadVertexBuffer,
       areaEffectInstanceBuffer,
       maxAreaEffectInstances,
+      areaEffectWallBuffer,
+      maxAreaEffectWalls,
     );
 
     const smokeQuadVertexBuffer = createFloat32Buffer(
       device,
-      createWorldQuadVertices({ minX: -4000, minY: -4000, maxX: 4000, maxY: 4000 }),
+      createUnitQuadVertices(),
       GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     );
+
+    const maxSmokeInstances = 32;
+    const smokeInstanceBuffer = createDynamicBuffer(
+      device,
+      maxSmokeInstances * 4 * 4,
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    );
+    const maxSmokeWalls = 48;
+    const smokeWallBuffer = createDynamicBuffer(
+      device,
+      (maxSmokeInstances * 4 + maxSmokeInstances * maxSmokeWalls * 4) * 4,
+      GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    );
+    const smokeWallsBindGroup = device.createBindGroup({
+      layout: wallsLayout,
+      entries: [{ binding: 0, resource: { buffer: smokeWallBuffer } }],
+    });
 
     const smokeRenderer = new SmokeRenderer(
       queue,
       smokeRenderPipeline,
       globalBindGroup,
       fluidSim.getSampleBindGroup(),
+      smokeWallsBindGroup,
       smokeQuadVertexBuffer,
+      smokeInstanceBuffer,
+      maxSmokeInstances,
+      smokeWallBuffer,
+      maxSmokeWalls,
     );
 
     const maxVisionInstances = 64;
@@ -268,23 +331,11 @@ export class Renderer {
       GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     );
 
-    const maxVisionWalls = 4096;
-    const visionWallBuffer = createDynamicBuffer(
-      device,
-      (4 + maxVisionWalls * 4) * 4,
-      GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    );
-
-    const visionWallsBindGroup = device.createBindGroup({
-      layout: visionWallsLayout,
-      entries: [{ binding: 0, resource: { buffer: visionWallBuffer } }],
-    });
-
     const visionRenderer = new VisionRenderer(
       queue,
       visionPipeline,
       globalBindGroup,
-      visionWallsBindGroup,
+      wallsBindGroup,
       fluidSim.getSampleBindGroup(),
       unitQuadVertexBuffer,
       visionInstanceBuffer,
@@ -353,10 +404,12 @@ export class Renderer {
 
     this.mapRenderer.setMapGeometry(geometry, config);
     this.fluidSim.setBounds(this.mapRenderer.worldBounds);
-    this.smokeRenderer.setBounds(this.mapRenderer.worldBounds);
 
     const walls = this.mapRenderer.getBlockingSegments();
+    this.fluidSim.setWalls(walls);
     this.visionRenderer.setWalls(walls);
+    this.smokeRenderer.setWalls(walls);
+    this.areaEffectRenderer.setWalls(walls);
     this.tracerRenderer.setWalls(walls);
     this.deathShardRenderer.setWalls(walls);
 
@@ -422,6 +475,7 @@ export class Renderer {
     if (!skipFluidSim) {
       this.fluidSim.syncToFrame(frame);
     }
+    const smokeCount = skipFluidSim ? 0 : this.smokeRenderer.upload(frame.smokeSources);
     const visionCount = this.visionRenderer.upload(frame.players, isSecondHalf);
     const shardCount = skipDeathShardEffects ? 0 : this.deathShardRenderer.upload();
     const areaEffectCount = this.areaEffectRenderer.upload(frame.areaEffects);
@@ -445,7 +499,7 @@ export class Renderer {
 
     this.mapRenderer.render(pass, this.globalBindGroup);
     if (!skipFluidSim) {
-      this.smokeRenderer.draw(pass);
+      this.smokeRenderer.draw(pass, smokeCount);
     }
     this.areaEffectRenderer.draw(pass, areaEffectCount);
     this.visionRenderer.draw(pass, visionCount);

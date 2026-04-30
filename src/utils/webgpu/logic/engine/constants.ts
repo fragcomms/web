@@ -6,7 +6,7 @@ export const ENGINE_CONFIG = {
     MUZZLE_OFFSET: 24,
   },
   EFFECTS: {
-    HE_DURATION_SEC: 0.16,
+    HE_DURATION_SEC: 0.42,
     SMOKE_DURATION_SEC: 21,
     INFERNO_FALLBACK_SEC: 7,
   },
