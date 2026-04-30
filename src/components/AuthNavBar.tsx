@@ -42,12 +42,14 @@ export function Navbar({ onNavOffsetChange }: NavbarProps) {
   return (
     <>
       <nav
-        className={`fixed left-0 right-0 top-0 z-50 border-b backdrop-blur-sm transition-all duration-300 ease-out ${
+        className={`fixed left-0 top-0 z-50 border-b backdrop-blur-sm transition-all duration-300 ease-out ${
           isReplayPage && isCollapsed
             ? "-translate-y-full opacity-0 pointer-events-none"
             : "translate-y-0 opacity-100"
         }`}
         style={{
+          width: "100vw",
+          boxSizing: "border-box",
           backgroundColor: "var(--app-surface)",
           borderColor: "var(--app-border)",
           color: "var(--app-foreground)",

@@ -12,8 +12,10 @@ const navItems = [
 export function Navbar() {
   return (
     <nav
-      className="fixed top-0 left-0 right-0 backdrop-blur-sm border-b z-50"
+      className="fixed top-0 left-0 backdrop-blur-sm border-b z-50"
       style={{
+        width: "100vw",
+        boxSizing: "border-box",
         backgroundColor: "var(--app-surface)",
         borderColor: "var(--app-border)",
         color: "var(--app-foreground)",
