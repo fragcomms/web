@@ -4,6 +4,7 @@ export class AudioSyncPlayer {
   private gainNodes: Map<string, GainNode> = new Map();
   private buffers: Map<string, AudioBuffer> = new Map();
   private loadedAudioId: string | null = null;
+  private volumeLevels: Map<string, number> = new Map();
   
   public isPlaying: boolean = false;
   public isReady: boolean = false;
@@ -27,6 +28,7 @@ export class AudioSyncPlayer {
       this.sources.clear();
       this.gainNodes.clear();
       this.buffers.clear();
+      this.volumeLevels.clear();
       this.loadedAudioId = audioId;
     }
 
@@ -103,6 +105,7 @@ export class AudioSyncPlayer {
       let gainNode = this.gainNodes.get(id);
       if (!gainNode) {
         gainNode = this.ctx.createGain();
+        gainNode.gain.value = this.volumeLevels.get(id) ?? 0.5;
         gainNode.connect(this.ctx.destination);
         this.gainNodes.set(id, gainNode);
       }
@@ -129,6 +132,9 @@ export class AudioSyncPlayer {
     return longest;
   }
 
+ 
+ 
+
   stop() {
     if (!this.isPlaying) return;
 
@@ -150,6 +156,15 @@ export class AudioSyncPlayer {
   getBuffers(): Map<string, AudioBuffer> {
     return this.buffers;
   }
+
+  setTrackVolume(discordId: string, volume: number) {
+    this.volumeLevels.set(discordId, volume);
+    const gainNode = this.gainNodes.get(discordId);
+    if(gainNode) {
+      gainNode.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.01);
+    }
+  }
+
 
   setTrackMute(discordId: string, muted: boolean) {
     const gainNode = this.gainNodes.get(discordId);

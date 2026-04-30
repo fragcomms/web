@@ -21,6 +21,7 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
   const [discordUsers, setDiscordUsers] = useState<string[]>([]);
   const [discordNames, setDiscordNames] = useState<Record<string, string>>({});
   const [mutedUsers, setMutedUsers] = useState<Record<string, boolean>>({});
+  const [volumes, setVolumes] = useState<Record<string, number>>({});
   const [audioStartOffsetSec, setAudioStartOffsetSec] = useState(0);
   const [audioDurationSec, setAudioDurationSec] = useState<number | null>(null);
   const [audioSyncWarning, setAudioSyncWarning] = useState<string | null>(null);
@@ -95,6 +96,7 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
           setTranscripts(combined.sort((a, b) => a.start - b.start));
           setDiscordUsers(uniqueIds);
           setMutedUsers(uniqueIds.reduce((acc, uid) => ({ ...acc, [uid]: false }), {}));
+          setVolumes(uniqueIds.reduce((acc, uid) => ({ ...acc, [uid]: 0.5}), {}));
           setTranscriptText("");
         }
 
@@ -146,6 +148,14 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
     });
   }, [audioPlayerRef]);
 
+  const setVolume = useCallback((discordId: string, volume: number) => {
+    setVolumes(prev => ({ ...prev, [discordId]: volume }));
+    if(audioPlayerRef.current) {
+      audioPlayerRef.current.setTrackVolume(discordId, volume);
+    }
+
+  }, [audioPlayerRef]);
+
   return {
     transcriptText,
     transcripts,
@@ -155,6 +165,8 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
     filteredUser,
     handleFilteredUser,
     toggleMute,
+    volumes,
+    setVolume,
     audioStartOffsetSec,
     audioStartsFirst,
     audioDurationSec,

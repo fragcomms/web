@@ -62,6 +62,8 @@ export default function ReplayPage() {
     filteredUser,
     handleFilteredUser,
     toggleMute,
+    volumes,
+    setVolume,
     audioStartOffsetSec,
     audioStartsFirst,
     audioDurationSec,
@@ -237,6 +239,19 @@ export default function ReplayPage() {
     ticksPerSecond
   );
 
+  const activeUserIds = useMemo(() => {
+    const offset = Number(audioStartOffsetSec) || 0;
+    const ids = new Set<string>();
+    for (const t of transcripts) {
+      const adjustedStart = audioStartsFirst ? t.start - offset : t.start + offset;
+      const adjustedEnd = audioStartsFirst ? t.end - offset : t.end + offset;
+      if (currentTimeSec >= adjustedStart && currentTimeSec <= adjustedEnd) {
+        ids.add(t.discordId);
+      }
+    }
+    return ids;
+  }, [transcripts, currentTimeSec, audioStartOffsetSec, audioStartsFirst]);
+
   
 
   
@@ -277,7 +292,10 @@ export default function ReplayPage() {
       <div className="w-full">
         <MuteSidebar
           discordUsers={discordUsers}
+          activeUserIds={activeUserIds}
           mutedUsers={mutedUsers}
+          volumes={volumes}
+          onVolumeChange={setVolume}
           filteredUser={filteredUser}
           onFilteredUser={handleFilteredUser}
           discordNames={discordNames}
