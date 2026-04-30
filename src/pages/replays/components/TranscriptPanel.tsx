@@ -20,12 +20,36 @@ interface TranscriptPanelProps {
   onDownloadAudio: () => void;
   syncOffsetSec: number;
   syncStartsFirst: boolean;
+  onSeek?: (timeSec: number) => void;
+  roundStartTicks?: number[];
+  replayStartTick?: number;
+  ticksPerSecond?: number;
 }
 
 export const TranscriptPanel = memo(function TranscriptPanel(
-  { transcripts, mutedUsers, filteredUser, discordNames, transcriptText, formatTime, currentTimeSec, onDownloadTranscript, onDownloadAudio, syncOffsetSec = 0, syncStartsFirst = true }: TranscriptPanelProps,
+  { transcripts, mutedUsers, filteredUser, discordNames, transcriptText, formatTime, currentTimeSec, onDownloadTranscript, onDownloadAudio, syncOffsetSec = 0, syncStartsFirst = true, onSeek, roundStartTicks = [], replayStartTick = 0, ticksPerSecond = 1 }: TranscriptPanelProps,
 ) {
   const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Helper function to get round number from tick
+  const getRoundFromTick = (tick: number): number => {
+    if (roundStartTicks.length === 0) return 1;
+    let round = 1;
+    for (let i = 0; i < roundStartTicks.length; i++) {
+      if (tick >= roundStartTicks[i]) round = i + 1;
+      else break;
+    }
+    return round;
+  };
+
+  // Helper function to get time within a round
+  const getTimeInRound = (startTimeSec: number): number => {
+    const tick = replayStartTick + startTimeSec * ticksPerSecond;
+    const roundIndex = Math.max(0, getRoundFromTick(tick) - 1);
+    const roundStartTick = roundStartTicks[roundIndex] ?? replayStartTick;
+    const roundStartSec = (roundStartTick - replayStartTick) / ticksPerSecond;
+    return Math.max(0, startTimeSec - roundStartSec);
+  };
 
   const offset = Number(syncOffsetSec) || 0;
   const visibleTranscripts = useMemo(
@@ -117,17 +141,27 @@ export const TranscriptPanel = memo(function TranscriptPanel(
                 <div
                   key={i}
                   data-segment-index={i}
-                  className={`flex flex-col rounded-md border p-2 transition-all ${
+                  onClick={() => {
+                    const adjustedStart = syncStartsFirst 
+                      ? t.start - syncOffsetSec 
+                      : t.start + syncOffsetSec;
+                    const seekTime = Math.max(0, adjustedStart);
+                    onSeek?.(seekTime);
+                  }}
+                  className={`flex flex-col rounded-md border p-2 transition-all cursor-pointer ${
                     activeIndices.has(i)
                       ? "border-cyan-500 bg-cyan-100/70 shadow-[0_0_0_1px_rgba(14,116,144,0.35)] dark:border-cyan-400 dark:bg-cyan-500/10 dark:shadow-[0_0_0_1px_rgba(34,211,238,0.45)]"
-                      : "border-transparent"
+                      : "border-transparent hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-md"
                   } 
                   ${(filteredUser !== null ? filteredUser !== t.discordId : mutedUsers[t.discordId]) ? "opacity-30" : ""}`}>                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                      [{formatTime(syncStartsFirst ? t.start - syncOffsetSec : t.start + syncOffsetSec)}]
-                    </span>
                     <span className="font-semibold text-blue-700 dark:text-blue-400 text-xs truncate max-w-37.5">
                       {discordNames[t.discordId] || t.discordId}
+                    </span>
+                    <span className="text-xs text-purple-600 dark:text-purple-400 font-mono">
+                      RND {getRoundFromTick(replayStartTick + (syncStartsFirst ? t.start - syncOffsetSec : t.start + syncOffsetSec) * ticksPerSecond)} [{formatTime(getTimeInRound(syncStartsFirst ? t.start - syncOffsetSec : t.start + syncOffsetSec))}]
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                      [{formatTime(syncStartsFirst ? t.start - syncOffsetSec : t.start + syncOffsetSec)}]
                     </span>
                   </div>
                   <span className="text-slate-800 dark:text-slate-200 leading-snug">{t.text}</span>

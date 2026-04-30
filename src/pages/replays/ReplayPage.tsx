@@ -406,6 +406,10 @@ export default function ReplayPage() {
           }}
           syncOffsetSec={audioStartOffsetSec}
           syncStartsFirst={audioStartsFirst}
+          onSeek={handleSeek}
+          roundStartTicks={roundStartTicks}
+          replayStartTick={replayStartTick}
+          ticksPerSecond={ticksPerSecond}
         />
 
       </div>
