@@ -436,9 +436,9 @@ export default function ReplayPage() {
         />
       )}
 
-      <div className="w-full border-t border-slate-700 pt-4 pb-4 text-white text-sm">
-        <div className="max-w-[95vw] mx-auto px-4">
-          <div className="mb-2 text-center text-2xl font-semibold tracking-wide text-slate-200">
+      <div className="w-full border-t border-slate-300/80 dark:border-slate-700/70 mt-6 pt-4 pb-6 text-slate-800 dark:text-white text-sm">
+        <div className="max-w-[95vw] mx-auto mt-6 px-4">
+          <div className="mb-2 text-center text-2xl font-semibold tracking-wide text-slate-800 dark:text-slate-200">
             Audio Stats
           </div>
           <div className="flex justify-center">

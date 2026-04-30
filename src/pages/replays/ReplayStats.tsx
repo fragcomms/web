@@ -45,11 +45,13 @@ type PlayerStatsResponse = {
 const matchStatColumns = [
 	"Player Name",
 	"Kills",
-	"Assists",
 	"Deaths",
+	"Assists",
+	"ADR",
 	"HS Kills",
-	"Damage",
+	"HS%",
 	"Util Damage",
+	"Util ADR",
 	"First Kills",
 	"First Deaths",
 	"KAST Rounds",
@@ -57,9 +59,7 @@ const matchStatColumns = [
 	"4K",
 	"5K",
 	"KAST%",
-	"ADR",
-	"HS%",
-	"Util ADR",
+	"Damage",
 ] as const;
 
 const teamStatColumns = matchStatColumns.slice(1);
@@ -77,11 +77,13 @@ const toMatchRows = (teamPlayers: ReplayPlayer[]) =>
 const statKeyByColumn: Record<(typeof matchStatColumns)[number], keyof AdvancedStats | null> = {
 	"Player Name": null,
 	"Kills": "kills",
-	"Assists": "assists",
 	"Deaths": "deaths",
+	"Assists": "assists",
+	"ADR": "adr",
 	"HS Kills": "hs_kills",
-	"Damage": "damage",
+	"HS%": "hs_pct",
 	"Util Damage": "util_damage",
+	"Util ADR": "util_adr",
 	"First Kills": "first_kills",
 	"First Deaths": "first_deaths",
 	"KAST Rounds": "kast_rounds",
@@ -89,19 +91,19 @@ const statKeyByColumn: Record<(typeof matchStatColumns)[number], keyof AdvancedS
 	"4K": "4k",
 	"5K": "5k",
 	"KAST%": "kast_pct",
-	"ADR": "adr",
-	"HS%": "hs_pct",
-	"Util ADR": "util_adr",
+	"Damage": "damage",
 };
 
 const statDescriptionByColumn: Record<(typeof matchStatColumns)[number], string> = {
 	"Player Name": "Player display name or Steam ID when the name is unavailable.",
 	"Kills": "Total enemy kills recorded in the match.",
-	"Assists": "Kills where this player assisted a teammate.",
 	"Deaths": "Total times the player died.",
+	"Assists": "Kills where this player assisted a teammate.",
+	"ADR": "Average damage dealt per round.",
 	"HS Kills": "Kills secured specifically with headshots.",
-	"Damage": "Total damage dealt to opponents across all rounds.",
+	"HS%": "Percentage of kills that were headshots.",
 	"Util Damage": "Damage dealt using utility such as grenades and molotovs.",
+	"Util ADR": "Average utility damage dealt per round.",
 	"First Kills": "Opening kills where this player got the first frag in a round.",
 	"First Deaths": "Rounds where this player was the first to die.",
 	"KAST Rounds": "Number of rounds where the player had KAST impact.",
@@ -109,9 +111,7 @@ const statDescriptionByColumn: Record<(typeof matchStatColumns)[number], string>
 	"4K": "Rounds with exactly 4 kills by this player.",
 	"5K": "Rounds with 5 kills by this player (ace).",
 	"KAST%": "Percent of rounds with Kill, Assist, Survived, or Traded.",
-	"ADR": "Average damage dealt per round.",
-	"HS%": "Percentage of kills that were headshots.",
-	"Util ADR": "Average utility damage dealt per round.",
+	"Damage": "Total damage dealt to opponents across all rounds.",
 };
 
 export default function ReplayStats({
@@ -196,7 +196,14 @@ export default function ReplayStats({
 
 		const value = playerStats[statKey];
 		// Keep missing or zero-like values readable in the table.
-		return value ?? "--";
+		if (value === undefined || value === null) return "--";
+		
+		// Add % suffix for percentage columns
+		if ((column === "HS%" || column === "KAST%") && typeof value === "number") {
+			return `${value}%`;
+		}
+		
+		return value;
 	};
 
 	const renderTeamRows = (players: Array<ReplayPlayer | undefined>, side: TeamSide) => {
@@ -207,11 +214,11 @@ export default function ReplayStats({
 
 		return players.map((player, index) => (
 			<tr key={`${rowKeyPrefix}-${player?.steamid ?? index}`} className="border-t border-slate-300/80 dark:border-slate-700/70">
-				<td className={`px-3 py-2 whitespace-nowrap font-medium ${teamTextClass}`}>
+				<td className={`px-2 py-2 whitespace-nowrap font-medium ${teamTextClass}`}>
 					{player?.name || player?.steamid || `${fallbackPrefix} Player ${index + 1}`}
 				</td>
 				{teamStatColumns.map((column) => (
-					<td key={`${cellKeyPrefix}-${index}-${column}`} className="px-3 py-2 whitespace-nowrap text-slate-600 dark:text-slate-400">
+					<td key={`${cellKeyPrefix}-${index}-${column}`} className="px-2 py-2 whitespace-nowrap text-center text-slate-600 dark:text-slate-400">
 						{renderStatCell(player, column)}
 					</td>
 				))}
@@ -228,14 +235,14 @@ export default function ReplayStats({
 				</div>
 				{/* Horizontal scrolling preserves all stat columns on smaller screens. */}
 				<div className="overflow-x-auto rounded-lg border border-slate-300 dark:border-slate-700 bg-white/90 dark:bg-slate-900/60">
-					<table className="min-w-max w-full text-xs text-slate-700 dark:text-slate-200">
+					<table className="min-w-max w-full text-xs text-slate-700 dark:text-slate-200" style={{ tableLayout: "fixed" }}>
 						{/* Column headers stay fixed at the top of the table. */}
 						<thead className="bg-slate-100/90 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100">
 							<tr>
 								{matchStatColumns.map((column) => (
-									<th key={column} className="px-3 py-2 text-left font-semibold whitespace-nowrap">
-										<span className="inline-flex items-center gap-1.5">
-											{column}
+									<th key={column} className="px-2 py-2 font-semibold whitespace-nowrap">
+										<span className="flex items-center justify-center gap-1.5">
+											<span className="text-center">{column}</span>
 											<span
 												className="inline-flex h-4 w-4 cursor-help select-none items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white"
 												aria-label={`${column} info`}
@@ -258,7 +265,7 @@ export default function ReplayStats({
 							{renderTeamRows(leftTeamMatchRows, "left")}
 
 							<tr className="bg-slate-100/80 dark:bg-slate-800/50">
-								<td colSpan={matchStatColumns.length} className="px-3 py-1 border-y border-slate-300 dark:border-slate-600" aria-hidden="true">
+								<td colSpan={matchStatColumns.length} className="px-2 py-1 border-y border-slate-300 dark:border-slate-600" aria-hidden="true">
 									&nbsp;
 								</td>
 							</tr>
