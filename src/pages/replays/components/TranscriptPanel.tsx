@@ -27,11 +27,16 @@ export const TranscriptPanel = memo(function TranscriptPanel(
 ) {
   const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const visibleTranscripts = useMemo(
-    () => transcripts.filter((segment) => segment.start >= 0),
-    [transcripts],
-  );
   const offset = Number(syncOffsetSec) || 0;
+  const visibleTranscripts = useMemo(
+    () => transcripts.filter((segment) => {
+      const adjustedEnd = syncStartsFirst 
+        ? segment.end - offset 
+        : segment.end + offset;
+      return adjustedEnd >= 0;
+    }),
+    [transcripts, offset, syncStartsFirst],
+  );
   const activeIndices = useMemo(() => {
     const indices = new Set<number>();
     for (let index = 0; index < visibleTranscripts.length; index++) {
