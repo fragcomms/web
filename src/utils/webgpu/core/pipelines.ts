@@ -2,6 +2,7 @@ import areaEffectShaderWGSL from "../shaders/areaEffect.wgsl?raw";
 import grenadeShaderWGSL from "../shaders/grenade.wgsl?raw";
 import mapImageShaderWGSL from "../shaders/mapImage.wgsl?raw";
 import mapShaderWGSL from "../shaders/mapOutline.wgsl?raw";
+import nameLabelShaderWGSL from "../shaders/nameLabel.wgsl?raw";
 import playerShaderWGSL from "../shaders/player.wgsl?raw";
 import shardShaderWGSL from "../shaders/shard.wgsl?raw";
 import smokeFieldRenderShaderWGSL from "../shaders/smokeFieldRender.wgsl?raw";
@@ -91,6 +92,68 @@ export function createPlayerPipeline(device: GPUDevice, format: GPUTextureFormat
   });
 
   return { pipeline };
+}
+
+export function createNameLabelPipeline(device: GPUDevice, format: GPUTextureFormat, globalLayout: GPUBindGroupLayout) {
+  const module = device.createShaderModule({ code: nameLabelShaderWGSL });
+  const labelLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
+      { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: {} },
+    ],
+  });
+
+  const pipeline = device.createRenderPipeline({
+    layout: device.createPipelineLayout({
+      bindGroupLayouts: [globalLayout, labelLayout],
+    }),
+    vertex: {
+      module,
+      entryPoint: "vs_main",
+      buffers: [
+        {
+          arrayStride: 2 * 4,
+          stepMode: "vertex",
+          attributes: [{ shaderLocation: 0, offset: 0, format: "float32x2" }],
+        },
+        {
+          arrayStride: 9 * 4,
+          stepMode: "instance",
+          attributes: [
+            { shaderLocation: 1, offset: 0, format: "float32x2" },
+            { shaderLocation: 2, offset: 2 * 4, format: "float32x2" },
+            { shaderLocation: 3, offset: 4 * 4, format: "float32x2" },
+            { shaderLocation: 4, offset: 6 * 4, format: "float32x2" },
+            { shaderLocation: 5, offset: 8 * 4, format: "float32" },
+          ],
+        },
+      ],
+    },
+    fragment: {
+      module,
+      entryPoint: "fs_main",
+      targets: [{
+        format,
+        blend: {
+          color: {
+            srcFactor: "one",
+            dstFactor: "one-minus-src-alpha",
+            operation: "add",
+          },
+          alpha: {
+            srcFactor: "one",
+            dstFactor: "one-minus-src-alpha",
+            operation: "add",
+          },
+        },
+      }],
+    },
+    primitive: {
+      topology: "triangle-list",
+    },
+  });
+
+  return { pipeline, labelLayout };
 }
 
 export function createGrenadePipeline(device: GPUDevice, format: GPUTextureFormat, globalLayout: GPUBindGroupLayout) {

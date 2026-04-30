@@ -5,6 +5,7 @@ import { AreaEffectRenderer } from "../renderers/areaEffectRenderer";
 import { DeathShardRenderer } from "../renderers/deathShardRenderer";
 import { GrenadeRenderer } from "../renderers/grenadeRenderer";
 import { MapRenderer } from "../renderers/mapRenderer";
+import { NameLabelRenderer } from "../renderers/nameLabelRenderer";
 import { PlayerRenderer } from "../renderers/playerRenderer";
 import { SmokeRenderer } from "../renderers/smokeRenderer";
 import { TracerRenderer } from "../renderers/tracerRenderer";
@@ -19,6 +20,7 @@ import {
   createGrenadePipeline,
   createMapImagePipeline,
   createMapPipeline,
+  createNameLabelPipeline,
   createPlayerPipeline,
   createShardPipeline,
   createSmokeRenderPipeline,
@@ -36,6 +38,7 @@ export class Renderer {
   private globalBindGroup: GPUBindGroup;
 
   private playerRenderer: PlayerRenderer;
+  private nameLabelRenderer: NameLabelRenderer;
   private grenadeRenderer: GrenadeRenderer;
   private areaEffectRenderer: AreaEffectRenderer;
   private visionRenderer: VisionRenderer;
@@ -91,6 +94,7 @@ export class Renderer {
     globalUniformBuffer: GPUBuffer,
     globalBindGroup: GPUBindGroup,
     playerRenderer: PlayerRenderer,
+    nameLabelRenderer: NameLabelRenderer,
     grenadeRenderer: GrenadeRenderer,
     areaEffectRenderer: AreaEffectRenderer,
     visionRenderer: VisionRenderer,
@@ -106,6 +110,7 @@ export class Renderer {
     this.globalUniformBuffer = globalUniformBuffer;
     this.globalBindGroup = globalBindGroup;
     this.playerRenderer = playerRenderer;
+    this.nameLabelRenderer = nameLabelRenderer;
     this.grenadeRenderer = grenadeRenderer;
     this.areaEffectRenderer = areaEffectRenderer;
     this.visionRenderer = visionRenderer;
@@ -137,6 +142,7 @@ export class Renderer {
     );
     const fluidSimPipelines = createFluidSimPipelines(device);
     const { pipeline: playerPipeline } = createPlayerPipeline(device, format, globalLayout);
+    const { pipeline: nameLabelPipeline, labelLayout } = createNameLabelPipeline(device, format, globalLayout);
     const { pipeline: grenadePipeline } = createGrenadePipeline(device, format, globalLayout);
     const { pipeline: visionPipeline } = createVisionPipeline(
       device,
@@ -237,6 +243,24 @@ export class Renderer {
       GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     );
 
+    const maxNameLabelInstances = 64;
+    const nameLabelInstanceBuffer = createDynamicBuffer(
+      device,
+      maxNameLabelInstances * 9 * 4,
+      GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    );
+
+    const nameLabelRenderer = new NameLabelRenderer(
+      device,
+      queue,
+      nameLabelPipeline,
+      globalBindGroup,
+      labelLayout,
+      unitQuadVertexBuffer,
+      nameLabelInstanceBuffer,
+      maxNameLabelInstances,
+    );
+
     const maxAreaEffectInstances = 64;
     const areaEffectInstanceBuffer = createDynamicBuffer(
       device,
@@ -300,7 +324,7 @@ export class Renderer {
       maxSmokeInstances * 4 * 4,
       GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     );
-    const maxSmokeWalls = 48;
+    const maxSmokeWalls = 32;
     const smokeWallBuffer = createDynamicBuffer(
       device,
       (maxSmokeInstances * 4 + maxSmokeInstances * maxSmokeWalls * 4) * 4,
@@ -385,6 +409,7 @@ export class Renderer {
       globalUniformBuffer,
       globalBindGroup,
       playerRenderer,
+      nameLabelRenderer,
       grenadeRenderer,
       areaEffectRenderer,
       visionRenderer,
@@ -472,15 +497,17 @@ export class Renderer {
       this.deathShardRenderer.syncDeaths(frame.players, frame.tracers, isSecondHalf);
       this.deathShardRenderer.update(dtSec);
     }
-    if (!skipFluidSim) {
+    const hasActiveSmoke = frame.smokeSources.length > 0;
+    if (!skipFluidSim && hasActiveSmoke) {
       this.fluidSim.syncToFrame(frame);
     }
-    const smokeCount = skipFluidSim ? 0 : this.smokeRenderer.upload(frame.smokeSources);
+    const smokeCount = skipFluidSim || !hasActiveSmoke ? 0 : this.smokeRenderer.upload(frame.smokeSources);
     const visionCount = this.visionRenderer.upload(frame.players, isSecondHalf);
     const shardCount = skipDeathShardEffects ? 0 : this.deathShardRenderer.upload();
     const areaEffectCount = this.areaEffectRenderer.upload(frame.areaEffects);
     const grenadeCount = this.grenadeRenderer.upload(frame.grenades);
     const playerCount = this.playerRenderer.upload(frame.players, isSecondHalf);
+    const nameLabelCount = this.nameLabelRenderer.upload(frame.players);
     const tracerCount = this.tracerRenderer.upload(frame.tracers, isSecondHalf);
 
     const encoder = this.device.createCommandEncoder();
@@ -509,6 +536,7 @@ export class Renderer {
     this.grenadeRenderer.draw(pass, grenadeCount);
     this.tracerRenderer.draw(pass, tracerCount);
     this.playerRenderer.draw(pass, playerCount);
+    this.nameLabelRenderer.draw(pass, nameLabelCount);
 
     pass.end();
     this.queue.submit([encoder.finish()]);

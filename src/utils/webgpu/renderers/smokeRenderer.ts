@@ -20,6 +20,8 @@ export class SmokeRenderer {
   private wallSourceScratch: LocalWallSource[];
   private walls: WallSegment[] = [];
   private maxWallsPerInstance: number;
+  private wallCacheKey = "";
+  private wallsVersion = 0;
 
   constructor(
     queue: GPUQueue,
@@ -56,6 +58,8 @@ export class SmokeRenderer {
 
   setWalls(walls: WallSegment[]) {
     this.walls = walls;
+    this.wallsVersion++;
+    this.wallCacheKey = "";
   }
 
   upload(smokeSources: RenderSmokeSource[]) {
@@ -73,21 +77,25 @@ export class SmokeRenderer {
       const wallSource = this.wallSourceScratch[i];
       wallSource.x = smoke.x;
       wallSource.y = smoke.y;
-      wallSource.radius = smoke.radius;
+      wallSource.radius = smoke.radius + 96;
       wallSource.enabled = smoke.alpha > 0.01;
     }
 
     writeFloat32Slice(this.queue, this.instanceBuffer, data, count * this.instanceStrideFloats);
-    const wallFloatCount = fillLocalWallScratch(
-      this.wallScratch,
-      this.wallDistanceScratch,
-      this.wallSourceScratch,
-      count,
-      this.walls,
-      this.maxInstances,
-      this.maxWallsPerInstance,
-    );
-    writeFloat32Slice(this.queue, this.wallBuffer, this.wallScratch, wallFloatCount);
+    const wallCacheKey = this.buildWallCacheKey(smokeSources, count);
+    if (wallCacheKey !== this.wallCacheKey) {
+      this.wallCacheKey = wallCacheKey;
+      const wallFloatCount = fillLocalWallScratch(
+        this.wallScratch,
+        this.wallDistanceScratch,
+        this.wallSourceScratch,
+        count,
+        this.walls,
+        this.maxInstances,
+        this.maxWallsPerInstance,
+      );
+      writeFloat32Slice(this.queue, this.wallBuffer, this.wallScratch, wallFloatCount);
+    }
     return count;
   }
 
@@ -103,5 +111,14 @@ export class SmokeRenderer {
     pass.setVertexBuffer(0, this.quadVertexBuffer);
     pass.setVertexBuffer(1, this.instanceBuffer);
     pass.draw(6, instanceCount, 0, 0);
+  }
+
+  private buildWallCacheKey(smokeSources: RenderSmokeSource[], count: number) {
+    let key = `${this.wallsVersion}:${count}`;
+    for (let i = 0; i < count; i++) {
+      const smoke = smokeSources[i];
+      key += `|${Math.round(smoke.x)}:${Math.round(smoke.y)}`;
+    }
+    return key;
   }
 }

@@ -151,17 +151,22 @@ export class FluidSim {
     const maxCatchupSteps = Math.ceil((maxCatchupSec * this.ticksPerSecond) / this.simStepTicks);
     const impactWindowStart = targetTick - (maxCatchupSec * this.ticksPerSecond);
 
-    let hasRelevantSmoke = false;
+    let firstRelevantSmokeTick = Number.POSITIVE_INFINITY;
     for (let i = 0; i < this.roundSmokes.length; i++) {
       const smoke = this.roundSmokes[i];
       if (smoke.t <= targetTick && smoke.t >= impactWindowStart) {
-        hasRelevantSmoke = true;
-        break;
+        firstRelevantSmokeTick = Math.min(firstRelevantSmokeTick, smoke.t);
       }
     }
 
-    const requiredSteps = hasRelevantSmoke ? maxCatchupSteps : 0;
-    const idealCatchupStart = Math.max(resetStepIndex, targetStepIndex - requiredSteps);
+    const hasRelevantSmoke = firstRelevantSmokeTick !== Number.POSITIVE_INFINITY;
+    const firstRelevantSmokeStep = hasRelevantSmoke
+      ? Math.floor((firstRelevantSmokeTick - this.startTick) / this.simStepTicks) - 1
+      : targetStepIndex;
+    const idealCatchupStart = Math.max(
+      resetStepIndex,
+      Math.max(targetStepIndex - maxCatchupSteps, Math.min(targetStepIndex, firstRelevantSmokeStep)),
+    );
 
     if (this.currentStepIndex < idealCatchupStart - 1) {
       this.gpu.clearStateTextures();

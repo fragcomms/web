@@ -99,9 +99,16 @@ export class DeathShardRenderer {
 
       const nextX = shard.x + shard.vx * dt;
       const nextY = shard.y + shard.vy * dt;
+      const minX = Math.min(shard.x, nextX) - shard.size;
+      const maxX = Math.max(shard.x, nextX) + shard.size;
+      const minY = Math.min(shard.y, nextY) - shard.size;
+      const maxY = Math.max(shard.y, nextY) + shard.size;
 
       let nearestHit: { t: number; x: number; y: number; wall: WallSegment; } | null = null;
       for (const wall of this.walls) {
+        if (!wallOverlapsBounds(wall, minX, minY, maxX, maxY)) {
+          continue;
+        }
         const hit = intersectSegmentWithWall(
           { x: shard.x, y: shard.y },
           { x: nextX, y: nextY },
@@ -340,4 +347,11 @@ export class DeathShardRenderer {
   private dot(a: Vec2, b: Vec2): number {
     return a.x * b.x + a.y * b.y;
   }
+}
+
+function wallOverlapsBounds(wall: WallSegment, minX: number, minY: number, maxX: number, maxY: number) {
+  return Math.max(wall.x1, wall.x2) >= minX
+    && Math.min(wall.x1, wall.x2) <= maxX
+    && Math.max(wall.y1, wall.y2) >= minY
+    && Math.min(wall.y1, wall.y2) <= maxY;
 }

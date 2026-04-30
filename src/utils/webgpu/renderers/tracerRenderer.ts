@@ -61,8 +61,15 @@ export class TracerRenderer {
       if (len > 0.0001) {
         const dir = { x: dx / len, y: dy / len };
         let hitDistance = len;
+        const minX = Math.min(tr.x0, tr.x1) - 8;
+        const maxX = Math.max(tr.x0, tr.x1) + 8;
+        const minY = Math.min(tr.y0, tr.y1) - 8;
+        const maxY = Math.max(tr.y0, tr.y1) + 8;
 
         for (const wall of this.walls) {
+          if (!wallOverlapsBounds(wall, minX, minY, maxX, maxY)) {
+            continue;
+          }
           const t = intersectRaySegment(
             { x: tr.x0, y: tr.y0 },
             dir,
@@ -104,4 +111,11 @@ export class TracerRenderer {
     pass.setVertexBuffer(1, this.tracerInstanceBuffer);
     pass.draw(6, instanceCount, 0, 0);
   }
+}
+
+function wallOverlapsBounds(wall: WallSegment, minX: number, minY: number, maxX: number, maxY: number) {
+  return Math.max(wall.x1, wall.x2) >= minX
+    && Math.min(wall.x1, wall.x2) <= maxX
+    && Math.max(wall.y1, wall.y2) >= minY
+    && Math.min(wall.y1, wall.y2) <= maxY;
 }

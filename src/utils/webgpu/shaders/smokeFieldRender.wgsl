@@ -12,11 +12,11 @@ struct SmokeFieldParams {
 };
 
 const MAX_SMOKE_INSTANCES : u32 = 32u;
-const MAX_LOCAL_WALLS : u32 = 48u;
+const MAX_LOCAL_WALLS : u32 = 32u;
 
 struct LocalWallBuffer {
     counts : array<vec4<f32>, 32>,
-    segments : array<vec4<f32>, 1536>,
+    segments : array<vec4<f32>, 1024>,
 };
 
 @group(0) @binding(0) var<uniform> uniforms : Uniforms;

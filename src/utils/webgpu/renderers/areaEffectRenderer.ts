@@ -24,6 +24,8 @@ export class AreaEffectRenderer {
   private wallSourceScratch: LocalWallSource[];
   private walls: WallSegment[] = [];
   private maxWallsPerInstance: number;
+  private wallCacheKey = "";
+  private wallsVersion = 0;
 
   constructor(
     queue: GPUQueue,
@@ -60,6 +62,8 @@ export class AreaEffectRenderer {
 
   setWalls(walls: WallSegment[]) {
     this.walls = walls;
+    this.wallsVersion++;
+    this.wallCacheKey = "";
   }
 
   upload(effects: RenderAreaEffect[]) {
@@ -90,22 +94,26 @@ export class AreaEffectRenderer {
       const wallSource = this.wallSourceScratch[count];
       wallSource.x = effect.x;
       wallSource.y = effect.y;
-      wallSource.radius = effect.radius;
+      wallSource.radius = effect.kind === "inferno" ? effect.radius + 72 : effect.radius;
       wallSource.enabled = effect.kind === "inferno" && effect.alpha > 0.01;
       count++;
     }
 
     writeFloat32Slice(this.queue, this.instanceBuffer, data, count * this.instanceStrideFloats);
-    const wallFloatCount = fillLocalWallScratch(
-      this.wallScratch,
-      this.wallDistanceScratch,
-      this.wallSourceScratch,
-      count,
-      this.walls,
-      this.maxInstances,
-      this.maxWallsPerInstance,
-    );
-    writeFloat32Slice(this.queue, this.wallBuffer, this.wallScratch, wallFloatCount);
+    const wallCacheKey = this.buildWallCacheKey(count);
+    if (wallCacheKey !== this.wallCacheKey) {
+      this.wallCacheKey = wallCacheKey;
+      const wallFloatCount = fillLocalWallScratch(
+        this.wallScratch,
+        this.wallDistanceScratch,
+        this.wallSourceScratch,
+        count,
+        this.walls,
+        this.maxInstances,
+        this.maxWallsPerInstance,
+      );
+      writeFloat32Slice(this.queue, this.wallBuffer, this.wallScratch, wallFloatCount);
+    }
 
     return count;
   }
@@ -122,5 +130,14 @@ export class AreaEffectRenderer {
     pass.setVertexBuffer(0, this.quadVertexBuffer);
     pass.setVertexBuffer(1, this.instanceBuffer);
     pass.draw(6, instanceCount, 0, 0);
+  }
+
+  private buildWallCacheKey(count: number) {
+    let key = `${this.wallsVersion}:${count}`;
+    for (let i = 0; i < count; i++) {
+      const source = this.wallSourceScratch[i];
+      key += source.enabled ? `|1:${Math.round(source.x)}:${Math.round(source.y)}` : "|0";
+    }
+    return key;
   }
 }

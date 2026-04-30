@@ -15,7 +15,7 @@ export class FluidGPU {
   private sampleLayout: GPUBindGroupLayout;
 
   public readonly simResolution = 256;
-  public readonly pressureIterations = 10;
+  public readonly pressureIterations = 6;
 
   public sampleBindGroup!: GPUBindGroup;
   
@@ -181,7 +181,6 @@ export class FluidGPU {
     nextPlayersScratch: Map<string, { x: number; y: number }>,
     isCatchingUp: boolean
   ) {
-    this.playerScratch.fill(0);
     let playerCount = 0;
     nextPlayersScratch.clear();
 
@@ -200,9 +199,10 @@ export class FluidGPU {
       this.playerScratch[base + 3] = vy;
       playerCount++;
     }
-    this.queue.writeBuffer(this.playerBuffer, 0, this.playerScratch);
+    if (playerCount > 0) {
+      this.queue.writeBuffer(this.playerBuffer, 0, this.playerScratch as any, 0, playerCount * 4);
+    }
 
-    this.tracerScratch.fill(0);
     const tracerCount = Math.min(frame.tracers.length, this.maxTracers);
     for (let i = 0; i < tracerCount; i++) {
       const tracer = frame.tracers[i];
@@ -212,9 +212,10 @@ export class FluidGPU {
       this.tracerScratch[base + 2] = tracer.x1;
       this.tracerScratch[base + 3] = tracer.y1;
     }
-    this.queue.writeBuffer(this.tracerBuffer, 0, this.tracerScratch);
+    if (tracerCount > 0) {
+      this.queue.writeBuffer(this.tracerBuffer, 0, this.tracerScratch as any, 0, tracerCount * 4);
+    }
 
-    this.smokeScratch.fill(0);
     const smokeCount = Math.min(frame.smokeSources.length, this.maxSmokes);
     for (let i = 0; i < smokeCount; i++) {
       const smoke = frame.smokeSources[i];
@@ -224,7 +225,9 @@ export class FluidGPU {
       this.smokeScratch[base + 2] = smoke.radius;
       this.smokeScratch[base + 3] = smoke.alpha;
     }
-    this.queue.writeBuffer(this.smokeBuffer, 0, this.smokeScratch);
+    if (smokeCount > 0) {
+      this.queue.writeBuffer(this.smokeBuffer, 0, this.smokeScratch as any, 0, smokeCount * 4);
+    }
 
     this.writeUniforms(bounds, dtSec, playerCount, tracerCount, smokeCount);
 
