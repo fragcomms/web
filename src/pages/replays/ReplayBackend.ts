@@ -45,6 +45,8 @@ export function useReplayEngine(
   const cameraRef = useRef(camera);
   const [deathEvents, setDeathEvents] = useState<PlayerDeathEvent[]>([]); // for KDA and other stats
   const [slotToSteamid, setSlotToSteamid] = useState<Record<number, string>>({});
+  const [balanceEvents, setBalanceEvents] = useState<any[]>([]);
+  const [weaponEvents, setWeaponEvents] = useState<any[]>([]);
   
 
   const effectiveDurationSec = useMemo(() => {
@@ -225,6 +227,9 @@ export function useReplayEngine(
           setDeathEvents(sorted);
         }
 
+        if (data.events?.balance_changes) setBalanceEvents(data.events.balance_changes);
+        if (data.events?.weapon_changes) setWeaponEvents(data.events.weapon_changes);
+
         setTicksPerSecond(player.ticksPerSecond);
         setReplayStartTick(data.timeline[0]?.t ?? 0);
         setRoundStartTicks(
@@ -379,6 +384,8 @@ export function useReplayEngine(
     replayMeta,
     deathEvents,
     slotToSteamid,
+    balanceEvents, 
+    weaponEvents,
     
     canvasHandlers: {
       onPointerDown: handlePointerDown,

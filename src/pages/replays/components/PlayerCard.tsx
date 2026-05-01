@@ -15,12 +15,17 @@ interface PlayerCardProps {
     player: ReplayPlayer
     ringColor: string
     centerTextColorClass: string
+    kda?: { kills: number; deaths: number; assists: number }
+    money?: number
+    weaponName?: string
 }
 
 
 export default function PlayerCard({
     player,
     kda,
+    money,
+    weaponName,
     ringColor,
     centerTextColorClass,
 }: PlayerCardProps & {
@@ -42,16 +47,16 @@ export default function PlayerCard({
                         {player.name || player.steamid}
                     </div>
                     <div className="min-w-0 flex-1 text-right text-xs font-mono text-slate-500 dark:text-slate-400">
-                        {player.weaponName || "Main Weapon"}
+                        {weaponName || "Main Weapon"}
                     </div>
                 </div>
 
                 <div className="mt-0.5 flex items-center gap-2">
                     <div className="text-xs font-mono text-slate-400">
-                        {kda?.kills ?? 0} / {kda?.deaths ?? 0} / {kda?.assists ?? 0}
+                        {kda?.kills ?? 0}K / {kda?.deaths ?? 0}D / {kda?.assists ?? 0}A
                     </div>
                     <div className="min-w-0 flex-1 text-right text-xs font-mono text-slate-500 dark:text-slate-400">
-                        ${player.money ?? 0}
+                        ${money ?? 0}
                     </div>
                 </div>
             </div>

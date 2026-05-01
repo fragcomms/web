@@ -21,6 +21,9 @@ import { PlayerCardPlaceholder } from "./components/PlayerCard";
 import { downloadTranscript } from "../../utils/media/downloadTranscript";
 import { downloadAudio } from "../../utils/media/downloadAudio";
 
+import { useBalance } from "./components/PlayerBalance";
+import { useWeapon } from "./components/PlayerWeapon";
+
 
 function getRoundFromTick(roundStartTicks: number[], currentTick: number): number {
   if (roundStartTicks.length === 0) return 1;
@@ -96,6 +99,8 @@ export default function ReplayPage() {
     slotToSteamid,
     canvasHandlers,
     setIsSecondHalf,
+    balanceEvents, 
+    weaponEvents,
     // replayMeta, // check final score (testing)
   } = useReplayEngine(id, canvasRef, audioPlayerRef, {
     audioStartOffsetSec,
@@ -252,7 +257,17 @@ export default function ReplayPage() {
     return ids;
   }, [transcripts, currentTimeSec, audioStartOffsetSec, audioStartsFirst]);
 
-  
+  const playerMoney = useBalance(
+    balanceEvents,
+    frame?.tick ?? replayStartTick,
+    slotToSteamid
+  );
+
+  const playerWeapons = useWeapon(
+    weaponEvents,
+    frame?.tick ?? replayStartTick,
+    slotToSteamid
+  );
 
   
   // console.log("slotToSteamid:", slotToSteamid);
@@ -331,6 +346,8 @@ export default function ReplayPage() {
                       key={player.steamid}
                       player={player}
                       kda={playerKDA[player.steamid]}
+                      money={playerMoney[player.steamid]}
+                      weaponName={playerWeapons[player.steamid]}
                       ringColor="rgb(59 130 246)"
                       centerTextColorClass="text-blue-700 dark:text-blue-100"
                     />
@@ -364,6 +381,8 @@ export default function ReplayPage() {
                       key={player.steamid}
                       player={player}
                       kda={playerKDA[player.steamid]}
+                      money={playerMoney[player.steamid]}
+                      weaponName={playerWeapons[player.steamid]}
                       ringColor="rgb(234 179 8)"
                       centerTextColorClass="text-amber-700 dark:text-yellow-100"
                     />

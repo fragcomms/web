@@ -80,6 +80,9 @@ export type ReplayEvents = {
   round_start?: RoundStartEvent[];
   round_end?: RoundEndEvent[];
   player_death?: PlayerDeathEvent[]; // NEW
+  balance_changes?: { t: number; id: number; bal: number }[];
+  weapon_changes?: { t: number; id: number; wep: string }[];
+  // inventory_changes?: any[];
 };
 
 export type ReplayJSON = {
