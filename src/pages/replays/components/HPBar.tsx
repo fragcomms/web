@@ -1,3 +1,5 @@
+import { Skull } from "lucide-react";
+
 // hp bar interface
 interface HPBarProps {
     hp: number;
@@ -26,7 +28,7 @@ export default function HPBar({
             <div
                 className={`absolute inset-0.75 flex items-center justify-center rounded-full bg-white text-[10px] font-semibold dark:bg-slate-900 ${centerTextColorClass}`}
             >
-                {alive ? hp : "D"}
+                {alive ? hp : <Skull className="h-3.5 w-3.5" />}
             </div>
         </div>
     )
