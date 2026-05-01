@@ -56,7 +56,7 @@ export const MuteSidebar = memo(
                     onClick={() => !isEmpty && onFilteredUser(discordId)}
                     className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 transition-all ${
                       !isEmpty ? "cursor-pointer" : ""
-                    } ${isSpeaking ? "ring-2 ring-[#23A55A]" : ""}`}
+                    } ${isSpeaking ? (isMuted ? "ring-2 ring-red-500" : "ring-2 ring-[#23A55A]") : ""}`}
                   >
                     {isEmpty
                       ? <div className="text-xs text-slate-400 dark:text-slate-500">-</div>
@@ -86,7 +86,7 @@ export const MuteSidebar = memo(
                     min={0}
                     max={1}
                     step={0.01}
-                    value={volumes[discordId] ?? 1}
+                    value={isMuted ? 0 : volumes[discordId] ?? 1}
                     onChange={e => onVolumeChange(discordId, parseFloat(e.target.value))}
                     className="w-full h-1 accent-[#FACC15] cursor-pointer" // T yellow? maybe white?
                     title="Volume"

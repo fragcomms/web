@@ -143,15 +143,28 @@ export function useReplayMedia(id: string | undefined, audioPlayerRef: React.Ref
   const toggleMute = useCallback((discordId: string) => {
     setMutedUsers(prev => {
       const muted = !prev[discordId];
-      if (audioPlayerRef.current) audioPlayerRef.current.setTrackMute(discordId, muted);
+      if (audioPlayerRef.current) {
+        if (muted) {
+          //audioPlayerRef.current.setTrackMute(discordId, muted);
+          audioPlayerRef.current.setTrackVolume(discordId, 0);
+        }
+        else {
+          const restoredVolume = Math.max(volumes[discordId] ?? 0.5, 0.1);
+          setVolumes(vols => ({ ...vols, [discordId]: restoredVolume }));
+          audioPlayerRef.current.setTrackVolume(discordId, restoredVolume);
+        }
+      }
       return { ...prev, [discordId]: muted };
     });
-  }, [audioPlayerRef]);
+  }, [audioPlayerRef, volumes]);
 
   const setVolume = useCallback((discordId: string, volume: number) => {
+    const volumeWithSnap = volume < 0.1 ? 0 : volume; // volume value that snaps to 0 when bar is dragged or clicked to a value < 0.1
     setVolumes(prev => ({ ...prev, [discordId]: volume }));
+
+    setMutedUsers(prev => ({ ...prev, [discordId]: volumeWithSnap === 0 }));  
     if(audioPlayerRef.current) {
-      audioPlayerRef.current.setTrackVolume(discordId, volume);
+      audioPlayerRef.current.setTrackVolume(discordId, volumeWithSnap);
     }
 
   }, [audioPlayerRef]);
