@@ -153,15 +153,17 @@ export const TranscriptPanel = memo(function TranscriptPanel(
                       ? "border-cyan-500 bg-cyan-100/70 shadow-[0_0_0_1px_rgba(14,116,144,0.35)] dark:border-cyan-400 dark:bg-cyan-500/10 dark:shadow-[0_0_0_1px_rgba(34,211,238,0.45)]"
                       : "border-transparent hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-md"
                   } 
-                  ${(filteredUser !== null ? filteredUser !== t.discordId : mutedUsers[t.discordId]) ? "opacity-30" : ""}`}>                  <div className="flex items-center gap-2 mb-0.5">
+                  ${(filteredUser !== null ? filteredUser !== t.discordId : mutedUsers[t.discordId]) ? "opacity-30" : ""}`}>                  <div className="mb-0.5 flex items-center gap-2">
                     <span className="font-semibold text-blue-700 dark:text-blue-400 text-xs truncate max-w-37.5">
                       {discordNames[t.discordId] || t.discordId}
                     </span>
-                    <span className="text-xs text-purple-600 dark:text-purple-400 font-mono">
-                      RND {getRoundFromTick(replayStartTick + (syncStartsFirst ? t.start - syncOffsetSec : t.start + syncOffsetSec) * ticksPerSecond)} [{formatTime(getTimeInRound(syncStartsFirst ? t.start - syncOffsetSec : t.start + syncOffsetSec))}]
-                    </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                      [{formatTime(syncStartsFirst ? t.start - syncOffsetSec : t.start + syncOffsetSec)}]
+                    <span className="ml-auto flex items-center gap-2 whitespace-nowrap">
+                      <span className="text-xs text-purple-600 dark:text-purple-400 font-mono">
+                        [Round {getRoundFromTick(replayStartTick + (syncStartsFirst ? t.start - syncOffsetSec : t.start + syncOffsetSec) * ticksPerSecond)}] [{formatTime(getTimeInRound(syncStartsFirst ? t.start - syncOffsetSec : t.start + syncOffsetSec))}]
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-mono text-right">
+                        [{formatTime(syncStartsFirst ? t.start - syncOffsetSec : t.start + syncOffsetSec)}]
+                      </span>
                     </span>
                   </div>
                   <span className="text-slate-800 dark:text-slate-200 leading-snug">{t.text}</span>
