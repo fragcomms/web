@@ -51,9 +51,9 @@ export function LoginForm({ testLoading }: LoginFormProps) {
 
   if (user) {
     return (
-      <Card className="w-full max-w-md bg-slate-800 border-slate-700">
+      <Card className="w-full max-w-md border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-white text-center">Welcome back!</CardTitle>
+          <CardTitle className="text-center text-slate-900 dark:text-white">Welcome back!</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center space-x-3">
@@ -65,21 +65,21 @@ export function LoginForm({ testLoading }: LoginFormProps) {
               className="w-12 h-12 rounded-full"
             />
             <div>
-              <p className="text-white font-medium">{user.global_name || user.username}</p>
-              <p className="text-slate-400 text-sm">{user.email}</p>
+              <p className="font-medium text-slate-900 dark:text-white">{user.global_name || user.username}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
             </div>
           </div>
 
           <div className="space-y-2">
             <Button
               onClick={handleFetchUserData}
-              className="w-full bg-slate-700 hover:bg-slate-600 text-white"
+              className="w-full bg-slate-200 text-slate-900 hover:bg-slate-300 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
             >
               View Profile Data
             </Button>
             <Button
               onClick={handleFetchConnections}
-              className="w-full bg-slate-700 hover:bg-slate-600 text-white"
+              className="w-full bg-slate-200 text-slate-900 hover:bg-slate-300 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
             >
               View Connections
             </Button>
@@ -98,10 +98,10 @@ export function LoginForm({ testLoading }: LoginFormProps) {
   }
 
   return (
-    <Card className="w-full max-w-md bg-slate-800 border-slate-700">
+    <Card className="w-full max-w-md border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-white text-center">Welcome back!</CardTitle>
-        <CardDescription className="text-slate-400">
+        <CardTitle className="text-center text-slate-900 dark:text-white">Welcome back!</CardTitle>
+        <CardDescription className="text-center text-slate-500 dark:text-slate-400">
           Sign in with your Discord account to continue.
         </CardDescription>
       </CardHeader>
@@ -116,7 +116,7 @@ export function LoginForm({ testLoading }: LoginFormProps) {
         </Button>
       </CardContent>
       <CardFooter>
-        <p className="text-center w-full text-slate-400">
+        <p className="w-full text-center text-slate-500 dark:text-slate-400">
           By continuing, you agree to our Terms of Service and Privacy Policy.
         </p>
       </CardFooter>
