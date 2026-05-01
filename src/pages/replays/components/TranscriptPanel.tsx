@@ -187,14 +187,15 @@ export const TranscriptPanel = memo(function TranscriptPanel(
         {visibleTranscripts.length > 0
           ? (
             <div className="flex flex-col">
-              {visibleTranscripts.map((t, i) => (
+              {visibleTranscripts.map((t, i) => {
+                const adjustedStart = syncStartsFirst ? t.start - syncOffsetSec : t.start + syncOffsetSec;
+                const adjustedEnd = syncStartsFirst ? t.end - syncOffsetSec : t.end + syncOffsetSec;
+
+                return (
                 <div
                   key={i}
                   data-segment-index={i}
                   onClick={() => {
-                    const adjustedStart = syncStartsFirst 
-                      ? t.start - syncOffsetSec 
-                      : t.start + syncOffsetSec;
                     const seekTime = Math.max(0, adjustedStart);
                     onSeek?.(seekTime);
                   }}
@@ -209,16 +210,17 @@ export const TranscriptPanel = memo(function TranscriptPanel(
                     </span>
                     <span className="ml-auto flex items-center gap-2 whitespace-nowrap">
                       <span className="text-xs text-purple-600 dark:text-purple-400 font-mono">
-                        [Round {getRoundFromTick(replayStartTick + (syncStartsFirst ? t.start - syncOffsetSec : t.start + syncOffsetSec) * ticksPerSecond)}] [{formatTime(getTimeInRound(syncStartsFirst ? t.start - syncOffsetSec : t.start + syncOffsetSec))}]
+                        [Round {getRoundFromTick(replayStartTick + adjustedStart * ticksPerSecond)}] [{formatTime(getTimeInRound(adjustedStart))}-{formatTime(getTimeInRound(adjustedEnd))}]
                       </span>
                       <span className="text-xs text-slate-500 dark:text-slate-400 font-mono text-right">
-                        [{formatTime(syncStartsFirst ? t.start - syncOffsetSec : t.start + syncOffsetSec)}]
+                        [{formatTime(adjustedStart)}]
                       </span>
                     </span>
                   </div>
                   <span className="text-slate-800 dark:text-slate-200 leading-snug">{t.text}</span>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )
           : (
