@@ -32,6 +32,7 @@ export const TranscriptPanel = memo(function TranscriptPanel(
   const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
   const [isSyncEnabled, setIsSyncEnabled] = useState(true);
   const isAutoScrollingRef = useRef(false);
+  const autoScrollTimeoutRef = useRef<number | null>(null);
 
   // Helper function to get round number from tick
   const getRoundFromTick = (tick: number): number => {
@@ -62,11 +63,18 @@ export const TranscriptPanel = memo(function TranscriptPanel(
 
     const targetTop = activeElement.offsetTop - (container.clientHeight / 2) + (activeElement.clientHeight / 2);
     const maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+
     isAutoScrollingRef.current = true;
     container.scrollTo({ top: Math.max(0, Math.min(targetTop, maxTop)), behavior: "smooth" });
-    window.setTimeout(() => {
+
+    if (autoScrollTimeoutRef.current !== null) {
+      window.clearTimeout(autoScrollTimeoutRef.current);
+    }
+
+    autoScrollTimeoutRef.current = window.setTimeout(() => {
       isAutoScrollingRef.current = false;
-    }, 350);
+      autoScrollTimeoutRef.current = null;
+    }, 2000);
   };
 
   const offset = Number(syncOffsetSec) || 0;
@@ -116,13 +124,31 @@ export const TranscriptPanel = memo(function TranscriptPanel(
     const container = transcriptContainerRef.current;
     if (!container) return;
 
-    const onScroll = () => {
+    const onUserScroll = () => {
       if (isAutoScrollingRef.current) return;
       if (isSyncEnabled) setIsSyncEnabled(false);
     };
 
-    container.addEventListener("scroll", onScroll, { passive: true });
-    return () => container.removeEventListener("scroll", onScroll);
+    const onDirectInteraction = () => {
+      // If user directly interacts (wheel/touch), instantly cancel the auto-scroll lock
+      if (autoScrollTimeoutRef.current !== null) {
+        window.clearTimeout(autoScrollTimeoutRef.current);
+        autoScrollTimeoutRef.current = null;
+      }
+      isAutoScrollingRef.current = false;
+      if (isSyncEnabled) setIsSyncEnabled(false);
+    };
+
+    container.addEventListener("scroll", onUserScroll, { passive: true });
+    // Listen for direct hardware scrolls to immediately break the lock
+    container.addEventListener("wheel", onDirectInteraction, { passive: true });
+    container.addEventListener("touchmove", onDirectInteraction, { passive: true });
+
+    return () => {
+      container.removeEventListener("scroll", onUserScroll);
+      container.removeEventListener("wheel", onDirectInteraction);
+      container.removeEventListener("touchmove", onDirectInteraction);
+    };
   }, [isSyncEnabled]);
 
   return (
